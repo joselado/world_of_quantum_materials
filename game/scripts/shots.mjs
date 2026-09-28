@@ -863,15 +863,29 @@ async function main() {
       if (analytic) await shoot('battle-analytic-move');
       else log('  (skipped battle-analytic-move -- could not raise the question panel)');
 
-      // The move menu on its own, as docs/quasiparticles.md shows it.
+      // The move menu on its own, as docs/quasiparticles.md shows it. The
+      // clip is taken from the panel's own rendered bounds rather than a
+      // fixed rectangle: the panel is exactly as tall as the page it shows
+      // (BattleScene.drawMoveMenu), so a fixed clip would carry dead
+      // backdrop above a short page or cut a tall one.
       const menu = await page.evaluate(async () => {
         const b = window.__game.scene.getScene('Battle');
         if (!b || !b.scene.isActive()) return false;
         b['dialogueContainer']?.destroy(true);
-        return true;
+        const bounds = b['moveMenu']?.getBounds();
+        if (!bounds) return false;
+        return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
       });
       await sleep(600);
-      if (menu) await shootClip('docs-quasiparticles-movemenu', { x: 540, y: 278, width: 310, height: 196 });
+      if (menu) {
+        const pad = 10;
+        await shootClip('docs-quasiparticles-movemenu', {
+          x: Math.max(0, menu.x - pad),
+          y: Math.max(0, menu.y - pad),
+          width: Math.min(CANVAS_W, menu.x + menu.width + pad) - Math.max(0, menu.x - pad),
+          height: Math.min(CANVAS_H, menu.y + menu.height + pad) - Math.max(0, menu.y - pad),
+        });
+      }
 
       // A landed hit with no natural defense against it, and the victory
       // screen: both are moments a battle passes through rather than states it

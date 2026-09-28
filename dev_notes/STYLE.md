@@ -716,8 +716,11 @@ under one figure reads as floating even when neither is wrong on its own.
     reads as a world that stops, however far back the stopping point is.
   - **The repeated road is intentional.** Repeating the far edge row repeats the walkable path
     with it, so a road runs on past the world's own end -- the one detail that says the ten
-    worlds are one road rather than ten rooms. It is scenery, not passage: movement still
-    collides against the real grid, and the player leaves through the goal tile.
+    worlds are one road rather than ten rooms. It runs on in both gate states: while the rival
+    stands it runs on under the golem holding it, so the way to the next world is visible before
+    it is walkable (the throat row refuses the step until the rival falls). It is scenery, not
+    passage: movement still collides against the real grid, and the player leaves through the
+    goal tile.
   - **The air ahead becomes the next world's air.** As the player nears a world's goal end the
     haze target lerps toward the next world's own haze color, reaching four-fifths of the way
     at the goal row itself. The fog is applied in proportion to depth, so this recolors the
@@ -2198,9 +2201,12 @@ world are shaped, since world N's start is world N-1's exit.
   the key, and the prompt is interactive exactly while it is on screen, so the
   affordance and the hit area are the same object.
 - **Shut** -- the rival fills the throat and the throat row cannot be walked
-  onto. Nothing else marks the state: a body in the way is a plainer statement
-  than any weather over the gap. No aperture, no forward palette bleed, and the
-  repeated road stops rather than promising passage past the guard.
+  onto. The repeated road runs on under the guard, in this world's own colour
+  and haze: the way to the next world is visible before it is walkable, and
+  the body standing on it is what says it is not. Nothing else marks the
+  state: a body in the way is a plainer statement than any weather over the
+  gap. No aperture and no forward palette bleed -- nothing *of* the next world
+  shows until the rival falls.
 - **Open** -- the pass clears, the next world's palette shows through the notch
   above where the road runs out (light through a doorway, and diegetic: what is
   visible through the gap is the destination), a board names the destination,
@@ -2714,7 +2720,7 @@ world are shaped, since world N's start is world N-1's exit.
 
 ## Battle move menu (`BattleScene.drawMoveMenu`)
 
-- A docked panel on the frame's bottom-right rails (`width = MENU_WIDTH = 284`, `x = MENU_X =
+- A docked panel on the frame's bottom-right rails (`width = MENU_WIDTH = 320`, `x = MENU_X =
   RIGHT_RAIL - MENU_WIDTH`), same dark rounded-rectangle-with-stroke treatment as the
   overworld's dialogue panels, stroked gold (`0xffe066`) to match Noether's own panel color.
   The section header itself is the panel's title (bold gold, below) -- there is no separate
@@ -2764,39 +2770,43 @@ world are shaped, since world N's start is world N-1's exit.
   defense (2x)`) only ever has the one mismatch symbol to explain, kept deliberately terse
   since its wrapped height eats directly into the space every row gets.
 - **Pager**: when more than one page exists, a bold gold `◀` and `▶` (`Text`, hand cursor,
-  same `#ffe066` as the panel stroke/title) flank the header, at the panel's left/right inner
-  edges (`x = MENU_X + 14` / `MENU_X + MENU_WIDTH - 14`) -- clicking either, or pressing the
+  same `#ffe066` as the panel stroke/title, `MENU_ARROW_PX = 20` at `headerScale`) flank the
+  header at the panel's left/right inner edges (`x = MENU_X + 18` / `MENU_X + MENU_WIDTH - 18`).
+  Each one's hit area is its glyph's frame grown by `MENU_ARROW_HIT_PAD = 10` on every side
+  (about 38x46 at the Normal preset), so the target is thumb-sized while the glyph stays a
+  glyph and the header row stays as tall as the glyph alone -- clicking either, or pressing the
   Left/Right keys anywhere in the scene, advances/retreats `movePageIndex` and redraws.
   Hidden entirely (no arrows, no `(i/N)`) once there's only one page, so a player who never
   bought an analytic move or a Kondo self-buff sees a plain `ATTACKS` header with nothing to
   switch to.
 - Header text is deliberately capped at a lower text-size ceiling than the panel's own
-  title/legend (`headerScale = Math.min(fontScale, 1.15)`, 12px label / 8px legend sub-line
-  at that scale), and the pager arrows render a size above that (`14 * headerScale`) --
-  letting either scale all the way to the Lab's Settings station's uncapped 'Large' preset
+  title/legend (`headerScale = Math.min(fontScale, 1.15)`, 14px label / 8px legend sub-line
+  at that scale), and the pager arrows render a size above that (`MENU_ARROW_PX * headerScale`)
+  -- letting either scale all the way to the Lab's Settings station's uncapped 'Large' preset
   the way the title does would eat directly into the row budget below, and the header row's
   own height is taken from whichever of the label/arrows is actually taller so the arrows
   never bleed into the first move row. The panel's own title/legend are capped the same way
-  (`chromeScale = Math.min(fontScale, 1.35)`, matching the row-height budget's own cap below)
-  so neither eats into the row budget at the largest preset either.
-- Row height is a hard geometric budget: the fixed vertical band the panel is allowed to grow
-  into (`MENU_MIN_TOP` down to `FIELD_H - MENU_BOTTOM_MARGIN`), minus the title/legend/header
-  chrome above, divided across however many moves the *current page* has (never more than
-  `MOVE_MENU_MAX_ROWS`) -- with a `20`px minimum floor so rows never shrink to illegible, and
-  a scale-dependent ceiling (`maxRowH`) so a short page (e.g. a single-move `BUFFS` page)
-  doesn't grow rows past a sensible size just because the budget has slack. Each button is
-  centered in its own row band rather than pinned to the band's top edge, so a page with
-  slack reads as evenly spaced rather than as one dead gap under the first button. Because the page
-  cap is fixed at 3 rather than growing with content, every page's budget stays close to
-  identical, which is what keeps each button's font size (`btnPx`) close to its scale-scaled
-  ceiling on every page rather than collapsing on whichever ones happen to have more moves.
+  (`chromeScale = Math.min(fontScale, 1.35)`) so neither eats into the row budget at the
+  largest preset either.
+- Rows are sized to their content, and the panel to its rows: each move button is exactly as
+  tall as its own label (one line, or two for a genuinely long one) plus its `padY`, stacked
+  `MOVE_ROW_GAP` (4px) apart, and the panel's height is that stack plus the chrome -- so the
+  panel holds its moves and nothing else, with no slack under a short page and no dead band
+  around a one-line button. The text-size setting asks for `MOVE_BUTTON_PX` (13) times
+  `fontScale` (13/20/26px at Compact/Normal/Large); the fixed vertical band the panel is allowed
+  to grow into (`MENU_MIN_TOP` down to `MENU_BOTTOM`, minus the chrome above) is the hard cap
+  it can never grow past, and `btnPx` shrinks in whole-pixel steps, uniformly across the page,
+  until the rows as measured fit it. Because every page holds at most `MOVE_MENU_MAX_ROWS`
+  moves, that cap binds only on a page of long labels at the largest preset (three two-line
+  labels at Large come down to 17px); every other page renders at the setting's own size.
 - Move labels are a single wordWrap-friendly line ("`<name> — Pwr <n> ★★★ !!2x`") rather than
   a forced two-line split, so a short label (e.g. "Phonon Beam — Pwr 6") renders on one line
   and only a genuinely long one (a long tuned quasiparticle name plus an Ultimate's `★★★` and
   a mismatch `!!2x` tag, all at once) wraps to a second. `btnPx` is checked against every
-  label on the current page with a throwaway `Text` object (`getWrappedText()`) and shrunk in
-  whole-pixel steps, uniformly across the page, until none of them wrap past 2 lines -- the
-  row-height budget above only ever assumes 2 lines, so a 3rd would run into the row below it.
+  label on the current page with a throwaway `Text` object in the buttons' own style
+  (`moveButtonStyle`, shared with the real buttons so a measured height is a rendered one;
+  `getWrappedText()` for the line count) and shrunk in whole-pixel steps, uniformly across the
+  page, until none of them wrap past 2 lines -- a 3rd line is a row the stack has no room for.
   Verified against a live browser render (headless-Chromium harness, DEVELOPMENT.md) at every
   text-size preset with a form carrying every attack class at once (the worst case any
   `MOVE_COMPATIBILITY` entry can reach) and with Skłodowska-Curie's Ultimate moves tuned to

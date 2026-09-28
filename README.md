@@ -173,8 +173,9 @@ one click away. See [Guardians](docs/guardians.md) for what each one does.
 
 **Face the boss.** Every world narrows into a pass at its far end, and you
 will see what stands in it long before you get there: a gigantic golem, built
-from many crystal shards fused into one mass, filling the gap so completely
-that nothing of the next world shows past it. Through World 9 its name is
+from many crystal shards fused into one mass, standing on the road that runs
+on behind it and filling the gap so completely that nothing of the next world
+shows past it. The road is always there; the golem is what keeps you off it. Through World 9 its name is
 always a real compound in *polycrystalline* form (many grains fused into one,
 the same idea the golem's own body literalizes). Each one boasts about the very
 property its own grains took from it, and none of them knows that is what it is

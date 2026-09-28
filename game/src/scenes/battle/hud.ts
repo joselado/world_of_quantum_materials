@@ -140,7 +140,7 @@ export const PASSIVE_PILL_COLOR = '#8fa0ff';
 // derived from the same measured offset the golem is actually drawn with
 // rather than hand-tuned, so moving the boss can never silently leave the
 // two overlapping.
-export const MENU_WIDTH = 284;
+export const MENU_WIDTH = 320;
 export const MENU_X = RIGHT_RAIL - MENU_WIDTH;
 export const MENU_BOTTOM = BOTTOM_RAIL;
 export const MENU_MIN_TOP = BOSS_OPPONENT_POS.y + BOSS_FOOT_DROP + 7;

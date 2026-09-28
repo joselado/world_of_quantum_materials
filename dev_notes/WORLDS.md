@@ -681,9 +681,12 @@ same fog target on its way down to that line.
 
 **The road continues.** Repeating the far row repeats the walkable path with it,
 so a road runs on past the world's end. That is intended — it is this section's
-whole thesis in one detail — but it must drown in haze quickly, and while a gate
-is shut it must vanish into the closed notch's fog rather than promising passage
-the rival still forbids.
+whole thesis in one detail — and it holds in both gate states: the way from one
+world to the next is always there to be seen, and what the rival decides is
+whether it can be walked. So while a gate is shut the road runs on under the
+guard standing in it, and drowns in this world's own haze rather than in
+anything of the next; it is the guard, not the ground, that says passage is
+forbidden.
 
 ### Distant selves
 
@@ -873,10 +876,12 @@ walk. What the gate must carry is **state**: the way forward opens only once
 that world's rival is beaten. The forward pass therefore has two states, and
 the guard is the whole of what tells them apart.
 
-- **Rival unbeaten** — the rival fills the pass, and nothing of the next world
-  is visible past it. Haze inheritance does not run: a shut gate shows nothing
-  of what lies beyond it. Nothing else marks the state, because a body in the
-  way is a plainer statement than any weather drawn over the gap.
+- **Rival unbeaten** — the rival fills the pass, standing on the road that
+  runs on behind it, and nothing of the next world is visible past it. Haze
+  inheritance does not run: a shut gate shows nothing of what lies beyond it.
+  Nothing else marks the state, because a body in the way is a plainer
+  statement than any weather drawn over the gap — and a body standing on a
+  road it will not let you walk is a plainer statement than a road that ends.
 - **Rival beaten** — the pass clears and the notch beyond it carries the next
   world's palette, the brightest thing on screen or, in the late worlds, the
   most wrongly-coloured. Light through a doorway, and diegetic: what is visible

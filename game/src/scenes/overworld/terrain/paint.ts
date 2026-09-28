@@ -203,11 +203,13 @@ function drawMarginColumns(view: TerrainView, row: TerrainTile[], y: number) {
 // plan.ts's depthContinuedWalkable), and every repeat is far enough out that
 // the detail passes are already faded off.
 //
-// The repeated road runs only while the way is actually open. The far edge
-// row *is* the pass throat, so repeating it repeats the pass -- a road
-// running on to the horizon through a gate whose guard is still standing in
-// it. While the rival lives the repeats take the surround's terrain instead,
-// and the road ends where the guard does.
+// The repeated road runs on in both gate states. The far edge row *is* the
+// pass throat, so repeating it repeats the pass: the road runs on to the
+// horizon through the gate, and while the rival lives it runs on under the
+// guard standing in it. The path between two worlds is always there to be
+// seen; what the rival decides is whether it can be walked (tryMove refuses
+// the throat row until the rival falls), not whether it exists. Only a world
+// with no next world at all -- the Devouring Mirror -- has no road to run to.
 function drawMarginRows(view: TerrainView, deepestRow: number) {
   // A world that ends at a cliff has nothing past its last row: no repeated
   // road, no repeated surround, no ground at all. What fills the gap instead
@@ -218,9 +220,10 @@ function drawMarginRows(view: TerrainView, deepestRow: number) {
   const camX = view.camX;
   const camY = view.camY;
   const edge = view.plan.tiles[view.plan.farEdgeRow];
-  // The road runs on through an open pass only once the player is near
-  // enough to see what it opens onto (GateView.reveal).
-  const roadRunsOn = !view.gate || (view.gate.open && view.gate.reveal > 0);
+  // The road runs on wherever there is a world for it to run to, shut gate
+  // or open. What the pass opens *onto* -- the aperture, the seam, the next
+  // world's air -- is what waits on the rival falling, not the road itself.
+  const roadRunsOn = !view.gate || view.gate.next !== null;
   const cols = gridW();
   for (let gy = view.plan.farEdgeRow - 1; gy >= deepestRow; gy--) {
     const depthFar = camY - gy + 0.5;

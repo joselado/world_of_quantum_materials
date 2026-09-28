@@ -393,15 +393,40 @@ const TURN_GAP_MS = 300;
 const TRANSMUTE_HOLD_MS = 850;
 // Every move-menu page is capped at this many rows, however many moves its
 // section actually has (moveMenuPages splits a larger section into several
-// same-label pages instead) -- a fixed cap keeps every page's row budget
-// (and so its font size) close to identical regardless of content, rather
-// than a few-move page rendering tiny text just because some other section
-// happens to have many more moves.
+// same-label pages instead) -- a fixed cap is what keeps drawMoveMenu's
+// vertical budget from binding except on a page of long labels at the
+// largest text preset, so a page renders at the setting's own font size
+// rather than shrinking because its section happens to have many moves.
 const MOVE_MENU_MAX_ROWS = 3;
+// The move buttons' font size at text-size preset 1 (fontScale multiplies
+// it): the ceiling drawMoveMenu's budget clamps down from, never up to.
+const MOVE_BUTTON_PX = 13;
+// Between one move button and the next. Rows are sized to their own button
+// (drawMoveMenu), so this gap is the whole of the space between them.
+const MOVE_ROW_GAP = 4;
+// The pager arrows' glyph size at headerScale 1, and how far past the
+// glyph's own frame each one's hit area reaches on every side -- the glyph
+// is what is seen, the padded frame is what is clicked, so the target is
+// thumb-sized without the header row growing to match.
+const MENU_ARROW_PX = 20;
+const MENU_ARROW_HIT_PAD = 10;
 // The one tag the move buttons carry that needs explaining, kept deliberately
 // terse -- it sits as a dim strip along the panel's bottom edge, out of the
 // row budget's way.
 const MENU_LEGEND = '!! no natural defense (2x)';
+
+// The move buttons' text style, shared by drawMoveMenu's measurement pass
+// and addMoveButton's real buttons so that a measured row height is the
+// rendered one. Colour is per button (moveButtonContent) and added on top.
+function moveButtonStyle(btnPx: number, padY: number): Phaser.Types.GameObjects.Text.TextStyle {
+  return {
+    fontSize: `${btnPx}px`,
+    backgroundColor: '#222244',
+    padding: { x: 8, y: padY },
+    align: 'center',
+    wordWrap: { width: MENU_WIDTH - 16 },
+  };
+}
 
 interface BattleInitData {
   wild: Material;
@@ -886,11 +911,11 @@ export class BattleScene extends Phaser.Scene {
   // Kondo move active never sees an empty page, and the pager itself is
   // hidden entirely if there's only one page to begin with. Every page holds
   // at most MOVE_MENU_MAX_ROWS moves (moveMenuPages splits a larger section
-  // into several same-label pages instead), so every page's row budget is
-  // close to identical rather than a few-move page rendering tiny text just
-  // because some other section happens to have more moves in total. Called
-  // again (destroying the old container first) on every page switch, not
-  // just once at battle start.
+  // into several same-label pages instead), so the vertical budget below
+  // binds only on a page of long labels at the largest text preset and every
+  // other page renders at the setting's own font size. Called again
+  // (destroying the old container first) on every page switch, not just once
+  // at battle start.
   //
   // Bottom-anchored: the panel's bottom edge is fixed
   // (FIELD_H - MENU_BOTTOM_MARGIN) and its top edge is derived from however
@@ -957,13 +982,12 @@ export class BattleScene extends Phaser.Scene {
     if (this.movePageIndex >= pages.length) this.movePageIndex = 0;
     const section = pages[this.movePageIndex];
     const showPager = pages.length > 1;
-    const rowCount = Math.max(section.ids.length, 1);
     const headerLabelText = showPager ? `${section.label} (${this.movePageIndex + 1}/${pages.length})` : section.label;
 
     const HEADER_LEGEND_GAP = 1; // between the header's label and its own legend sub-line
-    const HEADER_ROWS_GAP = 1; // from the header (or its legend) down to the first move row
-    const headerStyle = { fontSize: `${Math.round(12 * headerScale)}px`, fontStyle: 'bold' as const };
-    const arrowStyle = { fontSize: `${Math.round(14 * headerScale)}px`, fontStyle: 'bold' as const };
+    const HEADER_ROWS_GAP = 3; // from the header (or its legend) down to the first move row
+    const headerStyle = { fontSize: `${Math.round(14 * headerScale)}px`, fontStyle: 'bold' as const };
+    const arrowStyle = { fontSize: `${Math.round(MENU_ARROW_PX * headerScale)}px`, fontStyle: 'bold' as const };
     const sectionLegendStyle = { fontSize: `${Math.round(8 * headerScale)}px` };
 
     // --- Measurement pass: throwaway Text objects, destroyed immediately,
@@ -986,71 +1010,61 @@ export class BattleScene extends Phaser.Scene {
     measureArrow?.destroy();
     measureSectionLegend?.destroy();
 
-    // Row height is a hard geometric budget -- whatever vertical room is
-    // left in the panel's fixed bottom-anchored band (MENU_MIN_TOP down to
-    // FIELD_H - MENU_BOTTOM_MARGIN) after the chrome above, divided across
-    // however many moves this page has -- not something the text-size
-    // setting can just grow past. Each button's font size is derived from
-    // its own row's actual height (fitPx) and clamped against the
-    // setting-scaled desired size (desiredPx) -- growing with the setting
-    // wherever the row has slack, but never past what the row can
-    // physically hold. `rowCount` here can never exceed MOVE_MENU_MAX_ROWS
-    // -- moveMenuPages already split anything larger into further pages --
-    // so every page's budget is close to identical, which is what keeps
-    // `btnPx` close to its `desiredPx` ceiling on every page rather than
-    // collapsing on whichever ones happen to have more moves. Verified
-    // against a live browser render (headless-Chromium harness,
-    // DEVELOPMENT.md) at every text-size preset with a form carrying every
-    // attack class at once (the worst case any MOVE_COMPATIBILITY entry can
-    // reach) -- no page overflows the field, and no label reaches a 3rd
-    // line, at any preset.
-    const rowFloor = 20;
-    const maxRowH = Math.round(46 * Math.min(scale, 1.35));
+    // Rows are sized to their content, and the panel to its rows: each move
+    // button is exactly as tall as its own label (one line, or two for a
+    // genuinely long one) plus its padding, stacked MOVE_ROW_GAP apart, so
+    // the panel holds its moves and nothing else. The text-size setting
+    // asks for `desiredPx`; the budget the panel is allowed to grow into
+    // (MENU_MIN_TOP down to FIELD_H - MENU_BOTTOM_MARGIN, minus the chrome
+    // above) is the hard cap it can never grow past. Measured with a
+    // throwaway Text in the buttons' own style (moveButtonStyle) rather than
+    // assumed, and shrunk in whole-pixel steps -- uniformly across the page,
+    // every row sharing one btnPx -- until every label on this page wraps to
+    // two lines or fewer *and* the rows as measured fit the budget. Since a
+    // page never holds more than MOVE_MENU_MAX_ROWS moves (moveMenuPages
+    // splits anything larger), the budget binds only on a page of long
+    // labels at the largest preset, and everything else renders at the
+    // setting's own size. Verified against a live browser render (headless-
+    // Chromium harness, DEVELOPMENT.md) at every text-size preset with a form
+    // carrying every attack class at once (the worst case any
+    // MOVE_COMPATIBILITY entry can reach) and with Skłodowska-Curie's Ultimate
+    // moves tuned to 'heavyFermion' (the longest quasiparticle name) and
+    // mismatched against the opponent -- no page overflows the field, and no
+    // label reaches a 3rd line, at any preset.
     const budget = MENU_BOTTOM - MENU_MIN_TOP;
     const chromeH = rowsTop + headerTotalH + legendH + 8; // +8 matches the panel's own trailing bottom pad below
     const avail = budget - chromeH;
-    const naturalRowH = Math.floor(avail / rowCount);
-    const rowH = Phaser.Math.Clamp(naturalRowH, rowFloor, Math.max(maxRowH, rowFloor));
-    const height = chromeH + rowCount * rowH;
-    const menuTop = MENU_BOTTOM - height;
 
     const padY = 5;
-    const fitPx = Math.max(9, Math.floor((rowH - padY * 2) / 2.4));
-    const desiredPx = Math.round(11 * scale);
-    let btnPx = Math.min(desiredPx, fitPx);
-
-    // fitPx above only budgets vertical space (rowH) on the assumption a
-    // label wraps to at most 2 lines -- it says nothing about whether a
-    // long tuned move name plus an Ultimate's ★★★ and a mismatch !!2x tag,
-    // all at once, actually wraps that short at this page's own generous
-    // font size (a 2-row ULTIMATE page has enough vertical room that fitPx
-    // alone can land well above what the panel's fixed width can wrap to 2
-    // lines). Checked with a throwaway Text object (destroyed immediately)
-    // rather than assumed, and shrunk in whole-pixel steps -- uniformly
-    // across the page, same as every row already sharing one btnPx -- until
-    // every label on this page actually wraps to 2 lines or fewer. Verified
-    // against a live browser render (headless-Chromium harness,
-    // DEVELOPMENT.md) at the largest text-size preset with Skłodowska-
-    // Curie's Ultimate moves tuned to 'heavyFermion' (the longest
-    // quasiparticle name) and mismatched against the opponent -- the worst
-    // case across every tunable move.
-    const measure = this.add.text(0, 0, '', { fontStyle: 'bold', wordWrap: { width: MENU_WIDTH - 16 } });
-    const widestLineCount = () => {
+    const desiredPx = Math.round(MOVE_BUTTON_PX * scale);
+    let btnPx = desiredPx;
+    const measure = this.add.text(0, 0, '', moveButtonStyle(btnPx, padY));
+    const layoutRows = () => {
+      const heights: number[] = [];
       let lines = 1;
       section.ids.forEach((moveId) => {
         measure.setFontSize(`${btnPx}px`).setText(this.moveButtonContent(moveId).text);
         lines = Math.max(lines, measure.getWrappedText().length);
+        heights.push(measure.height);
       });
-      return lines;
+      const total = heights.reduce((sum, h) => sum + h, 0) + MOVE_ROW_GAP * (heights.length - 1);
+      return { heights, lines, total };
     };
-    // Floored at the same 9px `fitPx` uses -- legibility wins over the
-    // 2-line guarantee below that floor, on the assumption a label long
-    // enough to still wrap 3 lines at 9px never actually occurs (verified
-    // for every current move/tag combination, see above). A future move
-    // whose tuned name is long enough to break that assumption would need
-    // this floor revisited, not just a bigger MENU_WIDTH.
-    while (btnPx > 9 && widestLineCount() > 2) btnPx -= 1;
+    let rows = layoutRows();
+    // Floored at 9px -- legibility wins over both guarantees below that
+    // floor, on the assumption a label long enough to still wrap 3 lines at
+    // 9px never actually occurs (verified for every current move/tag
+    // combination, see above). A future move whose tuned name is long enough
+    // to break that assumption would need this floor revisited, not just a
+    // bigger MENU_WIDTH.
+    while (btnPx > 9 && (rows.lines > 2 || rows.total > avail)) {
+      btnPx -= 1;
+      rows = layoutRows();
+    }
     measure.destroy();
+
+    const height = chromeH + rows.total;
+    const menuTop = MENU_BOTTOM - height;
 
     // --- Render pass: identical layout math to the measurement pass above,
     // now building the real, permanent, absolutely-positioned elements at
@@ -1073,18 +1087,27 @@ export class BattleScene extends Phaser.Scene {
     let rowY = menuTop + rowsTop;
     let pagerRowH = 0;
     if (showPager) {
-      const leftArrow = this.add
-        .text(MENU_X + 14, rowY, '◀', { ...arrowStyle, color: GOLD_ACCENT_HEX })
-        .setOrigin(0.5, 0)
-        .setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => this.switchMovePage(-1));
-      const rightArrow = this.add
-        .text(MENU_X + MENU_WIDTH - 14, rowY, '▶', { ...arrowStyle, color: GOLD_ACCENT_HEX })
-        .setOrigin(0.5, 0)
-        .setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => this.switchMovePage(1));
-      container.add(leftArrow);
-      container.add(rightArrow);
+      // The glyph is drawn at arrowStyle's size; what is clicked is its frame
+      // grown by MENU_ARROW_HIT_PAD on every side (a hit area in the Text's
+      // own local space, which Phaser measures from its top-left whatever
+      // its origin), so the target is far larger than the glyph without the
+      // header row growing to hold it.
+      const arrow = (x: number, glyph: string, delta: number) => {
+        const t = this.add.text(x, rowY, glyph, { ...arrowStyle, color: GOLD_ACCENT_HEX }).setOrigin(0.5, 0);
+        const hit = new Phaser.Geom.Rectangle(
+          -MENU_ARROW_HIT_PAD,
+          -MENU_ARROW_HIT_PAD,
+          t.width + 2 * MENU_ARROW_HIT_PAD,
+          t.height + 2 * MENU_ARROW_HIT_PAD
+        );
+        t.setInteractive({ hitArea: hit, hitAreaCallback: Phaser.Geom.Rectangle.Contains, useHandCursor: true }).on('pointerdown', () =>
+          this.switchMovePage(delta)
+        );
+        container.add(t);
+        return t;
+      };
+      const leftArrow = arrow(MENU_X + 18, '◀', -1);
+      const rightArrow = arrow(MENU_X + MENU_WIDTH - 18, '▶', 1);
       pagerRowH = Math.max(leftArrow.height, rightArrow.height);
     }
     const headerLabel = this.add
@@ -1104,12 +1127,14 @@ export class BattleScene extends Phaser.Scene {
     }
     rowY += HEADER_ROWS_GAP;
 
-    // Each button is centered in its own row band rather than pinned to the
-    // band's top edge, so a page with slack (a short BUFFS page, or any page
-    // at a small text-size preset) reads as evenly spaced rather than as one
-    // dead gap under the first button.
+    // Each button sits in a row exactly its own height, MOVE_ROW_GAP below
+    // the one before -- the rows were measured in the buttons' own style, so
+    // this is the same stack the measurement pass priced.
+    let y = rowY;
     section.ids.forEach((moveId, i) => {
-      this.addMoveButton(container, moveId, rowY + rowH * (i + 0.5), btnPx, padY);
+      const h = rows.heights[i];
+      this.addMoveButton(container, moveId, y + h / 2, btnPx, padY);
+      y += h + MOVE_ROW_GAP;
     });
   }
 
@@ -1162,14 +1187,7 @@ export class BattleScene extends Phaser.Scene {
     const move = MOVES[moveId];
     const { text, color } = this.moveButtonContent(moveId);
     const btn = this.add
-      .text(MENU_X + MENU_WIDTH / 2, centerY, text, {
-        fontSize: `${btnPx}px`,
-        color,
-        backgroundColor: '#222244',
-        padding: { x: 8, y: padY },
-        align: 'center',
-        wordWrap: { width: MENU_WIDTH - 16 },
-      })
+      .text(MENU_X + MENU_WIDTH / 2, centerY, text, { ...moveButtonStyle(btnPx, padY), color })
       .setOrigin(0.5, 0.5)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => {

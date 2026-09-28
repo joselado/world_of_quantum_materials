@@ -98,7 +98,7 @@ export interface HazeView {
 // walkable aperture is, whether its guard has fallen, and the world beyond.
 // One record, read by the aperture in the horizon (drawPassAperture), by the
 // ground seam and by the repeated road (terrain/paint.ts), so no two of them
-// can disagree about whether the way is open.
+// can disagree about whether the way is open or what lies beyond it.
 export interface GateView {
   /** The throat's grid row -- the northernmost walkable row of the corridor. */
   row: number;
@@ -110,12 +110,18 @@ export interface GateView {
   open: boolean;
   /**
    * How much of what lies beyond an open pass is shown, 0 far from it to 1
-   * near it (passReveal): the light through the gap, the road running on
-   * through it and the seam of the next world's floor are seen only from
-   * close enough, the way the next world's air arrives (forwardHazeBlend).
+   * near it (passReveal): the light through the gap and the seam of the next
+   * world's floor are seen only from close enough, the way the next world's
+   * air arrives (forwardHazeBlend). The road running on through the pass is
+   * not part of the reveal: it is there in both gate states.
    */
   reveal: number;
-  /** The world on the other side, or null in the last world, which has none. */
+  /**
+   * The world on the other side, shut gate or open, or null in the last
+   * world, which has none. Whether anything *of* that world shows is decided
+   * by `open` and `reveal`; this only says there is one, which is what the
+   * repeated road needs to know.
+   */
   next: Biome | null;
 }
 

@@ -877,10 +877,10 @@ splits into several same-label pages instead -- `chernSuperconductor` (`electron
 is the one form whose **Attacks** section needs this today, once every matching move is
 unlocked, splitting its 5 moves into two pages (3 + 2). These groups work
 differently enough from an ordinary attack (and from each other) that a flat stacked list
-blurred the distinction -- and paging instead of stacking means a page's own row height
-(`drawMoveMenu`'s `rowH`) is budgeted only against that one page's move count, not the worst
-case across every section at once; capping every page at the same 3-move limit also keeps
-that budget (and so each button's font size) close to identical from one page to the next.
+blurred the distinction -- and paging instead of stacking means a page's own font size
+(`drawMoveMenu`'s `btnPx`) is budgeted only against that one page's moves, not the worst
+case across every section at once; capping every page at the same 3-move limit is what keeps
+that budget from binding at all except on a page of long labels at the largest text preset.
 Each button also shows its power and, computed against the current opponent's type, a
 `!!2x` tag when the quasiparticle-mismatch double-damage rule above applies, plus a one-line
 bottom-of-panel legend spelling out that symbol; a button's label (move name plus any

@@ -1616,26 +1616,26 @@ because the panel is bottom-anchored (`menuTop = MENU_BOTTOM - height`, floored 
 grow up into the opponent's cluster) rather than
 built down from a fixed top the way a top-anchored panel could measure and place in one pass.
 The header `Text` (label + page indicator + optional legend) is capped well below the
-text-size setting's own range (`headerScale = Math.min(scale, 1.15)`, base 12px label / 8px
+text-size setting's own range (`headerScale = Math.min(scale, 1.15)`, base 14px label / 8px
 section legend), and the panel's own bottom legend strip is capped the same way (`chromeScale
-= Math.min(scale, 1.35)`, matching `rowH`'s own cap below) -- letting either scale all the way
-to the 2x 'Large' preset would eat directly into the row budget; the pager arrows render at a
-larger px than the header label (`arrowPx`), so the header's own row advances by
+= Math.min(scale, 1.35)`) -- letting either scale all the way to the 2x 'Large' preset would eat
+directly into the row budget. The pager arrows (`MENU_ARROW_PX`, base 20px at `headerScale`)
+render larger than the header label, so the header's own row advances by
 `Math.max(headerLabel.height, pagerRowH)`, not the label's height alone, or the taller arrows
-would bleed into the first move row. Row height (`rowH`) is computed from the fixed vertical
-band the panel may occupy (`MENU_MIN_TOP` down to `MENU_BOTTOM`) minus the
-chrome above, divided by the current page's `rowCount` (never more than `MOVE_MENU_MAX_ROWS`)
-via `Phaser.Math.Clamp` against a `20`px floor and a scale-scaled `maxRowH` ceiling. Each
-button's font size (`btnPx`) starts at `Math.min(desiredPx, fitPx)` (`fitPx` derived from
-`rowH`, assuming a label wraps to at most 2 lines), then `drawMoveMenu` measures every label
-on the page with a throwaway `Text` object's `getWrappedText()` and shrinks `btnPx` in
-whole-pixel steps, uniformly across the page, until none of them actually wrap past 2 lines --
-catches a long tuned quasiparticle name (e.g. "Heavy Fermion Meteor") stacked with a `★★★
-!!2x` tag, which `fitPx`'s purely-vertical budget alone doesn't account for, without ever
-letting a label reach a 3rd line the row-height math has no room for. Each button is drawn
-centered in its own row band (`addMoveButton` takes the band's center y, origin `(0.5, 0.5)`)
-rather than pinned to its top edge, so a page with slack spreads it evenly instead of pooling
-it all under the first button.
+would bleed into the first move row; each arrow's hit area is its glyph's frame grown by
+`MENU_ARROW_HIT_PAD` on every side (a `Phaser.Geom.Rectangle` in the `Text`'s local space, which
+Phaser measures from the object's top-left whatever its origin), so the click target is far
+larger than the glyph without the row growing to hold it. Rows are sized to their content:
+`drawMoveMenu` measures every label on the page with a throwaway `Text` in the buttons' own
+style (`moveButtonStyle(btnPx, padY)`, shared with `addMoveButton` so measured heights are
+rendered heights) at `desiredPx = MOVE_BUTTON_PX * scale`, and shrinks `btnPx` in whole-pixel
+steps, uniformly across the page, until every label wraps to 2 lines or fewer *and* the rows as
+measured (each button's own height, `MOVE_ROW_GAP` apart) fit the band the panel may occupy
+(`MENU_MIN_TOP` down to `MENU_BOTTOM`, minus the chrome above) -- floored at 9px. Since a page
+never holds more than `MOVE_MENU_MAX_ROWS` moves, the budget binds only on a page of long labels
+at the largest preset; everything else renders at the setting's own size, and the panel is
+exactly as tall as its rows plus chrome. `addMoveButton` takes each row's center y (origin
+`(0.5, 0.5)`), and the rows stack from the header down with nothing between them but the gap.
 
 A move whose id is one of `ANALYTIC_MOVE_IDS` still gets its `★` tag on the button itself (the
 2x/0.5x legend text now lives under the Analytic section header instead, see above); its
@@ -2085,11 +2085,12 @@ fade that has to arrive opaque lands on `alphaAt(1)` rather than stopping a row 
 that row's
 walkability) so no boundary curve, contact shadow or rim light is drawn across the continuing
 road; `walkable` itself is untouched, so the repeated road is scenery and the player still leaves
-through the goal tile. The repeat only runs while the way is actually open (`drawMarginRows`'s
-`roadRunsOn`, off whenever `view.gate` reports a shut gate): the far edge row *is* the pass
-throat, so repeating it while the rival still stands there would run a road to the horizon through
-a gate its guard is holding. Shut, the repeats take the surround's terrain instead and the road
-ends where the guard does. Anything drawing at depth calls `projection.ts`'s `projectTile`, which
+through the goal tile. The repeat runs in both gate states (`drawMarginRows`'s
+`roadRunsOn`, true whenever `view.gate.next` names a world to run to, so false only in World 10,
+which has none): the far edge row *is* the pass throat, so repeating it runs the road on to the
+horizon through the gate, under the rival for as long as it stands there. The path between two
+worlds is always visible; whether it can be walked is `tryMove`'s refusal of the throat row until
+`isRivalDefeated()`. Anything drawing at depth calls `projection.ts`'s `projectTile`, which
 applies `CAMERA_BACK_TILES` internally -- adding the pullback again double-counts it.
 
 **Forward haze inheritance.** `sky.ts`'s `hazeTarget(view, biome)` is what every haze in the
@@ -2112,7 +2113,9 @@ whether the rival has fallen, how much of what lies beyond an open pass is shown
 one from `REVEAL_FULL_TILES` in, a fade between, so an open pass is something the player comes
 upon rather than a beacon seen from the whole world -- and the neighbour's `Biome`), rebuilt
 each frame by `OverworldScene.gateView()` and hung off `AtmosphereView`. Three consumers read
-it and cannot disagree about whether the way is open, and all three draw at its `reveal`:
+it and cannot disagree about whether the way is open or what lies beyond it. Two of them show
+something *of* the next world and draw only when `open`, at its `reveal`; the third, the
+repeated road, reads only `next` and runs in both states:
 
 - `sky.ts`'s `drawPassAperture`, called from `drawDepthHaze` after the distant self -- the notch.
   Three nested tapering shapes (never a stack of rows: abutting translucent rows double-blend on a
@@ -2127,8 +2130,8 @@ it and cannot disagree about whether the way is open, and all three draw at its 
   it, fading out over `SEAM_ROWS` south of it. Running the far side at full strength rather than stopping at the throat is what
   keeps the ground agreeing with the aperture above it; a seam that reverted beyond the gate would
   put a stripe across the corridor instead of a threshold under it.
-- `drawMarginRows`'s `roadRunsOn` (above) -- the repeated road, which only runs while the gate is
-  open and its `reveal` is above zero.
+- `drawMarginRows`'s `roadRunsOn` (above) -- the repeated road, which runs whenever `next` is
+  non-null, shut gate or open, and reads neither `open` nor `reveal`.
 
 `forwardHazeBlend` takes the same `open` flag, so haze inheritance and the aperture are gated on
 one value rather than two reads of the registry.

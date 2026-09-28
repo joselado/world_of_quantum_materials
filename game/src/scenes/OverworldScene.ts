@@ -2681,8 +2681,12 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // This world's forward pass, as everything that draws it needs to see it
   // (sky.ts's GateView): where the throat sits, how wide it is, whether its
   // guard has fallen and what lies beyond. One record, so the aperture in the
-  // horizon, the ground seam and the repeated road cannot disagree about
-  // whether the way is open.
+  // horizon and the ground seam cannot disagree about whether the way is
+  // open, and the repeated road cannot disagree with them about whether there
+  // is a world for it to run to. `next` is set whenever a next world exists,
+  // shut or open: the road runs on toward it in either state, and the
+  // consumers that show something *of* it (the aperture, the seam, the haze)
+  // each read `open` themselves.
   private gateView(): GateView {
     const open = this.isRivalDefeated();
     return {
@@ -2691,7 +2695,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       halfTiles: PASS_HALF_WIDTH + 0.5,
       open,
       reveal: passReveal(open, this.camPos.y, this.goalTile.y),
-      next: open ? BIOMES[this.world + 1] ?? null : null,
+      next: BIOMES[this.world + 1] ?? null,
     };
   }
 
