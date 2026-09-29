@@ -3632,7 +3632,6 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       panelWidth,
       avatar: guardian.avatar,
       quote: `"${guardian.quote}"`,
-      introPx: fontPx(this, 11),
     });
 
     const note = this.add

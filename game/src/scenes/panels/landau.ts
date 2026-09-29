@@ -1,10 +1,11 @@
 import type Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
 import { renderGuardianHeader } from './guardianHeader';
+import { guardianQuoteFor } from '../../data/guardianQuotes';
+import { storyLength } from '../../data/settings';
 import { makeLandauAvatar } from '../../art/landau';
 import { ANALYTIC_SHAPES } from '../../art/attackEffects';
 import { CANVAS_W } from '../../art/perspective';
-import { fontScale } from '../../ui/text';
 import { PANEL_BG } from '../../ui/theme';
 import { ANALYTIC_MOVE_IDS, shopCost, moveDisplayName, moveShapeName, getTunedMoveClass, tunedClassOf, getMoveLevel, quasiparticleLabel, MOVES } from '../../data/materials';
 import type { MoveClass } from '../../data/types';
@@ -44,29 +45,30 @@ import { persistFromRegistry } from '../../data/save';
 // is selected fills one full-width detail pane. Two rows and one pane cost
 // far less height than two half-width panes side by side did, which is the
 // whole reason this panel is shaped like its neighbours -- with a
-// full-height animation stage plus an inline picker under it, half a panel
-// was never enough width for either. The pane (renderAnalyticColumn) opens
-// with that move's own real battle-effect animation on a loop
-// (renderMoveDetailHeader), overriding the plain per-class silhouette
-// via ANALYTIC_SHAPES (each Analytic move is 'beam' or 'eruption') the
-// same way BattleScene itself does, still colored by whichever quasiparticle
-// class the move is currently tuned to (getTunedMoveClass -- a not-yet-tuned
-// move falls back to its own default 'phonon', same fallback the real fight
-// uses) and escalated to the player's real Feynman level for that move
-// (getMoveLevel) so a leveled move's preview shows the same multi-trigger
-// cascade a real cast plays. Below that, a cost/status line and -- inline,
-// not a separate full-panel sub-view -- one row per hostable quasiparticle
-// class (tunableMoveShop.ts's renderInlineClassPicker): for a still-unbought
-// move, clicking any row buys and tunes to that class in one step
-// (buyLandauMove); for an already-bought move, clicking a row retunes for
-// free among any hostable class (retuneLandauMove), the currently-tuned
-// row marked "(current)". Every click re-renders the whole panel (this
-// file's own established full-rebuild-per-click convention, same as every
-// other guardian panel); the pane's preview chain (art/moveEffectPreview.ts)
+// full-height animation stage plus a quasiparticle list under it, half a
+// panel was never enough width for either. The pane (renderAnalyticColumn)
+// opens with that move's own real battle-effect animation on a loop
+// (renderMoveDetailHeader), overriding the plain per-class silhouette via
+// ANALYTIC_SHAPES (each Analytic move is 'beam' or 'eruption') the same way
+// BattleScene itself does, coloured and captioned by the quasiparticle row
+// the player has picked in the column beside it (previewClass: the picked
+// row, or the move's current tuning, getTunedMoveClass, until one is picked
+// -- a not-yet-tuned move falls back to its own default 'phonon', the same
+// fallback the real fight uses), and escalated to the player's real Feynman
+// level for that move (getMoveLevel) so a leveled move's preview shows the
+// same multi-trigger cascade a real cast plays. Below that, a cost/status
+// line naming the previewed class and the one button that spends anything:
+// for a still-unbought move it buys and tunes to that class in one step
+// (buyLandauMove); for an already-bought move it retunes for free among any
+// hostable class (retuneLandauMove), the currently-tuned row in the column
+// marked "(current)". Every click re-renders the whole panel (this file's
+// own established full-rebuild-per-click convention, same as every other
+// guardian panel); the pane's preview chain (art/moveEffectPreview.ts)
 // restarts from the first frame when the rebuild changes what it shows --
-// the other move opened, a class committed, so the beam or the eruption
-// plays in its new colour at once -- and keeps its play in flight when the
-// rebuild only moved the picker's selection under it.
+// the other move opened, another quasiparticle row picked, so the beam or
+// the eruption plays in its new colour at once -- and keeps its play in
+// flight when the rebuild changed nothing on the stage (a purchase, or a
+// retune to the class already previewed).
 export function showLandauPanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
   // Deliberately does NOT call stopMoveEffectPreview() here -- the pane's
@@ -81,19 +83,16 @@ export function showLandauPanel(scene: GuardianPanelHost) {
 
   let y = top;
 
-  // Capped tighter than the ordinary intro-quote scaling every other
-  // guardian panel uses (STYLE.md), same reasoning/cap as Skłodowska-Curie's
-  // own intro (panels/sklodowskaCurie.ts) -- a full-height animation stage
-  // plus an inline quasiparticle picker under it is the tallest detail pane
-  // any guardian has, and an uncapped quote at the largest text-size preset
-  // risks pushing the picker's own rows past the bottom of the canvas.
-  const introScale = Math.min(fontScale(scene), 1.15);
+  // The header fits the quote to the portrait band itself
+  // (panels/guardianHeader.ts): a full-height animation stage plus a
+  // quasiparticle list under it is the tallest detail pane any guardian has,
+  // and that fit is what keeps the list's own rows on the canvas at the
+  // largest text-size preset.
   y = renderGuardianHeader(scene, container, {
     y,
     panelWidth,
     avatar: makeLandauAvatar,
-    quote: '"Put a strong enough field on a two-dimensional electron gas and its whole band breaks into a ladder of flat levels, one fixed quantum of energy apart. Tell me the physics right and I will teach your crystal to strike by that ladder. Answer right and the hit climbs a rung and lands twice as hard. Answer wrong and it lands at half strength. Tell me which quasiparticle should carry it, too."',
-    introPx: `${Math.round(11 * introScale)}px`,
+    quote: guardianQuoteFor('landau', storyLength(scene.game.registry)),
   });
 
   // Farewell rides inside the left column beneath its rows
@@ -186,7 +185,12 @@ function renderAnalyticColumn(
   y: number,
   colW: number
 ): number {
-  const displayName = moveDisplayName(scene.game.registry, id);
+  // The stage and its caption follow the row picked in the column beside
+  // them (previewClass), not the move's saved tuning: picking Magnon shows a
+  // magnon-coloured lance captioned "Magnon Lance" at once, before anything
+  // is bought or retuned, which is what a preview-then-confirm pane is for.
+  // The status line below still reads the saved tuning (activeClass).
+  const displayName = moveDisplayName(scene.game.registry, id, previewClass);
   const activeClass = getTunedMoveClass(scene.game.registry, id);
   const level = getMoveLevel(scene.game.registry, id);
   // The stage runs at the taller TUNED_MOVE_STAGE_H rather than the ordinary
@@ -196,7 +200,7 @@ function renderAnalyticColumn(
     scene,
     container,
     displayName,
-    activeClass,
+    previewClass,
     ANALYTIC_SHAPES[id],
     centerX,
     y,

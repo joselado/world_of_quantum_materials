@@ -7,6 +7,8 @@ import { fontPx, fontScale } from '../../ui/text';
 import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 import { allCrystals, combineMaterials, combinableHybridResults, MAJORANA_FUSE_COST, type HybridCombo } from '../../data/materials';
 import { HYBRID_FUSION_LORE } from '../../data/materialdex';
+import { guardianQuoteFor } from '../../data/guardianQuotes';
+import { storyLength } from '../../data/settings';
 import { persistFromRegistry } from '../../data/save';
 import type { Material, MaterialType } from '../../data/types';
 import {
@@ -86,10 +88,7 @@ export function showMajoranaPanel(scene: GuardianPanelHost) {
     y,
     panelWidth,
     avatar: makeMajoranaAvatar,
-    quote: superposition
-      ? '"I am Majorana. In superposition every pairing is possible: fuse any two states that make physical sense."'
-      : '"I am Majorana. Fuse two states you understand and see what phase they make together."',
-    introPx: fontPx(scene, 11),
+    quote: guardianQuoteFor('majorana', storyLength(scene.game.registry), superposition),
   });
 
   const pool: { name: string; type: MaterialType }[] = superposition ? allCrystals() : scene.getDefeatedMaterials();

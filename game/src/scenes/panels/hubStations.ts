@@ -1031,7 +1031,7 @@ export function showSettingsPanel(scene: HubScene) {
     {
       category: 'story',
       label: 'Text Length',
-      when: 'Story screens and tips, Brief a third as long. The stations keep it all. Immediately.',
+      when: 'Story screens, tips, guardians: Brief a third as long. The stations keep it all. Immediately.',
       options: STORY_LENGTH_PRESETS.map((p) => ({
         label: p.label,
         selected: p.value === length,

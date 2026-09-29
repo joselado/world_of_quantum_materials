@@ -427,6 +427,13 @@ const MENU_ARROW_HIT_PAD = 10;
 // terse -- it sits as a dim strip along the panel's bottom edge, out of the
 // row budget's way.
 const MENU_LEGEND = '!! no natural defense (2x)';
+// The Analytic/Ultimate question panel (renderQuestionPanel): as wide as a
+// guardian's list+detail panel (scenes/panels/listDetail.ts's
+// LIST_DETAIL_PANEL_W), so a question reads at the same measure as the panel
+// of the guardian who taught the move, centred in the field and kept this far
+// inside its top and bottom edges.
+const QUESTION_PANEL_W = 720;
+const QUESTION_PANEL_MARGIN = 16;
 
 // The move buttons' text style, shared by drawMoveMenu's measurement pass
 // and addMoveButton's real buttons so that a measured row height is the
@@ -1264,19 +1271,25 @@ export class BattleScene extends Phaser.Scene {
   // Shared panel builder for showAnalyticQuestion's single question and
   // showUltimateQuestions' 3-question streak -- both are otherwise the same
   // title/prompt/two-shuffled-answers layout on a bordered rectangle, just
-  // with a different title, color and onPick outcome. The title's length
-  // varies a lot at runtime: Feynman's level prefix ('Infinite') plus
-  // whichever quasiparticle the move is currently tuned to (e.g. 'Heavy
-  // Fermion') can produce something like "Infinite Heavy Fermion Meteor --
-  // question 3/3", well past the fixed panel width -- so the title wraps
-  // like the prompt below it, and the font scale is capped at the default
-  // 1.5 preset (only the 2x 'Large' preset gets clamped, matching
-  // drawMoveMenu's headerScale cap) rather than growing unbounded. If the
-  // measured panel still doesn't fit the field after that cap -- a long
-  // prompt/answer pair on top of a long title -- the whole panel shrinks
-  // further in fixed steps down to a floor where the 12px body text bottoms
-  // out at 9px, the same floor HubScene.renderMaterialdexPanel's own
-  // blurb-shrink loop uses.
+  // with a different title, color and onPick outcome. The panel takes the
+  // field: QUESTION_PANEL_W wide, centred vertically, and the move menu is
+  // hidden for as long as it is up. A question is the one thing on screen
+  // while it is asked (turnLock already holds every other input), so nothing
+  // else needs the room, and the text is drawn at the player's own text-size
+  // preset rather than capped below it. The menu is hidden rather than
+  // destroyed, so the page it was on comes back as it was, and it is shown
+  // again as the answer is picked, before onPick runs: whatever the answer
+  // leads to finds the menu in place, and an Ultimate's next question, which
+  // onPick opens synchronously, hides it again before a frame is drawn.
+  // The title's length varies a lot at runtime: Feynman's level prefix
+  // ('Infinite') plus whichever quasiparticle the move is tuned to (e.g.
+  // 'Heavy Fermion') can produce "Infinite Heavy Fermion Meteor (question
+  // 3/3)", so the title wraps like the prompt below it. If the measured panel
+  // still doesn't fit between QUESTION_PANEL_MARGIN and the field's bottom
+  // edge -- a long prompt/answer pair on top of a long title at the Large
+  // preset -- the whole panel shrinks in fixed steps down to a floor where
+  // the 12px body text bottoms out at 9px, the same floor
+  // HubScene.renderMaterialdexPanel's own blurb-shrink loop uses.
   private renderQuestionPanel(params: {
     title: string;
     titleColor: string;
@@ -1286,14 +1299,16 @@ export class BattleScene extends Phaser.Scene {
     onPick: (correct: boolean) => void;
   }) {
     const { title, titleColor, strokeColor, prompt, options, onPick } = params;
-    const panelWidth = 520;
-    const top = 90;
+    const panelWidth = QUESTION_PANEL_W;
     const contentWidth = panelWidth - 60;
     const shuffled = Phaser.Utils.Array.Shuffle(options.slice());
+    this.moveMenu?.setVisible(false);
 
+    // Laid out from y = 0 inside the container, which is then moved down to
+    // wherever a panel of the measured height sits centred in the field.
     const attempt = (scale: number) => {
       const container = this.add.container(0, 0).setDepth(100);
-      let y = top + 16;
+      let y = 16;
 
       const titleText = this.add
         .text(FIELD_W / 2, y, title, {
@@ -1317,6 +1332,7 @@ export class BattleScene extends Phaser.Scene {
 
       const finish = (correct: boolean) => {
         container.destroy(true);
+        this.moveMenu?.setVisible(true);
         onPick(correct);
       };
 
@@ -1325,20 +1341,22 @@ export class BattleScene extends Phaser.Scene {
         y += btn.height + 8;
       });
 
-      const panelHeight = y - top + 10;
+      const panelHeight = y + 10;
       return { container, panelHeight };
     };
 
-    let scale = Math.min(fontScale(this), 1.5);
+    let scale = fontScale(this);
     let { container, panelHeight } = attempt(scale);
-    while (top + panelHeight > FIELD_H - 10 && scale > 0.75) {
+    while (panelHeight > FIELD_H - 2 * QUESTION_PANEL_MARGIN && scale > 0.75) {
       container.destroy(true);
       scale = Math.max(0.75, scale - 0.1);
       ({ container, panelHeight } = attempt(scale));
     }
+    const top = Math.max(QUESTION_PANEL_MARGIN, Math.round((FIELD_H - panelHeight) / 2));
+    container.setY(top);
 
     const panel = this.add
-      .rectangle(FIELD_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
+      .rectangle(FIELD_W / 2, panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
       .setStrokeStyle(2, strokeColor);
     container.addAt(panel, 0);
   }

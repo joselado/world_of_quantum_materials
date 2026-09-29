@@ -1,5 +1,7 @@
 import type { GuardianPanelHost } from '../OverworldScene';
 import { renderGuardianHeader } from './guardianHeader';
+import { guardianQuoteFor } from '../../data/guardianQuotes';
+import { storyLength } from '../../data/settings';
 import { makeFranklinAvatar } from '../../art/franklin';
 import { killTweensDeep } from '../../art/crystals';
 import { CANVAS_W } from '../../art/perspective';
@@ -100,18 +102,11 @@ export function showFranklinPanel(scene: GuardianPanelHost) {
 
   let y = top;
 
-  // Capped the same way Kondo's intro is (panels/kondo.ts): this panel
-  // carries the full list+detail layout with a 104px art stage plus a
-  // description under it, and an uncapped quote at the largest text-size
-  // preset pushes the pane's own confirm button past the bottom of the
-  // canvas.
-  const introScale = Math.min(fontScale(scene), 1.15);
   y = renderGuardianHeader(scene, container, {
     y,
     panelWidth,
     avatar: makeFranklinAvatar,
-    quote: '"Fire X-rays through a crystal full of defects and the sharp spots blur into rings. Every pore and dislocation leaves its mark in how the beam scatters. I can teach your crystal to scatter a blow the same way. A lesson needs room to hold, though: I sell that room slot by slot, and the heaviest lessons take all of it."',
-    introPx: `${Math.round(11 * introScale)}px`,
+    quote: guardianQuoteFor('franklin', storyLength(scene.game.registry)),
   });
 
   const panelLeft = CANVAS_W / 2 - panelWidth / 2;

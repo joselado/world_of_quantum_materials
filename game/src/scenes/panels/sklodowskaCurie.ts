@@ -1,10 +1,11 @@
 import type Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
 import { renderGuardianHeader } from './guardianHeader';
+import { guardianQuoteFor } from '../../data/guardianQuotes';
+import { storyLength } from '../../data/settings';
 import { makeSklodowskaCurieAvatar } from '../../art/sklodowskaCurie';
 import { ULTIMATE_SHAPES } from '../../art/attackEffects';
 import { CANVAS_W } from '../../art/perspective';
-import { fontScale } from '../../ui/text';
 import { PANEL_BG } from '../../ui/theme';
 import {
   ULTIMATE_MOVE_IDS,
@@ -52,28 +53,28 @@ import {
 // guardian's uses: her two moves are two rows in the left column, and
 // whichever is selected fills one full-width detail pane. The pane opens with
 // that move's own real battle-effect animation on a loop
-// (renderMoveDetailHeader), overriding the plain
-// per-class shape via ULTIMATE_SHAPES to the longer, multi-phase
-// playMeteor/playNova sequences -- the same override BattleScene itself
-// applies -- still colored by whichever quasiparticle class the move is
-// currently tuned to (getTunedMoveClass, same fallback rules as Landau's
+// (renderMoveDetailHeader), overriding the plain per-class shape via
+// ULTIMATE_SHAPES to the longer, multi-phase playMeteor/playNova sequences
+// -- the same override BattleScene itself applies -- coloured and captioned
+// by the quasiparticle row the player has picked in the column beside it
+// (previewClass: the picked row, or the move's current tuning,
+// getTunedMoveClass, until one is picked, same fallback rules as Landau's
 // Analytic pair) and escalated to the player's real Feynman level for that
-// move (getMoveLevel). Below that, a status line and -- inline, not a
-// separate full-panel sub-view -- one row per hostable quasiparticle class
-// (tunableMoveShop.ts's renderInlineClassPicker), each row's own cost read
-// straight off registry/save `ultimateClassesUnlocked[moveId]` rather than a
-// single flat cost the way Landau's picker shows: "Free" for an
-// already-unlocked class, `ULTIMATE_CLASS_UNLOCK_COST` qumatessence
-// otherwise. Picking any row is the one action that unlocks (on a class
-// never picked for this move before) or retunes (on one already unlocked)
-// in a single click -- and, on this move's very first-ever class pick,
-// also adds the move id to `unlockedMoves` so it appears in the battle menu.
-// A row here can be genuinely unaffordable -- with no class yet unlocked for
-// a move and too little qumatessence, that row is a no-op click -- but this
-// picker needs no dedicated escape button of its own for that case: the
-// Farewell button in the left column is always present regardless of
-// affordability, so a too-poor player is never left with nothing clickable
-// and `dialogueActive` stuck true.
+// move (getMoveLevel). Below that, a status line reading the previewed
+// class's own cost straight off registry/save
+// `ultimateClassesUnlocked[moveId]` rather than a single flat cost the way
+// Landau's pane does -- free for an already-unlocked class,
+// `ULTIMATE_CLASS_UNLOCK_COST` qumatessence otherwise -- and the one button
+// that commits: it unlocks (a class never picked for this move before) or
+// retunes (one already unlocked) in a single click and, on this move's very
+// first-ever class pick, also adds the move id to `unlockedMoves` so it
+// appears in the battle menu (pickUltimateClass). That button can be
+// genuinely unaffordable -- with no class yet unlocked for a move and too
+// little qumatessence it is dimmed and a no-op -- but the pane needs no
+// dedicated escape button of its own for that case: the Farewell button in
+// the left column is always present regardless of affordability, so a
+// too-poor player is never left with nothing clickable and `dialogueActive`
+// stuck true.
 export function showSklodowskaCuriePanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
   // Deliberately does NOT call stopMoveEffectPreview() here -- same
@@ -90,21 +91,16 @@ export function showSklodowskaCuriePanel(scene: GuardianPanelHost) {
 
   let y = top;
 
-  // Capped tighter than the ordinary intro-quote scaling every other
-  // guardian panel uses (STYLE.md) -- Skłodowska-Curie's own quote is the
-  // longest in the game (it names all ten guardians) and this panel now
-  // carries a full animation-stage-plus-inline-picker pane below it, on top
-  // of the avatar/footer every panel already has; an uncapped quote at the
-  // largest text-size preset was enough on its own to push the picker's own
-  // rows off the bottom of the canvas (same failure mode Anderson's own
-  // headline cap, STYLE.md, guards against).
-  const introScale = Math.min(fontScale(scene), 1.15);
+  // Skłodowska-Curie's own quote is the longest in the game (it names all
+  // ten guardians), so it is the line the header's fit to the portrait band
+  // (panels/guardianHeader.ts) shrinks furthest at the larger presets; that
+  // fit is what keeps the picker's rows below on the canvas, on top of the
+  // full animation-stage pane and the avatar/footer every panel has.
   y = renderGuardianHeader(scene, container, {
     y,
     panelWidth,
     avatar: makeSklodowskaCurieAvatar,
-    quote: '"I am Skłodowska-Curie, and I lead this circle of guardians: Noether, Bloch, Dresselhaus, Landau, Majorana, Anderson, Feynman, Kondo, Franklin, and I. Here is our last lesson. Answer three questions on the physics running through everything you have learned. Get all three right and your crystal strikes with a force none of the others can match. Miss even one and the blow lands nowhere at all. Tell me which quasiparticle carries it, too. A new one costs a lot to unlock, but once bought it is yours to wear again for free."',
-    introPx: `${Math.round(11 * introScale)}px`,
+    quote: guardianQuoteFor('sklodowskaCurie', storyLength(scene.game.registry)),
   });
 
   // Farewell rides inside the left column beneath its rows
@@ -199,8 +195,11 @@ function renderUltimateColumn(
   y: number,
   colW: number
 ): number {
-  const displayName = moveDisplayName(scene.game.registry, id);
-  const activeClass = getTunedMoveClass(scene.game.registry, id);
+  // The stage and its caption follow the row picked in the column beside
+  // them (previewClass), not the move's saved tuning, the same way Landau's
+  // pane does: the meteor falls in the previewed class's colour, captioned
+  // for it, before that class is unlocked or carried.
+  const displayName = moveDisplayName(scene.game.registry, id, previewClass);
   const level = getMoveLevel(scene.game.registry, id);
   // The stage runs at the taller TUNED_MOVE_STAGE_H rather than the ordinary
   // detail-pane block: this panel's height is set by its left column, so the
@@ -209,7 +208,7 @@ function renderUltimateColumn(
     scene,
     container,
     displayName,
-    activeClass,
+    previewClass,
     ULTIMATE_SHAPES[id],
     centerX,
     y,

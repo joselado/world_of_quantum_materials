@@ -453,7 +453,11 @@ under one figure reads as floating even when neither is wrong on its own.
   from the right column's own explicit button ("Become `<name>`," "Dope in `<name>`," "Fuse,"
   "Learn `<name>`," "Make `<name>` active," "Travel to `<name>`"). A button names the action and
   its object only -- the cost/status line directly above it carries the price and the unlock
-  state, so the button never restates them.
+  state, so the button never restates them. The button reads at the full dialogue-button size
+  (`13 * fontScale`, the size of the Farewell button in the column beside it) and shrinks in
+  whole-pixel steps until its label fits on one line in the column (and, in Bloch's pane, until
+  the button clears the canvas floor, `maxBottom`), never below `CONFIRM_FLOOR_SCALE` (`1.3`): a
+  long label gives up pixels rather than taking a second row.
   Each such panel keeps its own
   transient "which row is currently previewed" field (`GuardianPanelHost`'s
   `dresselhausPreview`/`andersonHostPreview`/`majoranaPreview`/`noetherMovePreview`/
@@ -1409,7 +1413,8 @@ station motifs are deliberately not tunnels with a visible far end.
   height than stacking did, because the tall portrait and the tall quote now
   overlap instead of adding. These are the densest panels in the game (a list, a
   detail pane, a footer under this block), and the tightest of them clears the
-  canvas floor by only a couple of dozen pixels at the Large text preset.
+  canvas floor by as little as three pixels at the Large text preset (Landau's, with a form
+  whose quasiparticle list paginates, measured in Superposition Mode).
 - **Sized off the widest of the roster, not per guardian**, so the ten stand at
   one size and a new one drops in without a layout pass: `PORTRAIT_SCALE = 2`
   against the measured reach of the biggest of them (Skłodowska-Curie, `44` up /
@@ -1421,17 +1426,22 @@ station motifs are deliberately not tunnels with a visible far end.
   middle.** Every one of these avatars reaches further above its own origin than
   below it, so centring the origin would either push the tallest past the panel's
   top edge or force a deeper band than the art needs.
-- The band is as tall as whichever needs more -- the portrait's own painted span,
-  or a long opening line running past it -- and the shorter of the two centres
-  against it. A `6`px idle float, deliberately smaller than a stacked layout's
+- The band is the portrait's own painted span, and the line is fitted to it: drawn
+  at the ordinary text size (`11`px through the text-size preset) and shrunk in
+  whole-pixel steps until it sits beside the portrait, never below
+  `INTRO_FLOOR_SCALE` (`1.15`), so a short line, or a Brief one, reads at full
+  size while a long Detailed one gives up pixels rather than pushing the whole
+  panel down. Only a line that overruns the band even at the floor deepens it,
+  and the shorter of the two centres against it. A `6`px idle float, deliberately smaller than a stacked layout's
   since the portrait it moves is twice the size: the same travel would read as
   drifting rather than breathing.
 - The quote is **left-aligned**, not centred: a centred block beside a portrait
   leaves a ragged left edge running down the middle of the panel, where the eye
-  expects the line to start where the figure stops. Its font size is passed in by
-  each panel rather than derived in the header, since several panels cap their own
-  intro font below the text-size setting (see Landau's/Kondo's/Skłodowska-Curie's
-  own sections) and the shared block must not quietly override that.
+  expects the line to start where the figure stops. Its size is derived in the
+  header, not passed in by each panel: the fit above is what keeps the densest
+  panels (Landau's, Kondo's, Franklin's, Skłodowska-Curie's, whose detail panes
+  reach furthest down the canvas) inside the canvas at the Large preset, so no
+  panel carries a cap of its own.
 
 ## Noether's shop (`OverworldScene.showNoetherShop`)
 
@@ -1516,8 +1526,10 @@ station motifs are deliberately not tunnels with a visible far end.
     with, so the pane leads with the stat's own name (bold, capped at the shared
     `DETAIL_NAME_CAP`), then a one-line effect gloss in gold ("Raises your crit chance.",
     "Higher goes first each round.", "Higher takes less damage."), then **what the stat
-    actually is in physics** (`data/statLore.ts`'s `STAT_LORE`, one short paragraph, capped
-    tighter than anything else in the pane since it is the longest text in the panel), then a
+    actually is in physics** (`data/statLore.ts`'s `statLoreFor`: the `STAT_LORE_BRIEF`
+    paragraph while the Settings station's Text Length row is on Brief, the full `STAT_LORE`
+    one on Detailed, either capped tighter than anything else in the pane since it is the
+    longest text in the panel), then a
     `Now at <value>. Raising it to <value+1> costs <cost> qumatessence.` status line and a
     `Raise <stat>` confirm button (dimmed if unaffordable) that is the one action
     checking/spending the cost. The three names are not decoration: energy, momentum and
@@ -1577,8 +1589,9 @@ station motifs are deliberately not tunnels with a visible far end.
   radius) and `pointerdown` handler, so clicking a marker previews that world exactly like
   clicking its table row does. Beneath the (unmoving) map sits the actual detail content for
   whichever world is currently previewed -- a physics blurb (`data/worldFlavor.ts`'s
-  `WORLD_FLAVOR`, in the same epic-plus-physics voice every guardian's own intro quote uses,
-  shrinking in whole-px steps down to floor `9` the same way Majorana's own hybrid-fusion-lore
+  `worldFlavorFor`: `WORLD_FLAVOR_BRIEF` while the Settings station's Text Length row is on
+  Brief, the full `WORLD_FLAVOR` on Detailed, in the same epic-plus-physics voice every
+  guardian's own intro quote uses, shrinking in whole-px steps down to floor `9` the same way Majorana's own hybrid-fusion-lore
   description does if a long entry would otherwise overflow), then a status line, then (unless the
   previewed world is either the one the player is already standing in or one not yet discovered,
   see below) a confirm button reading
@@ -1678,21 +1691,24 @@ station motifs are deliberately not tunnels with a visible far end.
   animation looping on its stage (`renderMoveDetailHeader`, "List+detail panels" above and
   "Attack effects" below),
   overriding the plain per-class silhouette via `ANALYTIC_SHAPES` (each Analytic move
-  is `'beam'`/`'eruption'`) the same way `BattleScene` itself does, still colored by whichever
-  quasiparticle class the move is currently tuned to (`getTunedMoveClass` -- a not-yet-tuned move
-  falls back to its own default `'phonon'`, same fallback the real fight uses) and escalated to
-  the player's real Feynman level for that move (`getMoveLevel`) the same way every
-  `renderMoveDetailHeader` caller now can. The column's own name text is `moveDisplayName`, not
-  the bare `tunedMoveDisplayName` -- it folds in both the current quasiparticle (below) and
-  Feynman's own Double/Triple/Infinite level prefix, so a leveled tuned move's preview title and
-  its real battle-menu name always read identically. Below that: a status line -- for a
-  still-unbought move, "Costs `<cost>` qumatessence to learn." (reusing `shopCost`); for an
-  already-bought one, "Tuned to `<quasiparticle>`." (or, if the player has since transmuted into
-  a form that can no longer host the saved assignment, "Tuned to `<quasiparticle>`, reverted to
-  Phonon (this form can't host it)." -- the fallback reads the bare quasiparticle noun,
-  `quasiparticleLabel`, not the move's own shape word -- or "Untuned -- pick a quasiparticle." if
-  never assigned, Superposition Mode's own edge case), naming the previewed quasiparticle and
-  what it costs -- and the one button that spends anything: `Learn <quasiparticle> <shape>` on a
+  is `'beam'`/`'eruption'`) the same way `BattleScene` itself does, coloured by the quasiparticle
+  row currently picked in the column beside it (`scene.landauClassPreview`, falling back to the
+  move's current tuning, `getTunedMoveClass`, until a row is picked -- a not-yet-tuned move falls
+  back to its own default `'phonon'`, same fallback the real fight uses), so picking a row
+  changes the beam or the eruption at once, before anything is bought, and escalated to the
+  player's real Feynman level for that move (`getMoveLevel`) the same way every
+  `renderMoveDetailHeader` caller can. The pane's own name text is `moveDisplayName` with that
+  previewed class passed as `carrying`, not the bare `tunedMoveDisplayName` -- it folds in
+  Feynman's own Double/Triple/Infinite level prefix, so once a pick is committed the preview
+  title and the real battle-menu name read identically. Below that: a status line -- for a
+  still-unbought move, "Costs `<cost>` qumatessence to learn, carried by `<quasiparticle>`."
+  (reusing `shopCost`); for an already-bought one, "Already tuned to `<quasiparticle>`." on the
+  tuned row, otherwise "Tuned to `<quasiparticle>`. Retuning is free." (or, if the player has
+  since transmuted into a form that can no longer host the saved assignment, "Tuned to
+  `<quasiparticle>`, reverted to Phonon (this form can't host it)." -- the fallback reads the
+  bare quasiparticle noun, `quasiparticleLabel`, not the move's own shape word; there is no
+  untuned state, a move never tuned carries phonon and says so), naming the previewed
+  quasiparticle and what it costs -- and the one button that spends anything: `Learn <quasiparticle> <shape>` on a
   still-unbought move, naming the previewed class it will be bought tuned to (`buyLandauMove`, checking/spending `shopCost`, adding the move to `unlockedMoves`, and
   recording the class, all three at once, with no separate "buy" step before picking a class), or
   `Tune to <quasiparticle>` on an already-bought one, free among any hostable class with no
@@ -1711,8 +1727,9 @@ station motifs are deliberately not tunnels with a visible far end.
   ("Lance"/"Eruption") rather than a second hand-authored word list, so `skyfallBeam` tuned to
   `'magnon'` reads as "Magnon Lance," `groundEruption` tuned to `'chargedAnyon'` as "Anyon
   Eruption," and so on. An untuned move defaults to `'phonon'`, reading as "Phonon
-  Lance"/"Phonon Eruption." The name updates as soon as a pick is committed, reading directly off
-  the class that was chosen.
+  Lance"/"Phonon Eruption." In the pane the name follows the row being previewed; everywhere
+  else it updates as soon as a pick is committed, reading directly off the class that was
+  chosen.
 
 ## Quasiparticle picker (`scenes/panels/tunableMoveShop.ts`)
 
@@ -1932,8 +1949,7 @@ station motifs are deliberately not tunnels with a visible far end.
   are a disc by necessity, since an enclosing cloud is that physics, so a round plate here
   would leave the two sharing one outline and separable only by colour.
 - List+detail layout (`scenes/panels/franklin.ts`, `LIST_DETAIL_PANEL_W`, the same shape
-  and column geometry as Kondo's panel above, intro quote capped at `1.15` for the same
-  reason): the left column lists the five passives (`data/passives.ts`'s
+  and column geometry as Kondo's panel above): the left column lists the five passives (`data/passives.ts`'s
   `FRANKLIN_PASSIVE_IDS` -- Diffraction Shadow, Satellite Reflection, Amorphous Halo, Last
   Scattering, Full Reflection), then, under the rows and above Farewell, one button that is
   not a row: "Buy slot N (`<cost>`)", the next rung of the passive-slot ladder
@@ -1986,9 +2002,10 @@ station motifs are deliberately not tunnels with a visible far end.
   (`moveShapeName`, same reasoning as Landau's own two headings above), and whichever is
   selected (`scene.curieMovePreview`) fills one full-width detail pane carrying the full
   resolved name. Her own intro quote is the longest in the game (it names all ten
-  guardians), capped at the same `1.15`x text-size scale Landau's own intro is, since the
-  animation-stage pane below it is the tallest any guardian has; see this
-  panel's own worst-case-content note below for how tight that budget is. Her quasiparticle
+  guardians), so at the larger presets it is the line the header's fit ("Guardian panel
+  headers" above) shrinks furthest, since the animation-stage pane below it is the tallest
+  any guardian has; see this panel's own worst-case-content note below for how tight that
+  budget is. Her quasiparticle
   choice is the second level of the left column, the same as Landau's above, and
   preview-then-confirm matters more here than anywhere else in the game: an unlock costs
   `ULTIMATE_CLASS_UNLOCK_COST`, by far the largest single price a player ever pays, and it
@@ -1996,15 +2013,17 @@ station motifs are deliberately not tunnels with a visible far end.
   (`renderUltimateColumn`) opens with that move's own real
   battle-effect animation looping on its stage (`renderMoveDetailHeader`), overriding
   the plain per-class shape via `ULTIMATE_SHAPES` to the longer, multi-phase `playMeteor`/
-  `playNova` sequences (below), still colored by whichever quasiparticle class the move is
-  currently tuned to, and escalated to the player's real Feynman level for that move
+  `playNova` sequences (below), coloured and captioned for the quasiparticle row currently
+  picked in the column beside it (`scene.curieClassPreview`, falling back to the current tuning
+  until a row is picked), and escalated to the player's real Feynman level for that move
   (`getMoveLevel`) -- a leveled Ultimate's preview genuinely runs its own full multi-phase
-  cascade once per repeat, same as a real leveled cast (see "Attack effects" below). The column's
-  name text is `moveDisplayName` (level prefix folded in), not the bare `tunedMoveDisplayName`.
-  Below that: a status line -- "Not yet unlocked -- pick a quasiparticle to unlock it." if the
-  move isn't in `unlockedMoves` yet, or "Carrying `<quasiparticle>`." (or the same "reverted to
-  Phonon" fallback wording Landau's own status line uses, or "Unlocked, but untuned -- pick a
-  quasiparticle." in Superposition Mode's own edge case), naming what the *previewed* class
+  cascade once per repeat, same as a real leveled cast (see "Attack effects" below). The pane's
+  name text is `moveDisplayName` with the previewed class as `carrying` (level prefix folded
+  in), not the bare `tunedMoveDisplayName`. Below that: a status line -- "Not yet unlocked.
+  `<quasiparticle>` costs `<cost>` qumatessence." if the move isn't in `unlockedMoves` yet,
+  "Already carrying `<quasiparticle>`." on the tuned row, "`<quasiparticle>` is already yours.
+  Carrying it again is free." on a paid-for one, or "`<quasiparticle>` costs `<cost>`
+  qumatessence to unlock." -- naming what the *previewed* class
   costs: free if that class is already paid for on this move (registry/save
   `ultimateClassesUnlocked[moveId]`), else `ULTIMATE_CLASS_UNLOCK_COST` qumatessence. Her pricing
   is per class per move rather than Landau's single flat move purchase, so the status line reads
@@ -2030,10 +2049,12 @@ station motifs are deliberately not tunnels with a visible far end.
   worst case rather than assumed: a `chernSuperconductor` crystal (the type with the most
   hostable classes, at five, so the left column's own entry list is at its longest and
   paginates) at the largest (`2x`) text-size preset, with the longest status line the pane can
-  show. Measured content bottom stays under `CANVAS_H` (`480`) with real margin (roughly 45px),
-  and the left column is what sets it -- the detail pane, taller stage included, still ends
-  above the Farewell button beneath the rows. Confirmed via a headless render rather than by
-  inspection alone.
+  show. Measured in Superposition Mode at that preset, the panel's bottom lands at 465 with the
+  five-class form and at 477 with a heavy-fermion host (whose list also paginates), of the
+  canvas's 480, and the left column is what sets it: the detail pane, taller stage included,
+  ends with its confirm button about 40px above the Farewell button beneath the rows. Landau's
+  panel measures the same in the same states. Confirmed via a headless render rather than by
+  inspection alone; re-measure before adding anything to either column.
 
 ## Paginated candidate lists (`OverworldScene.renderPagedButtons`)
 
@@ -2824,8 +2845,9 @@ world are shaped, since world N's start is world N-1's exit.
 
 - The one dialogue-style overlay that lives in `BattleScene` rather than `OverworldScene` --
   opened by clicking an analytic move's button, before that move resolves. Same dark
-  rounded-rectangle-with-stroke family as every overworld panel (520 wide, height grown to
-  fit), stroked gold (`0xffe066`, matching the move menu's own border and the `★` tag rather
+  rounded-rectangle-with-stroke family as every overworld panel (`QUESTION_PANEL_W`, 720 wide,
+  the width of a guardian's list+detail panel; height grown to fit and centred in the field),
+  stroked gold (`0xffe066`, matching the move menu's own border and the `★` tag rather
   than Landau's own blue-violet shop stroke). Move name in
   bold gold above the question prompt (white, center-aligned, matching the wild-encounter
   quiz's tone), then two shuffled answer buttons in the same `[ #222244 / #ffff88 ]`
@@ -2834,7 +2856,11 @@ world are shaped, since world N's start is world N-1's exit.
   multiplier.
 - Locks the move menu (`BattleScene.turnLock`) for the panel's duration so no other move can
   be queued underneath it, released the instant an answer is picked -- the panel itself has
-  no other exit.
+  no other exit -- and hides the menu (`setVisible(false)`, shown again as the answer is
+  picked, before the answer's own consequences run) so the question has the whole field. The
+  text draws at the player's own text-size preset, the title wrapping like the prompt, and only
+  a question that still will not fit between `QUESTION_PANEL_MARGIN` and the field's bottom
+  edge shrinks in steps (floor 0.75 of the base size).
 - Skłodowska-Curie's Ultimate moves reuse this same panel shape via
   `BattleScene.showUltimateQuestions`, stroked magenta (`0xff66ff`) instead of gold to read
   as its own distinct tier, and titled with a `question <i>/3` counter -- up to three of
@@ -2954,11 +2980,12 @@ world are shaped, since world N's start is world N-1's exit.
   keep the player's full chosen size. A value plate is ~43px tall at the Large preset, so no
   row is shorter than ~55px there, and the whole roster on one screenful does not fit the
   canvas -- which is what the categories buy. Measured at Large, the tallest category is
-  Presentation, whose four rows (Full Screen carrying a four-line "when", Touch Controls a
-  three-line one) reach 448 of the canvas's 480 pixels, and Story's three rows reach 435. That is
-  the practical ceiling: a row costs roughly 100px there, so a fifth Presentation row or a fourth
-  Story row would not fit. Re-measure before
-  adding one anywhere rather than reasoning from the row count alone.
+  Story, whose three rows (Text Length carrying a five-line "when") reach 457 of the canvas's
+  480 pixels, and Presentation's four rows (Full Screen carrying a four-line "when", Touch
+  Controls a three-line one) reach 448. That is the practical ceiling: a row costs roughly
+  100px there, so a fifth Presentation row or a fourth Story row would not fit, and a longer
+  "when" on the Text Length row would not either. Re-measure before adding one anywhere rather
+  than reasoning from the row count alone.
 - Turning the music off lives here as the `MUSIC_STYLE_PRESETS` "Mute" value rather than as
   a key: it is a preference a player sets once, so it belongs with the other preferences and
   persists with them. It silences the score only. Sound effects sit on the master bus rather

@@ -858,8 +858,18 @@ export function effectiveMovePower(registry: RegistryLike, moveId: string): numb
 // bare label instead of a real name (see that function's own comment) --
 // this falls back to the move's own static name for those instead, then
 // applies the same level prefix on top.
-export function moveDisplayName(registry: RegistryLike, moveId: string): string {
-  const base = MOVES[moveId].class === 'screening' ? MOVES[moveId].name : tunedMoveDisplayName(registry, moveId);
+// `carrying` names the move for a quasiparticle other than the one it is
+// tuned to: Landau's and Skłodowska-Curie's panes caption their stage with the
+// class the player has picked in the list beside it, before that pick is
+// bought or committed, so the caption and the effect above it agree with the
+// status line's "carried by <class>" rather than with the saved tuning.
+export function moveDisplayName(registry: RegistryLike, moveId: string, carrying?: MoveClass): string {
+  const base =
+    MOVES[moveId].class === 'screening'
+      ? MOVES[moveId].name
+      : carrying
+        ? `${quasiparticleLabel(carrying)} ${moveShapeName(moveId)}`
+        : tunedMoveDisplayName(registry, moveId);
   const prefix = MOVE_LEVEL_NAMES[getMoveLevel(registry, moveId)];
   return prefix ? `${prefix} ${base}` : base;
 }

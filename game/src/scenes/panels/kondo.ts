@@ -1,5 +1,7 @@
 import type { GuardianPanelHost } from '../OverworldScene';
 import { renderGuardianHeader } from './guardianHeader';
+import { guardianQuoteFor } from '../../data/guardianQuotes';
+import { storyLength } from '../../data/settings';
 import { makeKondoAvatar } from '../../art/kondo';
 import { killTweensDeep } from '../../art/crystals';
 import { CANVAS_W } from '../../art/perspective';
@@ -76,19 +78,11 @@ export function showKondoPanel(scene: GuardianPanelHost) {
 
   let y = top;
 
-  // Capped tighter than the ordinary intro-quote scaling every other guardian
-  // panel uses (STYLE.md), same reasoning/cap as Landau's own intro
-  // (panels/landau.ts) -- this panel now carries a full list+detail layout
-  // with an 84px animation stage plus a per-move description line below it,
-  // and an uncapped quote at the largest text-size preset pushed the detail
-  // pane's own confirm button past the bottom of the canvas.
-  const introScale = Math.min(fontScale(scene), 1.15);
   y = renderGuardianHeader(scene, container, {
     y,
     panelWidth,
     avatar: makeKondoAvatar,
-    quote: '"I am Kondo. A cloud of conduction electrons wraps a magnetic moment until the moment is gone. That is my whole trade, and it generalizes: gather the right cloud and a blow carrying spin, or charge, or the tremor of a broken symmetry, arrives at half strength. A cloud screens one thing only. Learn all three if you like, then tell me which one to hold."',
-    introPx: `${Math.round(11 * introScale)}px`,
+    quote: guardianQuoteFor('kondo', storyLength(scene.game.registry)),
   });
 
   const panelLeft = CANVAS_W / 2 - panelWidth / 2;

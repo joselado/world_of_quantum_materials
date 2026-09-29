@@ -1,3 +1,5 @@
+import type { StoryLength } from './settings';
+
 // Bloch's own destination blurb (scenes/panels/bloch.ts) -- one short
 // paragraph per world, in the same epic-plus-physics voice every guardian's
 // own intro quote uses (e.g. Noether's "Every symmetry hides a conservation
@@ -8,8 +10,9 @@
 // attack on that world's physics) and story.ts's STORY_BEATS (one-line
 // transition beats between worlds): this blurb is neither narrative nor
 // transitional, just a plain physics description of whichever destination is
-// currently previewed in Bloch's own table/map, kept as plain data so the
-// copy can be edited without touching panel code.
+// currently previewed in Bloch's own table/map, at whichever length the
+// Settings station's Text Length row asks for (worldFlavorFor below), kept as
+// plain data so the copy can be edited without touching panel code.
 export const WORLD_FLAVOR: Record<number, string> = {
   1: "Left alone, the field's spins have no reason to point anywhere: the Hamiltonian doesn't care. Then one mean-field interaction tips the balance, and the whole system commits to a single broken symmetry it can no longer see a reason to abandon.",
   2: "Every bay here repeats its neighbor exactly, and Bloch's theorem takes that symmetry seriously: an electron built to respect it can't live in just one bay. It spreads as a plane wave dressed by the lattice, labeled only by a crystal momentum, never a single site.",
@@ -22,3 +25,27 @@ export const WORLD_FLAVOR: Record<number, string> = {
   9: 'A perfect crystal only tells you what it can be. A broken one tells you what it actually is. Every impurity here rings the electron sea around it in Friedel oscillations, and those rings read the Fermi surface straight off. Where disorder piles up thick enough, Anderson localization traps the electrons without a single broken bond.',
   10: "Nothing here is fixed. The terrain rewrites itself around whatever quantum material you currently are, and what waits at the end of it adapts live rather than defending one fixed form. Only a variational ansatz, a neural or tensor network trained fast enough to keep up, has any hope of describing either one.",
 };
+
+// The Brief versions, what Bloch's pane shows while the Settings station's
+// Text Length row is on Brief (data/settings.ts's STORY_LENGTH_PRESETS). Each
+// keeps the one physics claim its world stands for, in about a third of the
+// words. Same keys as WORLD_FLAVOR, so worldFlavorFor below only chooses which
+// table to read.
+export const WORLD_FLAVOR_BRIEF: Record<number, string> = {
+  1: 'The Hamiltonian picks no direction; one mean-field interaction tips the balance into a single broken symmetry.',
+  2: "Bloch's theorem spreads an electron over every identical bay: a lattice-modulated plane wave labeled by crystal momentum.",
+  3: "The filled band's Berry curvature integrates to an integer; where two differ the gap closes in a protected edge channel.",
+  4: 'Only closed orbits one flux quantum apart are allowed: flat, degenerate Landau levels. The only current left runs along the edge.',
+  5: 'Electrons pair into a condensate with one phase; in a topological superconductor a fermion splits into two Majorana zero modes, each its own antiparticle.',
+  6: 'Past the Stoner threshold the ground state magnetizes; tip one spin and a magnon travels outward.',
+  7: 'A generic wavefunction needs exponentially many coefficients; an area-law ground state is captured by a matrix product state of small bond dimension.',
+  8: 'Frustrated spins fractionalize into spinons, spin without charge, instead of ordering. A local moment in a conduction sea is screened into a Kondo singlet.',
+  9: 'Every impurity rings the electron sea in Friedel oscillations that read off the Fermi surface; thick enough disorder Anderson-localizes the electrons.',
+  10: 'Nothing here is fixed: terrain and rival adapt to whatever you are, and only a fast-trained variational ansatz keeps up.',
+};
+
+// The blurb Bloch's pane shows for a discovered world, picked by the Text
+// Length setting.
+export function worldFlavorFor(world: number, length: StoryLength): string {
+  return (length === 'brief' ? WORLD_FLAVOR_BRIEF[world] : undefined) ?? WORLD_FLAVOR[world];
+}

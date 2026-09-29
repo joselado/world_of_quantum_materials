@@ -115,6 +115,10 @@ export const DETAIL_CRYSTAL_SIZE = 44;
 // openers below and by a pane that renders its heading itself because it has
 // no art block to open with (Noether's Stats tab, scenes/panels/noether.ts).
 export const DETAIL_NAME_CAP = 1.45;
+// The floor renderStatusAndConfirm's confirm button shrinks to when its label
+// would otherwise wrap: 13px at preset 1, held here at the Normal preset's
+// size on both larger presets, the size every pane's button was budgeted at.
+export const CONFIRM_FLOOR_SCALE = 1.3;
 
 // A move preview is a real battle effect, composed against the whole arena: a
 // beam falls in from above the top of the field, an eruption throws debris
@@ -590,6 +594,12 @@ export interface StatusAndConfirmParams {
   // Bloch's, the densest pane in the game (table + map + blurb + status +
   // button + footer), where the 2px matters.
   gapAfterStatus?: number;
+  // The y the confirm button's bottom edge may not pass, for a pane whose
+  // height is set by its own content rather than by the column beside it
+  // (Bloch's again): the button's font shrinks toward its floor until the
+  // button fits above this line. A pane that omits it lets the button take
+  // its measured height.
+  maxBottom?: number;
 }
 
 // The cost/status line plus its confirm button -- the tail every guardian's
@@ -599,7 +609,7 @@ export interface StatusAndConfirmParams {
 // wording, the affordability check, and what the button actually commits --
 // none of which belongs here. Returns the y the pane continues at.
 export function renderStatusAndConfirm(params: StatusAndConfirmParams): number {
-  const { scene, container, centerX, y, colW, status, confirm, statusCap = 1.2, gapAfterStatus = 6 } = params;
+  const { scene, container, centerX, y, colW, status, confirm, statusCap = 1.2, gapAfterStatus = 6, maxBottom } = params;
 
   const statusScale = Math.min(fontScale(scene), statusCap);
   const statusText = scene.add
@@ -614,16 +624,24 @@ export function renderStatusAndConfirm(params: StatusAndConfirmParams): number {
   let ny = y + statusText.height + gapAfterStatus;
 
   if (confirm) {
-    const buttonScale = Math.min(fontScale(scene), 1.3);
-    const confirmBtn = scene.addDialogueButtonAt(
-      container,
-      centerX,
-      ny,
-      confirm.label,
-      confirm.onClick,
-      colW,
-      `${Math.round(13 * buttonScale)}px`
-    );
+    // Drawn at the size every other dialogue button reads at (13px at preset
+    // 1, the Farewell button in the column beside it included), then shrunk
+    // in whole-pixel steps until the label sits on one line inside the
+    // column, never below CONFIRM_FLOOR_SCALE. A short label ("Raise Energy",
+    // "Fuse") reads at full size; a long one ("Learn Heavy Fermion Eruption")
+    // gives up a few pixels instead of taking a second line, since a wrapped
+    // button costs a whole row that the tightest panes (Bloch's, Majorana's)
+    // have already budgeted away; a pane that passes maxBottom shrinks it the
+    // same way until the button clears that line. Measured on the button
+    // itself: setFontSize re-runs the wrap, and getWrappedText reports the
+    // lines it produced.
+    const fullPx = Math.round(13 * fontScale(scene));
+    const floorPx = Math.round(13 * Math.min(fontScale(scene), CONFIRM_FLOOR_SCALE));
+    const confirmBtn = scene.addDialogueButtonAt(container, centerX, ny, confirm.label, confirm.onClick, colW, `${fullPx}px`);
+    const overruns = () => confirmBtn.getWrappedText().length > 1 || (maxBottom !== undefined && ny + confirmBtn.height > maxBottom);
+    for (let px = fullPx - 1; px >= floorPx && overruns(); px -= 1) {
+      confirmBtn.setFontSize(`${px}px`);
+    }
     if (confirm.dimmed) confirmBtn.setAlpha(0.5);
     ny += confirmBtn.height;
   }

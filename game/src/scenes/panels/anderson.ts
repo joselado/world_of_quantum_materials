@@ -1,6 +1,8 @@
 import type Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
 import { renderGuardianHeader } from './guardianHeader';
+import { guardianQuoteFor } from '../../data/guardianQuotes';
+import { storyLength } from '../../data/settings';
 import { makeAndersonAvatar } from '../../art/anderson';
 import { killTweensDeep } from '../../art/crystals';
 import { CANVAS_W } from '../../art/perspective';
@@ -110,10 +112,7 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
     y,
     panelWidth,
     avatar: makeAndersonAvatar,
-    quote: superposition
-      ? '"I am Anderson. In superposition any quantum material can be doped in as an impurity. Pick one, and I\'ll teach you the channel it opens, active for as long as that impurity stays doped in; a new one replaces it."'
-      : '"I am Anderson. Dope in a defeated quantum material as an impurity, and I teach you the one channel it opens. It works only while that impurity stays doped in. A new dopant replaces it. One impurity, placed on purpose, is a question. Enough of them, placed by no one, is a verdict. I teach the dose."',
-    introPx: fontPx(scene, 11),
+    quote: guardianQuoteFor('anderson', storyLength(scene.game.registry), superposition),
   });
 
   // Font capped tighter than the detail-pane content below (Franklin's own

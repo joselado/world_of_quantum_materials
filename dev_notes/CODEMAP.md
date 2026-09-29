@@ -776,7 +776,16 @@ game/src/
                                   shown in the detail pane of Noether's Stats section. Energy/
                                   Momentum/Lifetime are the three numbers that define a
                                   quasiparticle, so this is the crystal's own excitation
-                                  spectrum rather than invented RPG attributes
+                                  spectrum rather than invented RPG attributes. STAT_LORE_BRIEF
+                                  is the Brief version, read through statLoreFor() at the Text
+                                  Length setting
+    guardianQuotes.ts            GUARDIAN_QUOTES -- every guardian's opening line (a Story Mode
+                                  line, plus a Superposition Mode line for the four whose service
+                                  is gated on progress), the quote beside the portrait every
+                                  panel under scenes/panels/ opens with (guardianHeader.ts);
+                                  GUARDIAN_QUOTES_BRIEF the Brief versions of every line of
+                                  BRIEF_QUOTE_MIN_WORDS words or more, read through
+                                  guardianQuoteFor() at the Text Length setting
     materialdex.ts               Per-material (fallback per-type) physics blurb for Qumatex --
                                   MATERIAL_BLURBS/materialBlurb(); HYBRID_FUSION_LORE, a separate
                                   epic-plus-physics blurb per HYBRID_RECIPES result for Majorana's
@@ -799,7 +808,8 @@ game/src/
                                     scene asks "does this screen play", and defaultStoryScreens(superposition),
                                     the one setting whose default differs per save slot),
                                     STORY_LENGTH_PRESETS/DEFAULT_STORY_LENGTH/storyLength() (the "Text Length"
-                                    row: Brief or Detailed story screens and tip popups, Brief by default), and
+                                    row: Brief or Detailed story screens, tip popups and guardian-panel
+                                    prose, Brief by default), and
                                     SETTINGS_CATEGORIES/DEFAULT_SETTINGS_CATEGORY, the Settings panel's own
                                     Gameplay/Story/Presentation grouping
     story.ts                       STORY_BEATS -- per-world Decoherence-arc line shown on advancing worlds --
@@ -830,7 +840,9 @@ game/src/
     worldFlavor.ts                  WORLD_FLAVOR -- one short epic-plus-physics paragraph per world, Bloch's
                                     own panel's detail-pane blurb for whichever destination is currently
                                     previewed -- distinct from story.ts's transition
-                                    beats and worldLore.ts's once-per-save Decoherence-arc history
+                                    beats and worldLore.ts's once-per-save Decoherence-arc history.
+                                    WORLD_FLAVOR_BRIEF is the Brief version, read through
+                                    worldFlavorFor() at the Text Length setting
   ui/
     fullscreen.ts                 fullscreenAvailable()/isFullscreen()/toggleFullscreen()/
                                    installFullscreenKey() -- the only place the browser's
@@ -1069,9 +1081,11 @@ everything else by absence, so only two things in it carry meaning.
   panels opens with -- that guardian's own avatar at `PORTRAIT_SCALE`, standing in its own column
   at the panel's left edge, with their opening line beside it (STYLE.md's "Guardian panel
   headers") -- called by all ten plus `OverworldScene.showGuardianLore`, which is the fallback a
-  guardian added before its own mechanic is built lands on. It takes `panelWidth` and the intro's
-  font size as parameters rather than deriving either, since the panels are not all one width and
-  several cap their own intro font below the text-size setting. It also plays the shared
+  guardian added before its own mechanic is built lands on. It takes `panelWidth` as a parameter,
+  since the panels are not all one width, and sizes the intro itself: the line is drawn at the
+  ordinary text size (`INTRO_BASE_PX` through the preset) and shrunk in whole-pixel steps until it
+  fits beside the portrait, never below `INTRO_FLOOR_SCALE` (`1.15`), so no panel caps its own
+  intro and a Brief line reads at full size where a Detailed one gives up pixels. It also plays the shared
   `playGuardianChime`, so a panel never calls that itself. `listDetail.ts`'s own
   `renderListColumn`/`renderMoveDetailHeader`/
   `renderSelfBuffMoveDetailHeader`/`renderPassiveDetailHeader`/`renderStatusAndConfirm`/
@@ -1675,7 +1689,8 @@ exactly as tall as its rows plus chrome. `addMoveButton` takes each row's center
 A move whose id is one of `ANALYTIC_MOVE_IDS` still gets its `★` tag on the button itself (the
 2x/0.5x legend text now lives under the Analytic section header instead, see above); its
 button's `pointerdown` handler branches before `playerAttack` -- it opens
-`BattleScene.showAnalyticQuestion` first (locking `turnLock` for the duration) and only calls
+`BattleScene.showAnalyticQuestion` first (locking `turnLock` and hiding the move menu for the
+duration) and only calls
 `playerAttack(moveId, bonusMultiplier)` once answered, rather than calling `playerAttack`
 directly the way every other move button does. A move in `ULTIMATE_MOVE_IDS` follows the same
 shape but with `showUltimateQuestions` (up to 3 sequential questions, stopping at the first
@@ -2757,9 +2772,10 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   moves (below), a passive is never gated by `MOVE_COMPATIBILITY` at all (the same "player-learned
   technique, not a quasiparticle a crystal has to host" reasoning) -- every passive is always
   purchasable regardless of current form, so this panel has no "wrong form" empty state to
-  special-case. The intro quote is capped at `1.15` like Kondo's, since the pane (a `104`px
-  stage, a three-line description, a status line and a button) clears the canvas floor by a
-  few pixels at the Large text-size preset, verified via a live headless-Chromium run at
+  special-case. The pane (a `104`px stage, a three-line description, a status line and a
+  button) clears the canvas floor by a few pixels at the Large text-size preset, which is the
+  room the header's own intro-quote fit (`guardianHeader.ts`, STYLE.md's "Guardian panel
+  headers") buys it, verified via a live headless-Chromium run at
   every `fontScale` preset for every row in both the one-slot and two-slot states. See
   "Stats and battle resolution" above for exactly how each of Franklin's five passives hooks
   into `BattleScene`.
@@ -2875,9 +2891,9 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   `scene.noetherStatPreview`, and the detail pane carries the stat's own effect line, a
   `statUpgradeCost` status line and a "Raise `<stat>`" confirm button writing registry/save
   `playerStats`. Between the effect line and the cost it carries `data/statLore.ts`'s
-  `STAT_LORE`: one short paragraph on what that stat *is* in physics, since Energy/Momentum/
-  Lifetime are the three numbers that define a quasiparticle rather than invented RPG
-  attributes. Its pane is the one in the game with no art block at all, so it renders its
+  `statLoreFor` paragraph (`STAT_LORE_BRIEF` at the Text Length row's Brief, `STAT_LORE` at
+  Detailed): what that stat *is* in physics, since Energy/Momentum/Lifetime are the three
+  numbers that define a quasiparticle rather than invented RPG attributes. Its pane is the one in the game with no art block at all, so it renders its
   own name heading (capped at `listDetail.ts`'s shared `DETAIL_NAME_CAP`) instead of calling one
   of that module's detail-header openers, and it calls `stopMoveEffectPreview()` on the way in
   since nothing in it will retarget the Moves section's looping preview.
@@ -2900,8 +2916,10 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   go with it) fills one full-width detail pane. The pane's own `renderMoveDetailHeader`
   call ("Attack effects" in STYLE.md and
   `art/moveEffectPreview.ts` above) shows that move's own real battle-effect animation looping,
-  its name read via `moveDisplayName` (folds in both the current quasiparticle and Feynman's own
-  level prefix). **The quasiparticle choice is the second level of the left column**, not a strip
+  coloured and captioned for the quasiparticle row currently picked in the column beside it
+  (`landauClassPreview`, falling back to the saved tuning until a row is picked), its name read
+  via `moveDisplayName` with that class passed as `carrying` (folds in Feynman's own level
+  prefix), so a row click changes the stage before anything is committed. **The quasiparticle choice is the second level of the left column**, not a strip
   in the pane: `scenes/panels/tunableMoveShop.ts`'s
   `hostableClasses` is every `TUNABLE_MOVE_CLASSES`
   entry (every ordinary Attacks-section class, i.e. everything except Kondo's `'screening'`)
@@ -2940,21 +2958,19 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   "Meteor" and "Nova", same reasoning as Landau's above (there's no forSale/learned split the
   way Noether's own left column has, since picking a class *is* what first unlocks the move); the open one's `renderMoveDetailHeader` shows
   its own animation looping (overridden to the longer `playMeteor`/`playNova`
-  sequences via `ULTIMATE_SHAPES`, "Attack effects" in STYLE.md; the chain restarts the moment
-  the other move or another class is picked, so a meteor is never left to finish its fall
-  first), a status line reading the
-  move's current quasiparticle (`getTunedMoveClass`, the same helper Landau's panel reads) or
-  "Not yet unlocked" if the move isn't in `unlockedMoves` yet, and -- **inline directly beneath
-  it** -- one pill button per hostable class, this time each row's own cost read straight off
-  registry/save `ultimateClassesUnlocked[moveId]` rather than a flat move price: "Free" (plus
-  " (current)" on the presently-tuned class) for a class already unlocked for that move, else
-  `ULTIMATE_CLASS_UNLOCK_COST` (1000) qumatessence, dimmed per-row (not all rows together, unlike
-  Landau's flat-cost picker) if the player can't afford that specific class right now. Picking
-  an already-unlocked class just retunes (writes `moveClassTuning[moveId]`); picking a
-  new one deducts the cost, appends the class to `ultimateClassesUnlocked[moveId]`, retunes, and
-  -- only on that move's very first-ever unlock -- appends the move id to `unlockedMoves` so it
-  appears in the battle menu (`pickUltimateClass` does all of this in one click, no separate
-  sub-panel). Once tuned, an Ultimate move's battle-side quasiparticle-mismatch
+  sequences via `ULTIMATE_SHAPES`, "Attack effects" in STYLE.md), coloured and captioned for the
+  quasiparticle row currently picked in the column beside it (`curieClassPreview`, falling back
+  to the saved tuning until a row is picked; `moveDisplayName` with that class as `carrying`), so
+  the chain restarts the moment the other move or another row is picked and a meteor is never
+  left to finish its fall first. Below it a status line reads what the previewed class costs on
+  this move, straight off registry/save `ultimateClassesUnlocked[moveId]` rather than a flat move
+  price -- already carrying it, already unlocked (free), or `ULTIMATE_CLASS_UNLOCK_COST` (1000)
+  qumatessence -- and the pane's one confirm button ("Carry `<class>`" or "Unlock `<class>`",
+  dimmed if the player can't afford that class right now, absent when the move already carries
+  it) commits: an already-unlocked class just retunes (writes `moveClassTuning[moveId]`); a new
+  one deducts the cost, appends the class to `ultimateClassesUnlocked[moveId]`, retunes, and --
+  only on that move's very first-ever unlock -- appends the move id to `unlockedMoves` so it
+  appears in the battle menu (`pickUltimateClass` does all of this in one click). Once tuned, an Ultimate move's battle-side quasiparticle-mismatch
   math reads exactly like an Analytic move's (`getTunedMoveClass`) -- no special-casing beyond
   the 3-question gate, which lives entirely in `BattleScene` (see "Ultimate moves defer
   damage/turn-handoff," above, and `showUltimateQuestions` in "Battle move menu is sectioned,"
@@ -3441,7 +3457,14 @@ text").
 those panes closes with: the cost/status line plus an optional confirm button (omitted where
 there's nothing to commit -- Dresselhaus's current form, Bloch's current or undiscovered world),
 parameterized only over the wording, the dimmed-when-unavailable flag, and two per-panel spacing
-knobs (`statusCap`, Anderson's tighter `1.1`; `gapAfterStatus`, Bloch's tighter `4`).
+knobs (`statusCap`, Anderson's tighter `1.1`; `gapAfterStatus`, Bloch's tighter `4`) plus
+`maxBottom`, the line the button's bottom edge may not pass, which only Bloch's pane sets (the
+one pane whose height its own content sets rather than the column beside it). Its button
+is drawn at the full dialogue-button size (`13 * fontScale`, what the Farewell button beside it
+reads at) and shrunk in whole-pixel steps until its label fits on one line in the column and,
+where `maxBottom` is given, clears that line, never below `CONFIRM_FLOOR_SCALE` (`1.3`), so a
+short label reads at full size and a long one ("Learn Heavy Fermion Eruption") gives up pixels
+rather than taking a second row.
 `LIST_DETAIL_PANEL_W`
 (`720`) is the panel width every list+detail panel uses.
 

@@ -745,8 +745,9 @@ for (const w of BUILT_WORLDS.filter((w) => w !== '10')) {
   }
 }
 
-// 19. Every story screen's text, and every tutorial popup's, exists at both
-// Text Length settings, and the Brief one is actually brief. The screens read the Brief table through
+// 19. Every story screen's text, every tutorial popup's, and every guardian
+// panel's prose exists at both Text Length settings, and the Brief one is
+// actually brief. The screens read the Brief table through
 // worldLoreFor/rivalTauntFor/storyBeatFor/finaleBodyFor, which fall back to
 // Detailed for a missing entry, so a world written once still plays; this
 // check is what keeps that fallback a safety net rather than the quiet
@@ -754,7 +755,9 @@ for (const w of BUILT_WORLDS.filter((w) => w !== '10')) {
 // shorter than its Detailed sibling by a real margin (at most 0.6 of its
 // words: a taunt's first part spends several on the golem's full material
 // name, which does not shrink), and the Brief text as a whole has to stay
-// near the third it is promised in the Settings panel.
+// near the third it is promised in the Settings panel. The guardian panels'
+// three tables (statLore.ts, worldFlavor.ts, guardianQuotes.ts) are held to
+// the same two ratios, each table on its own.
 {
   const loreSf = parseFile('src/data/worldLore.ts');
   const storySf = parseFile('src/data/story.ts');
@@ -864,6 +867,73 @@ for (const w of BUILT_WORLDS.filter((w) => w !== '10')) {
   }
   for (const id of Object.keys(tipBrief)) {
     if (!(id in tips)) flag(`TUTORIAL_TIP_BRIEF.${id} names no TUTORIAL_TIPS topic`);
+  }
+
+  // The guardian panels' own prose follows the setting too: the paragraph
+  // under a stat in Noether's shop (STAT_LORE), the blurb under a destination
+  // in Bloch's (WORLD_FLAVOR) and every guardian's opening line
+  // (GUARDIAN_QUOTES). Each table is paired with its _BRIEF sibling and held
+  // to the same per-entry and whole-table ratios as the story, table by
+  // table, so one short table cannot hide a long one. A stat and a world
+  // always need a Brief entry; a guardian's line needs one only from
+  // BRIEF_QUOTE_MIN_WORDS words up, since a line already that short reads the
+  // same at both lengths, and any Brief line that exists is held to the ratio
+  // whatever its Detailed length.
+  const holdTable = (label, pairs) => {
+    let detailedTotal = 0;
+    let briefTotal = 0;
+    for (const [entry, detailed, brief] of pairs) {
+      if (typeof brief !== 'string' || !brief.trim()) {
+        flag(`${entry} has no Brief version -- the Text Length setting's Brief default would show the Detailed text here`);
+        continue;
+      }
+      const ratio = words(brief) / words(detailed);
+      if (ratio > 0.6) {
+        flag(`${entry}'s Brief text is ${words(brief)} words against ${words(detailed)} Detailed (${ratio.toFixed(2)}), not brief`);
+      }
+      detailedTotal += words(detailed);
+      briefTotal += words(brief);
+    }
+    if (detailedTotal && briefTotal / detailedTotal > 0.4) {
+      flag(
+        `the Brief ${label} text totals ${briefTotal} words against ${detailedTotal} Detailed (${(briefTotal / detailedTotal).toFixed(2)}), ` +
+          `well above the third the Settings panel promises`
+      );
+    }
+  };
+  const flatTable = (file, name) => {
+    const sf = parseFile(file);
+    const detailed = evalNode(findTopLevelConst(sf, name), sf);
+    const brief = evalNode(findTopLevelConst(sf, `${name}_BRIEF`), sf);
+    for (const key of Object.keys(brief)) {
+      if (!(key in detailed)) flag(`${name}_BRIEF[${key}] names no ${name} entry`);
+    }
+    return Object.keys(detailed).map((key) => [`${name}[${key}]`, detailed[key], brief[key]]);
+  };
+  holdTable('stat', flatTable('src/data/statLore.ts', 'STAT_LORE'));
+  holdTable('world blurb', flatTable('src/data/worldFlavor.ts', 'WORLD_FLAVOR'));
+  {
+    const sf = parseFile('src/data/guardianQuotes.ts');
+    const detailed = evalNode(findTopLevelConst(sf, 'GUARDIAN_QUOTES'), sf);
+    const brief = evalNode(findTopLevelConst(sf, 'GUARDIAN_QUOTES_BRIEF'), sf);
+    const minWords = evalNode(findTopLevelConst(sf, 'BRIEF_QUOTE_MIN_WORDS'), sf);
+    const pairs = [];
+    for (const [id, quote] of Object.entries(detailed)) {
+      for (const field of ['story', 'superposition']) {
+        const line = quote[field];
+        const briefLine = brief[id]?.[field];
+        if (line === undefined) {
+          if (briefLine !== undefined) flag(`GUARDIAN_QUOTES_BRIEF.${id}.${field} exists, but ${id} has no ${field} line to shorten`);
+          continue;
+        }
+        if (briefLine === undefined && words(line) < minWords) continue;
+        pairs.push([`GUARDIAN_QUOTES.${id}.${field}`, line, briefLine]);
+      }
+    }
+    for (const id of Object.keys(brief)) {
+      if (!(id in detailed)) flag(`GUARDIAN_QUOTES_BRIEF.${id} names no guardian`);
+    }
+    holdTable('guardian quote', pairs);
   }
 }
 

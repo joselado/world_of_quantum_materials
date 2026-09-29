@@ -92,7 +92,9 @@ you'll only be asked things you could plausibly already know.
 
 Buying (or later revisiting Landau) also lets you pick which quasiparticle
 the move should carry, filtered to whatever your *current* form can host.
-The move stays usable from any form and always asks its question, but this
+Picking one in the list plays the move on the stage in that quasiparticle's
+own colour, named for it, before you spend anything; the button under the
+stage is what buys or retunes. The move stays usable from any form and always asks its question, but this
 choice decides whether it can land a quasiparticle-mismatch hit like an
 ordinary attack. Transmute into a form that can't host your picked
 quasiparticle, and the move falls back to its Phonon form (the one class
@@ -281,7 +283,8 @@ move whiffs for zero damage, though your turn is still spent.
 Picking which quasiparticle an Ultimate move carries isn't a flat purchase
 like it is everywhere else: each quasiparticle class costs 1000
 qumatessence to unlock *per move*, after which retuning back to that class
-is free forever. Land a full 3-for-3 hit and it plays the longest, most
+is free forever. As at Landau's, picking a class in the list shows the move
+summoned in that class on the stage before you unlock it. Land a full 3-for-3 hit and it plays the longest, most
 dramatic summoning animation in the game.
 
 <img src="../screenshots/docs-guardians-curie-panel.png" width="300" alt="Skłodowska-Curie's panel: Phonon Meteor striking its stage mid-summoning, its phonon class already unlocked and free to carry, other classes at 1000 qumatessence each">

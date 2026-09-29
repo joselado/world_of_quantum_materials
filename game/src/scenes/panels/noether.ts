@@ -14,7 +14,9 @@ import {
   MAX_STAT,
 } from '../../data/materials';
 import { STAT_LABELS } from '../../data/balance';
-import { STAT_LORE } from '../../data/statLore';
+import { statLoreFor } from '../../data/statLore';
+import { guardianQuoteFor } from '../../data/guardianQuotes';
+import { storyLength } from '../../data/settings';
 import { persistFromRegistry } from '../../data/save';
 import type { Stats } from '../../data/types';
 import type { ListDetailColumns } from './listDetail';
@@ -75,8 +77,7 @@ export function showNoetherShop(scene: GuardianPanelHost) {
     y,
     panelWidth,
     avatar: makeNoetherAvatar,
-    quote: '"I am Noether. Every symmetry hides a conservation law. Spend your qumatessence on a new attack, or a sharper stat."',
-    introPx: fontPx(scene, 11),
+    quote: guardianQuoteFor('noether', storyLength(scene.game.registry)),
   });
 
   y = renderShopBody(scene, container, y, panelWidth) + 8;
@@ -347,7 +348,8 @@ function renderShopStats(
 // opens on its own name, then what it does in a fight, then what it *is*:
 // data/statLore.ts's paragraph on the physics the name comes from, since these
 // three are the numbers that define a quasiparticle rather than invented RPG
-// attributes. This pane starts no battle-effect preview of its own, so nothing
+// attributes, at the length the Settings station's Text Length row asks for
+// (statLoreFor: the Brief paragraph by default, the full one on Detailed). This pane starts no battle-effect preview of its own, so nothing
 // here will ever retarget a loop the Moves heading left running; it stops that
 // loop outright instead.
 function renderStatDetail(
@@ -393,7 +395,7 @@ function renderStatDetail(
   // the canvas at the largest text-size preset.
   const loreScale = Math.min(fontScale(scene), 1.15);
   const loreText = scene.add
-    .text(columns.rightColCenterX, rightY, STAT_LORE[selected.key], {
+    .text(columns.rightColCenterX, rightY, statLoreFor(selected.key, storyLength(scene.game.registry)), {
       fontSize: `${Math.round(10 * loreScale)}px`,
       color: REFERENCE_BLUE_GREY_HEX,
       align: 'left',

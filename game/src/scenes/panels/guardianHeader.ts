@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
+import { fontScale } from '../../ui/text';
 
 // The block every guardian panel opens with: that guardian's own avatar,
 // large, with their opening line beside it.
@@ -22,8 +23,9 @@ import { CANVAS_W } from '../../art/perspective';
 // the size while costing the panel *less* height than stacking did, because
 // the tall header and the tall quote now overlap instead of adding. That
 // matters: these are the densest panels in the game (a list, a detail pane, a
-// footer under this block), and the tightest of them clears the canvas floor
-// by a couple of dozen pixels at the Large text preset.
+// footer under this block), and the tightest of them (Landau's, with a form
+// whose quasiparticle list paginates) clears the canvas floor by three pixels
+// at the Large text preset.
 const PORTRAIT_SCALE = 2;
 // How far the widest-reaching guardian's art actually paints from its own
 // origin, per unit of scale -- measured from a live headless render the same
@@ -48,13 +50,24 @@ const BELOW_HEADER = 12;
 // moves is twice the size -- the same travel would read as drifting rather
 // than breathing.
 const FLOAT_TRAVEL = 6;
+// The opening line's size: INTRO_BASE_PX through the text-size preset, then
+// shrunk in whole-pixel steps until the line fits beside the portrait, never
+// below INTRO_FLOOR_SCALE times the base. A short line, or a Brief one (the
+// Text Length setting's default), reads at the full size; a long Detailed one
+// gives up pixels rather than pushing the whole panel down. The floor is the
+// size the densest panels (Landau's, Kondo's, Franklin's, Skłodowska-Curie's,
+// whose detail panes reach furthest down the canvas) were laid out against, so
+// the band never grows past what those panels have room for unless a line
+// overruns it even at the floor.
+const INTRO_BASE_PX = 11;
+const INTRO_FLOOR_SCALE = 1.15;
 
 // Lays the header out from a running `y` (the panel's own top) and returns the
-// `y` the panel's next element starts at. `introPx` is passed in rather than
-// derived here because several panels cap their own intro font below the
-// text-size setting (a guardian with a long opening line would otherwise own
-// the whole panel at the Large preset) and this block must not quietly
-// override that.
+// `y` the panel's next element starts at. The line's size is decided here, not
+// by the caller: the fit against the portrait band (INTRO_BASE_PX/
+// INTRO_FLOOR_SCALE above) is what keeps a guardian with a long opening line
+// from owning the whole panel at the Large preset, so no panel needs a cap of
+// its own.
 export function renderGuardianHeader(
   scene: GuardianPanelHost,
   container: Phaser.GameObjects.Container,
@@ -63,7 +76,6 @@ export function renderGuardianHeader(
     panelWidth: number;
     avatar: (scene: Phaser.Scene, scale?: number) => Phaser.GameObjects.Container;
     quote: string;
-    introPx: string;
   }
 ): number {
   const left = CANVAS_W / 2 - opts.panelWidth / 2;
@@ -74,9 +86,11 @@ export function renderGuardianHeader(
   // Left-aligned rather than centered: a centered block beside a portrait
   // leaves a ragged left edge running down the middle of the panel, where the
   // eye expects the line to start where the figure stops.
+  const desiredPx = Math.round(INTRO_BASE_PX * fontScale(scene));
+  const floorPx = Math.round(INTRO_BASE_PX * Math.min(fontScale(scene), INTRO_FLOOR_SCALE));
   const intro = scene.add
     .text(quoteLeft, 0, opts.quote, {
-      fontSize: opts.introPx,
+      fontSize: `${desiredPx}px`,
       fontStyle: 'italic',
       color: '#cfd8ff',
       align: 'left',
@@ -85,11 +99,16 @@ export function renderGuardianHeader(
     .setOrigin(0, 0.5);
   container.add(intro);
 
-  // The band is as tall as whichever of the two needs more: the portrait's own
-  // painted span, or a long opening line running past it. The shorter one
-  // centres against the band -- a short line floating level with the
-  // portrait's middle, a tall column of text with the portrait centred in it.
+  // The band is the portrait's own painted span, and the line is fitted to it
+  // (setFontSize re-runs the wrap, so the measured height is the rendered
+  // one). Only a line that overruns the band even at the floor deepens it;
+  // either way the shorter of the two centres against the band -- a short
+  // line floating level with the portrait's middle, a tall column of text
+  // with the portrait centred in it.
   const portraitHeight = PORTRAIT_SPAN * PORTRAIT_SCALE + FLOAT_TRAVEL;
+  for (let px = desiredPx - 1; px >= floorPx && intro.height > portraitHeight; px -= 1) {
+    intro.setFontSize(`${px}px`);
+  }
   const bandHeight = Math.max(portraitHeight, intro.height);
   // The avatar's own origin is not the middle of what it paints -- every one
   // of them reaches further up than down -- so it is hung from the top of the

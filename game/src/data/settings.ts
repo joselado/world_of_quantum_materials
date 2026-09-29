@@ -217,9 +217,10 @@ export function touchControlsActive(mode: TouchControlsMode): boolean {
 // every value plate on screen and directly clickable, which is the property
 // this panel is built around: a setting's whole range readable at a glance
 // rather than cycled through one step at a time. The ceiling is measured
-// height, not a row count: Presentation's four rows already reach 448 of the
-// canvas's 480 pixels at Large, so measure before adding a fifth anywhere
-// (STYLE.md's Settings panel section carries the current numbers).
+// height, not a row count: Story's three rows already reach 457 of the
+// canvas's 480 pixels at Large (its Text Length row carries a five-line
+// "when") and Presentation's four reach 448, so measure before adding a row
+// anywhere (STYLE.md's Settings panel section carries the current numbers).
 export type SettingsCategoryId = 'gameplay' | 'story' | 'presentation';
 
 export interface SettingsCategory {
@@ -293,20 +294,26 @@ export function storyScreensEnabled(registry: RegistryLike): boolean {
   return defaultStoryScreens(!!registry.get('superpositionMode'));
 }
 
-// The Story category's third row, labelled "Text Length": how much the screens
-// that stop play say. Every screen that carries the arc (a world's entry lore,
-// a rival's taunt, the beat between worlds, the ending) and every tutorial
-// popup is written twice, a Detailed version and a Brief one roughly a third
-// its length, keyed identically and shaped identically (two lore pages, two
-// taunt parts, one beat, one tip body), so the screens themselves never branch
-// on this: they only ask which text to read (data/worldLore.ts's
-// worldLoreFor/rivalTauntFor, data/story.ts's storyBeatFor/finaleBodyFor,
-// data/tutorial.ts's tipBodyFor). Named for the story in code, since the story
-// is what it was built for, and labelled for text in the panel, since it now
-// covers the tips too. Brief is the default because these screens stop play,
-// and a player who wants the whole of it picks Detailed once. The Lab's Story
-// and Tutorial stations always read Detailed regardless, the same way they keep
-// what an Off row skips: they are where the full text lives.
+// The Story category's third row, labelled "Text Length": how much the text
+// that interrupts play says. Every screen that carries the arc (a world's entry
+// lore, a rival's taunt, the beat between worlds, the ending), every tutorial
+// popup, and the prose in the guardians' own panels (a guardian's opening
+// line, the physics paragraph under a stat in Noether's shop and under a
+// destination in Bloch's) is written twice, a Detailed version and a Brief one
+// roughly a third its length, keyed identically and shaped identically (two
+// lore pages, two taunt parts, one beat, one tip body, one quote per mode), so
+// the screens and panels themselves never branch on this: they only ask which
+// text to read (data/worldLore.ts's worldLoreFor/rivalTauntFor, data/story.ts's
+// storyBeatFor/finaleBodyFor, data/tutorial.ts's tipBodyFor,
+// data/guardianQuotes.ts's guardianQuoteFor, data/statLore.ts's statLoreFor,
+// data/worldFlavor.ts's worldFlavorFor). Named for the story in code, since the
+// story is what it was built for, and labelled for text in the panel, since it
+// covers the tips and the guardians too. Brief is the default because a story
+// screen stops play and a guardian's panel is opened again and again, and a
+// player who wants the whole of it picks Detailed once. The Lab's reference
+// stations (Story, Tutorial, Moves, Qumatex) always read the full text
+// regardless, the same way they keep what an Off row skips: they are where the
+// full text lives.
 export type StoryLength = 'brief' | 'detailed';
 
 export interface StoryLengthPreset {

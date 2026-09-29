@@ -6,10 +6,12 @@ import { makeBlochAvatar } from '../../art/bloch';
 import { killTweensDeep } from '../../art/crystals';
 import { buildQumatuomiMap } from '../../art/qumatuomiMap';
 import { CANVAS_W, CANVAS_H } from '../../art/perspective';
-import { fontPx, fontScale } from '../../ui/text';
+import { fontScale } from '../../ui/text';
 import { PANEL_BG, GOLD_ACCENT } from '../../ui/theme';
 import { worldName, BLOCH_DESTINATION_COST } from '../../data/materials';
-import { WORLD_FLAVOR } from '../../data/worldFlavor';
+import { worldFlavorFor } from '../../data/worldFlavor';
+import { guardianQuoteFor } from '../../data/guardianQuotes';
+import { storyLength } from '../../data/settings';
 import { persistFromRegistry } from '../../data/save';
 import {
   LIST_DETAIL_PANEL_W,
@@ -130,10 +132,7 @@ export function showBlochHub(scene: GuardianPanelHost) {
     y,
     panelWidth,
     avatar: makeBlochAvatar,
-    quote: superposition
-      ? '"I am Bloch. In superposition every world is already within reach: name any of them."'
-      : '"I am Bloch. Name a world you have already touched, and I will fold you there."',
-    introPx: fontPx(scene, 11),
+    quote: guardianQuoteFor('bloch', storyLength(scene.game.registry), superposition),
   });
 
   const panelLeft = CANVAS_W / 2 - panelWidth / 2;
@@ -235,7 +234,7 @@ export function showBlochHub(scene: GuardianPanelHost) {
     const descScale = Math.min(fontScale(scene), 1.1);
     let descBase = 11;
     const descText = scene.add
-      .text(columns.rightColCenterX, detailTop, discovered ? WORLD_FLAVOR[preview] : 'Mist covers this land. You have not walked it yet.', {
+      .text(columns.rightColCenterX, detailTop, discovered ? worldFlavorFor(preview, storyLength(scene.game.registry)) : 'Mist covers this land. You have not walked it yet.', {
         fontSize: `${Math.round(descBase * descScale)}px`,
         color: '#cfd8ff',
         align: 'left',
@@ -244,7 +243,11 @@ export function showBlochHub(scene: GuardianPanelHost) {
       })
       .setOrigin(0.5, 0);
     detailBlock.add(descText);
-    const reservedBelow = 100;
+    // Status line (two lines at Large), the confirm button at its full
+    // dialogue-button size (renderStatusAndConfirm), and the panel's own
+    // bottom margin: what the longest Detailed blurb has to leave room for
+    // with every world listed (Superposition Mode) at the Large preset.
+    const reservedBelow = 120;
     while (detailTop + descText.height + reservedBelow > CANVAS_H - 10 && descBase > 9) {
       descBase -= 1;
       descText.setFontSize(`${Math.round(descBase * descScale)}px`);
@@ -261,6 +264,13 @@ export function showBlochHub(scene: GuardianPanelHost) {
       // 4 rather than the usual 6: this is the densest guardian panel in the
       // game and the 2px is worth reclaiming here.
       gapAfterStatus: 4,
+      // This pane's height is set by its own content (table, map, blurb,
+      // status, button), not by the column beside it, so the button is the
+      // one part still free to give: it shrinks toward its floor until it
+      // clears the canvas floor less the panel's own bottom margin. Binds
+      // only with every world listed (Superposition Mode), the longest
+      // Detailed blurb and the Large preset all at once.
+      maxBottom: CANVAS_H - 16,
       status: isCurrent
         ? `You are standing in World ${preview}: ${name}.`
         : !discovered

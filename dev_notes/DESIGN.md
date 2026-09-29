@@ -1596,8 +1596,16 @@ checks that every Detailed entry has a Brief sibling and that the Brief text sta
 of the words. The goal-tile line is already one sentence and has a single version. The
 tutorial popups follow the same row: every topic that plays as a popup has a Brief body in
 `data/tutorial.ts`'s `TUTORIAL_TIP_BRIEF`, read through `tipBodyFor`, held by `content-lint` to
-the same limits, while a topic read only at the Tutorial station has none. The Lab's Story and
-Tutorial stations always show the Detailed text, since they are where the full text lives.
+the same limits, while a topic read only at the Tutorial station has none. The guardians'
+panels follow it too, since a panel is opened again and again while playing: a guardian's
+opening line (`data/guardianQuotes.ts`'s `GUARDIAN_QUOTES`/`GUARDIAN_QUOTES_BRIEF`, read through
+`guardianQuoteFor`; a line under `BRIEF_QUOTE_MIN_WORDS` words is already brief and has no
+sibling), the physics paragraph under a stat in Noether's shop (`data/statLore.ts`'s
+`STAT_LORE_BRIEF`, `statLoreFor`) and the blurb under a destination in Bloch's
+(`data/worldFlavor.ts`'s `WORLD_FLAVOR_BRIEF`, `worldFlavorFor`), each table held by
+`content-lint` to the same limits on its own. The Lab's reference stations (Story, Tutorial,
+Moves, Qumatex) always show the full text, since they are where the full text lives, and the
+end-of-battle summary's Qumatex blurb has a single version.
 
 **Text size.** The same Settings station offers Compact/Normal/Large
 (`data/settings.ts`'s `FONT_SCALE_PRESETS`, 1x / 1.5x / 2x on every base px size

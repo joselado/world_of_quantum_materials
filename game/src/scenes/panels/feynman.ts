@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
 import { renderGuardianHeader } from './guardianHeader';
+import { guardianQuoteFor } from '../../data/guardianQuotes';
+import { storyLength } from '../../data/settings';
 import { makeFeynmanAvatar } from '../../art/feynman';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
@@ -65,8 +67,7 @@ export function showFeynmanPanel(scene: GuardianPanelHost) {
     y,
     panelWidth,
     avatar: makeFeynmanAvatar,
-    quote: '"A tensor network and a Feynman diagram draw the same trick two ways: a vertex for every point, a line for every leg. Show me you understand a move you already carry, and I will draw a higher-order correction into it. Paid for whether it lands or not."',
-    introPx: fontPx(scene, 11),
+    quote: guardianQuoteFor('feynman', storyLength(scene.game.registry)),
   });
 
   y = renderMoveLevelList(scene, container, y, panelWidth);

@@ -1,6 +1,8 @@
 import type Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
 import { renderGuardianHeader } from './guardianHeader';
+import { guardianQuoteFor } from '../../data/guardianQuotes';
+import { storyLength } from '../../data/settings';
 import { makeDresselhausAvatar } from '../../art/dresselhaus';
 import { killTweensDeep } from '../../art/crystals';
 import { CANVAS_W } from '../../art/perspective';
@@ -80,10 +82,7 @@ export function showDresselhausPanel(scene: GuardianPanelHost) {
     y,
     panelWidth,
     avatar: makeDresselhausAvatar,
-    quote: superposition
-      ? '"I am Dresselhaus. In superposition every nanostructure is within reach at once: become anything that exists, not only what you have already beaten."'
-      : '"I am Dresselhaus. Carbon taught me that structure decides everything: the same atoms, built as graphite, a nanotube or a single sheet, make different materials entirely. Study a defeated crystal\'s structure closely enough and you can rebuild yourself into it, atoms and all, for a while."',
-    introPx: fontPx(scene, 11),
+    quote: guardianQuoteFor('dresselhaus', storyLength(scene.game.registry), superposition),
   });
 
   // Every crystal the player has defeated is on offer, listed in the order
