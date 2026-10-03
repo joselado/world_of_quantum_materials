@@ -59,20 +59,37 @@ export const WORLD_GOAL_TEXT: Partial<Record<number, string>> = {
   10: "You reached the far edge of the shape it copied from you. It already knows you're here.",
 };
 
-// The arc's closing screen, shown by OverworldScene.showFinalePanel once the
-// last built world's rival falls. Kept here beside the beats rather than
-// inline in that panel so the Lab's Story station (data/storyLog.ts) can
-// close its own chronological reading with the same words the ending itself
-// uses.
+// The goal-tile line for a world whose own line stops being true once its
+// rival has fallen, shown in WORLD_GOAL_TEXT's place from then on. Worlds 1-9
+// carry none: what their line says still holds after the fight. World 10's
+// speaks of the Adapted as present, and what the banner captions once it has
+// fallen is the cliff the road ends at, with every world lying below it
+// (WORLDS.md section 4).
+export const WORLD_GOAL_TEXT_FALLEN: Partial<Record<number, string>> = {
+  10: 'You reached the end of the road. Every world lies below, and nothing is watching.',
+};
+
+export function worldGoalTextFor(world: number, rivalFallen: boolean): string | undefined {
+  return (rivalFallen ? WORLD_GOAL_TEXT_FALLEN[world] : undefined) ?? WORLD_GOAL_TEXT[world];
+}
+
+// The arc's closing screen, shown by OverworldScene.showFinalePanel each time
+// the player looks out from the cliff the last world's road ends at, once its
+// rival has fallen. It is read standing at that edge with every world lying
+// below, so it speaks from there: the view the Adapted had of what it trained
+// on, what stays learned, and what nothing is measuring anymore. Kept here
+// beside the beats rather than inline in that panel so the Lab's Story
+// station (data/storyLog.ts) can close its own chronological reading with the
+// same words the ending itself uses.
 export const FINALE_TITLE = 'The Decoherence is stabilized.';
 
 export const FINALE_BODY =
-  "It reached for every trick it had ever watched you land, and still came up short. It was never a plague loose in these nine worlds. It was built out of your own play and trained to wear your own moves back at you, and you out-adapted your own reflection anyway. Every symmetry, every edge state, every fractionalized spin you fought to protect holds on its own now, with nothing left studying how to unmake it. And the golems are golems no longer. They were ground down holding their passes, and now that the grinding has stopped they are materials again: annealed, ordered, back in the worlds they could not save alone. What was learned about them stays learned, and the light it cost does not come back. But nothing is reading the record anymore, and everything that can still choose is choosing.";
+  'The road ends at this edge, and every world you walked lies below it at once. This is how the thing that trained on you saw them: all together, from above. The only way to stand here was to bring down what stood here first. Nothing was undone. What it learned stays learned, the light it cost does not come back, and a record never goes back into superposition. But a record holds only what was measured, and nothing is measuring now. Every symmetry, every edge state, every fractionalized spin down there holds on its own. The materials that held the passes are whole again, and home. And the one thing the map below does not show is the step you take next.';
 
-// The ending at Brief length, the same beats as FINALE_BODY in a third of the
-// words.
+// The ending at Brief length, the same beats as FINALE_BODY in under half
+// the words.
 export const FINALE_BODY_BRIEF =
-  'It was built out of your own play, and you out-adapted your own reflection anyway. The golems are materials again, annealed and home. What was learned stays learned, and the light it cost does not come back, but nothing reads the record anymore, and everything that can still choose is choosing.';
+  'The road ends here, with every world you walked lying below at once, the way the thing that trained on you saw them. Nothing was undone: what it learned stays learned, and the light it cost does not come back. But nothing is measuring now, and the step you take next is on no record.';
 
 // The two screens between World 10's three finale stages
 // (BattleScene.advanceFinaleStage, DESIGN.md §6), each shown once the stage

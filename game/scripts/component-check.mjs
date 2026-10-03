@@ -1132,23 +1132,30 @@ async function main() {
       clicks.push(step3.clicked);
       await sleep(350);
     } else {
-      const step3 = await clickText(['Return to the Lab']);
+      const step3 = await clickText(['Farewell']);
       if (!step3.clicked) {
         await page.screenshot({ path: `${SHOT_DIR}/fail-rivalgate-winpath-w${world}-finale.png` });
-        return { pass: false, detail: `world ${world}: finale panel did not offer 'Return to the Lab'. clicks=${JSON.stringify(clicks)}, available=${JSON.stringify(step3.available)}` };
+        return { pass: false, detail: `world ${world}: finale panel did not offer 'Farewell'. clicks=${JSON.stringify(clicks)}, available=${JSON.stringify(step3.available)}` };
       }
       clicks.push(step3.clicked);
       await sleep(500);
     }
 
     if (isLastWorld) {
-      // World 10 win -> showFinalePanel -> 'Return to the Lab' -> Hub.
+      // World 10 win -> showFinalePanel -> 'Farewell' -> the panel closes and
+      // the player is still standing at the edge, the offer live again.
       const active = await getActiveScenes();
-      if (!active.includes('Hub') || active.includes('Overworld')) {
-        await page.screenshot({ path: `${SHOT_DIR}/fail-rivalgate-winpath-w${world}-hub.png` });
-        return { pass: false, detail: `world ${world}: finale did not return to Hub cleanly. clicks=${JSON.stringify(clicks)} scenes=${JSON.stringify(active)}` };
+      const stillOpen = await readOverworldDialogueActive();
+      if (!active.includes('Overworld') || active.includes('Hub') || stillOpen) {
+        await page.screenshot({ path: `${SHOT_DIR}/fail-rivalgate-winpath-w${world}-farewell.png` });
+        return { pass: false, detail: `world ${world}: Farewell did not close the finale panel in place. clicks=${JSON.stringify(clicks)} scenes=${JSON.stringify(active)} dialogueActive=${stillOpen}` };
       }
-      return { pass: true, detail: `world ${world} (finale win path): clicks=[${clicks.join(', ')}], landed cleanly in Hub` };
+      const prompt = await passPromptLabel();
+      if (!prompt || !prompt.includes(expectPrompt)) {
+        await page.screenshot({ path: `${SHOT_DIR}/fail-rivalgate-winpath-w${world}-farewell.png` });
+        return { pass: false, detail: `world ${world}: after Farewell the edge's offer expected to contain "${expectPrompt}" but read ${JSON.stringify(prompt)}` };
+      }
+      return { pass: true, detail: `world ${world} (finale win path): clicks=[${clicks.join(', ')}], panel closed, still at the edge ("${prompt}")` };
     }
 
     // Mid-world win -> showStoryBeat -> 'Onward' -> advanceToWorld (in-scene
@@ -1787,7 +1794,7 @@ async function main() {
 
   log('=== Test 4b: rival gate round-trip -- win path, preset rivalDefeated (world 5 mid, world 10 finale) ===');
   await runTest('rival gate (win path) w5 -> story beat -> world 6', () => testRivalGateWinPath(5));
-  await runTest('rival gate (win path) w10 -> finale panel -> Hub', () => testRivalGateWinPath(10));
+  await runTest('rival gate (win path) w10 -> finale panel -> Farewell', () => testRivalGateWinPath(10));
 
   log('=== Test 4b2: the map below the cliff -- finale -> map menu -> reset a rival, land tap, resetting The Adapted ===');
   await runTest('overlook map: reset rivals', () => testOverlookReset());

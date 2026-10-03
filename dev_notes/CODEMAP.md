@@ -827,8 +827,12 @@ game/src/
                                     Gameplay/Story/Presentation grouping
     story.ts                       STORY_BEATS -- per-world Decoherence-arc line shown on advancing worlds --
                                     WORLD_GOAL_TEXT -- per-world one-liner for the goal-tile banner,
-                                    falling back to a generic line for a world with no entry -- and
-                                    FINALE_TITLE/FINALE_BODY, the arc's closing screen
+                                    falling back to a generic line for a world with no entry;
+                                    WORLD_GOAL_TEXT_FALLEN holds the line that takes its place once
+                                    that world's rival has fallen (World 10 only), picked by
+                                    worldGoalTextFor() -- and
+                                    FINALE_TITLE/FINALE_BODY, the arc's closing screen, read at World
+                                    10's cliff each time the player looks out from it
                                     (OverworldScene.showFinalePanel), FINALE_STAGES -- the two screens
                                     between World 10's three finale stages (title, body, button, keyed
                                     by the stage about to begin; BattleScene.renderStagePanel) -- and
@@ -1852,7 +1856,8 @@ passes share one grammar, and it lives in four methods on `OverworldScene`:
   `showRivalEncounter()`. Forward and open: `crossPass()`, or `showFinalePanel()` in World 10,
   whose pass opens onto its own cliff edge rather than a next world. The finale panel ends in two
   buttons, "Study the map" (`showOverlookPanel`, the menu the land below the cliff also opens when
-  tapped -- see "The Qumatuomi map below the cliff") and "Return to the Lab".
+  tapped -- see "The Qumatuomi map below the cliff") and "Farewell", which closes the panel and
+  leaves the player standing at the edge with the offer live again.
 
 The same three steps carry the other thing a player walks up to, a guardian they have already
 met, in three more methods:
@@ -2640,8 +2645,8 @@ dangling `_`/`^`/`√` -- since a malformed span is still a perfectly valid stri
 `tsc` has no opinion about.
 
 **Returning to the Hub always snapshots the in-progress world first.**
-`OverworldScene.returnToHub()` (Enter, the World 10 finale's "Return to the Lab", and
-`returnToPreviousWorld()`'s World-1 case -- every path from a world back to the Hub) calls
+`OverworldScene.returnToHub()` (Enter or the Lab hint, and `returnToPreviousWorld()`'s World-1
+case -- every path from a world back to the Hub) calls
 `closeDialogue()` and then `saveMapState()` before `scene.start('Hub')`, so the registry's
 `mapState` key always reflects
 wherever the player actually stood, not just wherever a wild encounter/goal/middle-row event

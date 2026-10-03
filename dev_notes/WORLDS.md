@@ -1066,7 +1066,7 @@ not one they can catalogue.
 ## 6. The premise in the game's voice
 
 The premise is not only art direction — it is already spoken by the game, across
-five text surfaces, and the theming exists to make the terrain agree with what
+six text surfaces, and the theming exists to make the terrain agree with what
 the text has been saying all along. Anything added here must keep these
 patterns, because they are what make the arc land rather than merely exist.
 
@@ -1075,8 +1075,9 @@ patterns, because they are what make the arc land rather than merely exist.
 | `WORLD_LORE` | `data/worldLore.ts` | once, on first entering a world | two pages: the world's physics told as history, then how the Decoherence attacks *that* physics |
 | `RIVAL_TAUNTS` | `data/worldLore.ts` | before the rival fight | two parts: the rival's boast |
 | `STORY_BEATS` | `data/story.ts` | after a rival is beaten | the golem's release, observed by the narrator, then connective tissue looking forward |
-| `WORLD_GOAL_TEXT` | `data/story.ts` | on reaching the goal tile | one line: this world's physics still holds |
+| `WORLD_GOAL_TEXT` | `data/story.ts` | on reaching the goal tile | one line: this world's physics still holds. World 10's speaks of the Adapted as present, and gives way to `WORLD_GOAL_TEXT_FALLEN`'s once it has fallen: the road's end, every world below it, nothing watching |
 | `FINALE_STAGES` | `data/story.ts` | between the finale's three stages, World 10 only | the narrator on the stage just brought to zero, then the next form's own line |
+| `FINALE_TITLE`/`FINALE_BODY` | `data/story.ts` | at World 10's cliff, each time the player looks out from it | the ending, spoken from the edge: the worlds below as the thing that trained on the player saw them, what stays learned, and that nothing is measuring now |
 | `WORLD_FLAVOR` | `data/worldFlavor.ts` | Bloch's destination preview | plain physics, deliberately *not* narrative |
 
 `WORLD_LORE`, `RIVAL_TAUNTS`, `STORY_BEATS` and the finale are each written twice: the Detailed

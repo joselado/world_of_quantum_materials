@@ -426,16 +426,24 @@ async function main() {
     );
 
   const PRIORITY = [
-    'The Decoherence is stabilized',
     'Battle!',
     'Next ->',
     'Onward',
     'Got it',
     'Fight!',
-    'Return to the Lab',
     'Farewell',
     'Close',
   ];
+
+  // The finale panel is the one Overworld panel that offers the map, and its
+  // Farewell is a label every guardian panel shares, so the panel is told
+  // apart by that button rather than by the one that dismisses it.
+  const finalePanelOpen = () =>
+    page.evaluate(() => {
+      const s = window.__game.scene.getScene('Overworld');
+      const c = s && window.__game.scene.isActive('Overworld') ? s['dialogueContainer'] : null;
+      return !!c && c.list.some((o) => o.text === 'Study the map');
+    });
 
   // Repeatedly resolves whatever dialogue/tip/taunt/lore panel is open using
   // the priority list above, until dialogueActive clears or a Battle scene
@@ -911,9 +919,6 @@ async function main() {
     if (dstate?.sceneKey === 'Hub') {
       if (dstate.dialogueActive) {
         const r = await resolveDialogues();
-        if (r.clicked.some((c) => c === 'Return to the Lab')) {
-          // shouldn't happen from Hub itself, but harmless
-        }
         if (r.outcome === 'stuck' || r.outcome === 'stuck-repeating') {
           failure = { reason: `hub-dialogue-${r.outcome}`, world: lastKnownWorld, clicked: r.clicked.slice(-15) };
           log(`FAILED: Hub dialogue never resolved (${r.outcome}).`);
@@ -942,11 +947,10 @@ async function main() {
     if (dstate?.sceneKey === 'Overworld') {
       if (dstate.dialogueActive) {
         const before = await readOverworldState();
+        const atFinale = await finalePanelOpen();
+        if (atFinale) log('>>> World 10 rival defeated, finale triggered.');
         const r = await resolveDialogues();
-        if (r.clicked.some((c) => c.startsWith('The Decoherence is stabilized'))) {
-          log('>>> World 10 rival defeated, finale triggered.');
-        }
-        if (r.clicked.some((c) => c === 'Return to the Lab')) {
+        if (atFinale && r.outcome === 'clear') {
           finaleReached = true;
           log('>>> FINALE PANEL DISMISSED -- game completed end to end.');
         }

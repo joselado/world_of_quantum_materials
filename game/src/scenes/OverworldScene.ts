@@ -59,7 +59,7 @@ import { hasMath, makeQuestionText, makeFormulaButton } from '../ui/mathtext';
 import { encounterGreeting } from '../data/greetings';
 import { TUTORIAL_TIPS, hasSeenTip, markTipSeen, tipBodyFor } from '../data/tutorial';
 import type { TutorialTipId } from '../data/tutorial';
-import { WORLD_GOAL_TEXT, FINALE_TITLE, storyBeatFor, finaleBodyFor } from '../data/story';
+import { worldGoalTextFor, FINALE_TITLE, storyBeatFor, finaleBodyFor } from '../data/story';
 import { worldLoreFor, rivalTauntFor, hasSeenWorldLore, markWorldLoreSeen } from '../data/worldLore';
 import type { WorldLore } from '../data/worldLore';
 import {
@@ -1119,7 +1119,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       .setOrigin(1, 0)
       .setDepth(50);
     this.goalText = this.add
-      .text(CANVAS_W / 2, 90, WORLD_GOAL_TEXT[this.world] ?? 'You reached the far edge of this world!', {
+      .text(CANVAS_W / 2, 90, worldGoalTextFor(this.world, this.isRivalDefeated()) ?? 'You reached the far edge of this world!', {
         fontSize: fontPx(this, 14),
         color: '#ffffff',
         backgroundColor: 'rgba(0,0,0,0.5)',
@@ -3173,18 +3173,25 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     container.addAt(panel, 0);
   }
 
-  // Shown once the last built world's rival is beaten -- a real ending
-  // rather than a dead crossing into a world that doesn't exist. Pays off World 10's reveal (WORLD_LORE[10].page2):
-  // the Adapted was assembled from the player's own play, so beating it is
-  // framed as out-adapting a mirror built from nine worlds of your own
-  // choices, not defeating an outside enemy. Content laid out top-down
-  // first, panel sized/inserted behind everything afterward -- same pattern
-  // as showGuardianLore/showSettingsPanel.
+  // What the last built world's pass opens once its rival is beaten -- a
+  // real ending rather than a dead crossing into a world that doesn't exist,
+  // and the standing answer to "look out over the worlds", so it opens on
+  // every press at the edge. Its text (data/story.ts's FINALE_BODY) speaks
+  // from that edge: the map below is how the Adapted saw the worlds it
+  // trained on, and what it kept is a record, which holds only what was
+  // measured. Content laid out top-down first, panel sized/inserted behind
+  // everything afterward -- same pattern as showGuardianLore/showSettingsPanel.
   private showFinalePanel() {
     this.dialogueActive = true;
 
     const panelWidth = 600;
     const top = 40;
+    // The panel's own padding above the title and below the buttons, and the
+    // strip of canvas kept clear under it, so a body fitted to the full
+    // budget still leaves the panel's frame inside the canvas.
+    const topPad = 14;
+    const bottomPad = 24;
+    const bottomMargin = 16;
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
@@ -3194,7 +3201,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // fixed CANVAS_H.
     const scale = Math.min(fontScale(this), 1.5);
 
-    let y = top;
+    let y = top + topPad;
 
     const title = this.add
       .text(CANVAS_W / 2, y, FINALE_TITLE, {
@@ -3208,21 +3215,14 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     container.add(title);
     y += title.height + 16;
 
-    // Thanks line and button are built before the body so the fit budget
-    // below can use their real measured heights (same pattern as
-    // renderWorldLorePage); both are positioned once the body's fitted
-    // height is known.
-    const thanks = this.add
-      .text(CANVAS_W / 2, 0, 'Thanks for playing.', {
-        fontSize: `${Math.round(12 * scale)}px`,
-        color: REFERENCE_BLUE_GREY_HEX,
-        align: 'center',
-      })
-      .setOrigin(0.5, 0);
-    container.add(thanks);
-
-    // Two ways on from the ending, side by side: down to the land the edge
-    // looks out over, or home.
+    // The buttons are built before the body so the fit budget below can use
+    // their real measured height (same pattern as renderWorldLorePage), and
+    // are positioned once the body's fitted height is known.
+    //
+    // Two buttons side by side: down to the land the edge looks out over, or
+    // a plain Farewell that closes the panel and leaves the player standing
+    // at the edge, like every other panel a world opens. The way to the Lab
+    // is the one every world has (Enter, or the Lab hint).
     const buttonPx = `${Math.round(13 * scale)}px`;
     const study = this.addDialogueButtonAt(
       container,
@@ -3236,15 +3236,12 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       230,
       buttonPx
     );
-    const button = this.addDialogueButtonAt(
+    const farewell = this.addDialogueButtonAt(
       container,
       CANVAS_W / 2 + 128,
       0,
-      'Return to the Lab',
-      () => {
-        this.closeDialogue();
-        this.returnToHub();
-      },
+      'Farewell',
+      () => this.closeDialogue(),
       230,
       buttonPx
     );
@@ -3262,15 +3259,12 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // to): an ending screen pages to nothing, so the closing text gives up
     // font size rather than splitting, and the panel always ends on the
     // canvas at every FONT_SCALE_PRESETS setting.
-    fitProseToBudget(body, [finaleBodyFor(storyLength(this.game.registry))], CANVAS_H - y - (16 + thanks.height + 20 + button.height + top));
-    y += body.height + 16;
-
-    thanks.setY(y);
-    y += thanks.height + 20;
+    fitProseToBudget(body, [finaleBodyFor(storyLength(this.game.registry))], CANVAS_H - bottomMargin - y - (20 + farewell.height + bottomPad));
+    y += body.height + 20;
 
     study.setY(y);
-    button.setY(y);
-    y += button.height + top;
+    farewell.setY(y);
+    y += farewell.height + bottomPad;
 
     const panelHeight = y - top;
     const panel = this.add
@@ -3795,8 +3789,12 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   //
   // Same "the whole row counts" rule maybeReachGoal uses: the mouth is a row,
   // and the throat beyond it is where the rival stands.
+  //
+  // Hidden while a panel owns the screen, like the pass prompt: the line runs
+  // nearly the width of the canvas, wider than any panel, so its two ends
+  // would show on either side of one.
   private updateGoalBanner() {
-    this.goalText?.setVisible(!!this.goalTile && this.playerTile.y <= this.goalTile.y + 1);
+    this.goalText?.setVisible(!this.dialogueActive && !!this.goalTile && this.playerTile.y <= this.goalTile.y + 1);
   }
 
   // Same "whole row counts, not a single tile" rule as maybeReachGoal,

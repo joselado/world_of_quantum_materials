@@ -1736,7 +1736,21 @@ its rival gate shows a single generic line, so it's never a dead end.
 **Goal-tile banner.** Reaching a world's far edge shows a one-line banner
 (`data/story.ts`'s `WORLD_GOAL_TEXT`, keyed by world) naming that world's own
 physics; a world with no matching entry shows the generic "You reached the far
-edge of this world!" instead, so it's never a dead end.
+edge of this world!" instead, so it's never a dead end. The banner is a caption on
+the place: it shows while the player stands at the far edge and no panel is open.
+World 10's line speaks of the Adapted as present, so once it has fallen the banner
+reads `WORLD_GOAL_TEXT_FALLEN`'s line instead (`worldGoalTextFor`): the road's end,
+with every world lying below it and nothing watching.
+
+**The ending.** At World 10's cliff the pass prompt offers to look out over the
+worlds, and taking it opens the finale panel (`OverworldScene.showFinalePanel`,
+`data/story.ts`'s `FINALE_TITLE`/`FINALE_BODY`) every time. The panel is read standing
+at the edge, so its text speaks from there: the worlds below are how the thing that
+trained on the player saw them, nothing was undone (what it learned stays learned and
+the light it cost does not come back), and nothing is measuring now. It ends in two
+buttons: "Study the map" (§2) and "Farewell", which closes it and leaves the player at
+the edge. The narrator never steps outside the story to address the player as a
+player.
 
 ## 6. Boss design
 

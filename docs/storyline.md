@@ -565,20 +565,24 @@ You win it anyway.
 
 The smoke thins and does not re-form. The sparks run out of links to cross,
 the network goes dark node by node, and the last colour left in it is your
-own. It reached for every trick it ever watched you land and still came up
-short. What it held was a record of you, and nothing on record is still in
-superposition. But you are not your record. A model trained on nine worlds
-of your choices is a model of who you *were*, and you are the one thing in
-these worlds that was never finished. The route traced across the map below
-the cliff holds every world you have walked, and not the step you take next. You out-adapt your own
-reflection. Every symmetry, every edge state, every fractionalized spin you
-fought to protect holds on its own now, with nothing left studying how to
-unmake it. And the golems are golems no longer. They were ground down
-holding their passes, and now that the grinding has stopped they are materials
-again: annealed, ordered, back in the worlds they could not save alone. What
-was learned about them stays learned, and the light it cost does not come
-back. But nothing is reading the record anymore, and everything that can
-still choose is choosing.
+own. Nothing anneals here, because nothing here was ever a crystal. But
+nothing is answering anymore, either.
+
+Past the pass the road simply ends, at a cliff, and every world you walked
+lies below it at once. This is how the thing that trained on you saw them:
+all together, from above. The only way to stand here was to bring down what
+stood here first.
+
+*You reached the end of the road. Every world lies below, and nothing is watching.*
+
+Nothing was undone. What it learned stays learned, the light it cost does
+not come back, and a record never goes back into superposition. But a record
+holds only what was measured, and you are not your record: a model trained
+on nine worlds of your choices is a model of who you *were*. Nothing is
+measuring now. Every symmetry, every edge state, every fractionalized spin
+down there holds on its own. The materials that held the passes are whole
+again, and home. And the one thing the map below does not show is the step
+you take next.
 
 **The Decoherence is stabilized.**
 
