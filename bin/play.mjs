@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // Cross-platform launcher: checks Node, installs game/ dependencies if
 // needed, then starts the Vite dev server (which opens the browser itself).
+// Keep this file parseable by old Node (no `??`, no `?.`): a syntax error
+// stops the whole file before the version check below can say what's wrong.
 import { spawnSync, spawn } from 'node:child_process';
 import { existsSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -46,4 +48,4 @@ console.log('world_of_quantum_materials: starting the dev server...');
 // script) so headless tooling that runs "npm run dev" directly -- the
 // run-game/verify-ui skills, CI -- doesn't get a browser-launch attempt.
 const dev = spawn(npmCmd, ['run', 'dev', '--', '--open'], { cwd: gameDir, stdio: 'inherit' });
-dev.on('exit', (code) => process.exit(code ?? 0));
+dev.on('exit', (code) => process.exit(code === null ? 0 : code));
