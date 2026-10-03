@@ -41,6 +41,23 @@ describes from the battle side. World 10's rival is three fights in one scene
 to the world before it, or to the Lab from World 1. No world has a puzzle or a
 movement gate of its own.
 
+**A beaten rival can be stood back up, from the end of the road.** Once The Adapted has
+fallen, World 10's road ends at a cliff with the whole map lying below it (WORLDS.md §4), and
+that land is something the player can use. Standing at the edge, the finale panel's "Study the
+map" button, or a click or tap on the land itself, opens a menu of the ten worlds
+(`scenes/panels/overlook.ts`). Picking a world whose rival has fallen offers "Reset this
+rival", which clears that world's `rivalDefeated` entry and nothing else. The world is then
+exactly as it was before the fight: its rival stands in the pass again, the pass is shut, and
+the fight is there to be taken once more, paying the rival stake again on a win (§4). The
+state is one flag, so everything that reads it follows: the Story station masks that world's
+pass chapter until the rival falls again, and the Lab door's first-trip destination
+(`HubScene.highestUnlockedWorld`) falls back to the earliest world whose rival stands. What the
+player has already reached stays reached: worlds beyond a reset pass remain visited, so Bloch
+still folds the player to them, and they can be walked back into through their own backward
+doors. Resetting The Adapted itself takes the cliff, the land below it and this menu away with
+it, since all three exist only while it is beaten; the player is put back at the pass mouth
+facing it.
+
 | World | Course topic | In-game name (`WORLD_NAMES`) | Wild material archetypes |
 |---|---|---|---|
 | 0 (Hub) | — | "The Lab" — guardian's house, Qumatex | — |

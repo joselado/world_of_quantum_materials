@@ -1,0 +1,227 @@
+import Phaser from 'phaser';
+import type { GuardianPanelHost } from '../OverworldScene';
+import { BUILT_WORLDS } from '../OverworldScene';
+import { killTweensDeep } from '../../art/crystals';
+import { buildQumatuomiMap } from '../../art/qumatuomiMap';
+import { CANVAS_W, CANVAS_H } from '../../art/perspective';
+import { fontScale } from '../../ui/text';
+import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
+import { WORLD_RIVALS, worldName } from '../../data/materials';
+import { persistFromRegistry } from '../../data/save';
+import {
+  LIST_DETAIL_PANEL_W,
+  DETAIL_NAME_CAP,
+  destroyPanel,
+  listDetailColumns,
+  renderListColumn,
+  insertColumnDivider,
+  renderListColumnFooter,
+  renderStatusAndConfirm,
+} from './listDetail';
+
+// The menu the land below the Devouring Mirror's cliff opens (WORLDS.md
+// section 4's "The Qumatuomi map below"): every world, and for each one the
+// rival that held its pass, with the one thing the map lets the player do
+// about it -- stand a fallen rival back up. Resetting a rival clears its
+// `rivalDefeated` entry and nothing else, so that world is exactly as it was
+// before the fight: the golem stands in the throat, the pass is shut, and the
+// fight (and its stake) is there to be taken again.
+//
+// Laid out like Bloch's panel, which is the other place the player reads this
+// map: a list+detail table (scenes/panels/listDetail.ts) of the ten worlds on
+// the left, and on the right the Qumatuomi map with the selected world ringed,
+// above that world's rival, its state, and the reset button. Picking a row or
+// a marker is a preview and a scoped update; the button is the only thing that
+// changes the save.
+//
+// Resetting the rival of the world the player is standing in -- which can only
+// be The Adapted, since the cliff is in World 10 -- changes that world under
+// their feet: the cliff, and the view this panel was opened from, exist only
+// while The Adapted is beaten. The world is re-entered from its far end
+// (`advanceToWorld(world, 'goal')`), which puts the player at the pass mouth
+// facing a rival that stands again.
+const MAP_H = 146;
+const PANEL_STROKE = GOLD_ACCENT;
+
+function rivalDefeatedMap(scene: GuardianPanelHost): Record<number, boolean> {
+  return (scene.game.registry.get('rivalDefeated') as Record<number, boolean>) ?? {};
+}
+
+// World 9's rival is rolled afresh on every arrival there (data/materials.ts's
+// rollRival9Type), so seen from here it has no one name.
+function rivalName(world: number): string {
+  if (world === 9) return 'A polycrystalline golem';
+  return WORLD_RIVALS[world]?.name ?? 'Its rival';
+}
+
+export function showOverlookPanel(scene: GuardianPanelHost, selected?: number, page = 0) {
+  scene.dialogueActive = true;
+
+  const superposition = scene.isSuperpositionMode();
+  const discoveredWorlds = new Set<number>(
+    superposition ? BUILT_WORLDS : scene.getVisitedWorlds().filter((w) => BUILT_WORLDS.includes(w))
+  );
+  const defeated = rivalDefeatedMap(scene);
+
+  const panelWidth = LIST_DETAIL_PANEL_W;
+  const top = 20;
+  const container = scene.add.container(0, 0).setDepth(100);
+  scene.dialogueContainer = container;
+
+  // Added first so everything below (divider, footer, panel background)
+  // renders beneath every row/button added to `container` afterward.
+  const chromeBlock = scene.add.container(0, 0);
+  container.add(chromeBlock);
+
+  let y = top + 14;
+  const headScale = Math.min(fontScale(scene), 1.5);
+  const title = scene.add
+    .text(CANVAS_W / 2, y, 'The worlds below', {
+      fontSize: `${Math.round(15 * headScale)}px`,
+      color: GOLD_ACCENT_HEX,
+      fontStyle: 'bold',
+      align: 'center',
+    })
+    .setOrigin(0.5, 0);
+  container.add(title);
+  y += title.height + 4;
+  const intro = scene.add
+    .text(CANVAS_W / 2, y, 'Every pass you opened is on the record. Choose a world to stand its rival up again.', {
+      fontSize: `${Math.round(11 * Math.min(fontScale(scene), 1.2))}px`,
+      color: REFERENCE_BLUE_GREY_HEX,
+      align: 'center',
+      wordWrap: { width: panelWidth - 60 },
+    })
+    .setOrigin(0.5, 0);
+  container.add(intro);
+  y += intro.height + 12;
+
+  const panelLeft = CANVAS_W / 2 - panelWidth / 2;
+  const columns = listDetailColumns(panelLeft);
+  const columnsTop = y;
+
+  const items = BUILT_WORLDS;
+  let preview = selected !== undefined && items.includes(selected) ? selected : items.find((w) => defeated[w]) ?? items[0];
+
+  const selectWorld = (w: number) => {
+    preview = w;
+    listResult.setSelectedId(String(w));
+    renderDetail();
+  };
+
+  const listResult = renderListColumn({
+    scene,
+    container,
+    x: columns.leftX,
+    y: columnsTop,
+    width: columns.leftColW,
+    items,
+    idFor: (w) => String(w),
+    labelFor: (w) => (discoveredWorlds.has(w) ? worldName(w) : '???'),
+    // A world whose rival stands is dimmed: there is nothing here to do to it.
+    colorFor: (w) => (discoveredWorlds.has(w) && defeated[w] ? '#cfd8ff' : '#6a7396'),
+    selectedId: String(preview),
+    page,
+    onPageChange: (next) => {
+      destroyPanel(scene);
+      showOverlookPanel(scene, preview, next);
+    },
+    onSelect: (w) => selectWorld(w),
+  });
+
+  // Right column: the map, built once per panel open, then the selected
+  // world's rival, its state, and the reset button.
+  const mapTop = columnsTop;
+  const mapBuild = buildQumatuomiMap(scene, { width: columns.rightColW, height: MAP_H, discoveredWorlds });
+  mapBuild.container.setPosition(columns.rightColCenterX, mapTop + mapBuild.height / 2);
+  container.add(mapBuild.container);
+  const detailTop = mapTop + mapBuild.height + 6;
+
+  // A marker selects its world, the same as its row; the hit circle is far
+  // larger than the marker, which is only a few px across.
+  mapBuild.markers.forEach(({ world, marker }) => {
+    marker.setInteractive(new Phaser.Geom.Circle(0, 0, 12), Phaser.Geom.Circle.Contains).on('pointerdown', () => selectWorld(world));
+  });
+
+  // Lives inside the map's own container, since the ring is positioned in the
+  // map's local coordinates.
+  const ringBlock = scene.add.container(0, 0);
+  mapBuild.container.add(ringBlock);
+
+  const detailBlock = scene.add.container(0, 0);
+  container.add(detailBlock);
+
+  const renderDetail = () => {
+    killTweensDeep(scene, ringBlock);
+    ringBlock.removeAll(true);
+    detailBlock.removeAll(true);
+    chromeBlock.removeAll(true);
+
+    const selectedMarker = mapBuild.markers.find((m) => m.world === preview);
+    if (selectedMarker) {
+      const ring = scene.add.circle(selectedMarker.marker.x, selectedMarker.marker.y, 8, 0x000000, 0).setStrokeStyle(2, GOLD_ACCENT, 1);
+      ringBlock.add(ring);
+      scene.tweens.add({ targets: ring, scale: 1.8, alpha: { from: 1, to: 0 }, duration: 900, repeat: -1, ease: 'Sine.easeOut' });
+    }
+
+    const discovered = discoveredWorlds.has(preview);
+    const fallen = !!defeated[preview];
+    const rival = rivalName(preview);
+
+    const nameText = scene.add
+      .text(columns.rightColCenterX, detailTop, discovered ? rival : '???', {
+        fontSize: `${Math.round(13 * Math.min(fontScale(scene), DETAIL_NAME_CAP))}px`,
+        color: fallen ? '#cfd8ff' : '#ff8f8f',
+        fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: columns.rightColW },
+      })
+      .setOrigin(0.5, 0);
+    detailBlock.add(nameText);
+
+    const status = !discovered
+      ? 'Mist covers this land. You have not walked it yet.'
+      : !fallen
+      ? `It stands in the pass of ${worldName(preview)}, unbeaten. There is nothing to reset.`
+      : preview === scene.world
+      ? `Fallen. Reset it and it stands in the pass again: the edge closes, and this view with it, until you beat it once more.`
+      : `Fallen. Reset it and it stands in the pass of ${worldName(preview)} again: the way on is shut until you beat it once more.`;
+
+    const rightY = renderStatusAndConfirm({
+      scene,
+      container: detailBlock,
+      centerX: columns.rightColCenterX,
+      y: detailTop + nameText.height + 6,
+      colW: columns.rightColW,
+      maxBottom: CANVAS_H - 16,
+      status,
+      confirm: discovered && fallen ? { label: 'Reset this rival', onClick: () => resetRival(scene, preview, listResult.page) } : undefined,
+    });
+
+    const leftBottom = renderListColumnFooter(scene, chromeBlock, columns, listResult.bottom + 10, 'Step back', () => scene.closeDialogue());
+    const columnsBottom = Math.max(leftBottom, rightY);
+    insertColumnDivider(scene, chromeBlock, columns.dividerX, columnsTop, columnsBottom);
+
+    const panelHeight = columnsBottom + 14 - top;
+    const panel = scene.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
+      .setStrokeStyle(2, PANEL_STROKE);
+    chromeBlock.addAt(panel, 0);
+  };
+  renderDetail();
+}
+
+function resetRival(scene: GuardianPanelHost, world: number, page: number) {
+  const next = { ...rivalDefeatedMap(scene) };
+  if (!next[world]) return;
+  delete next[world];
+  scene.game.registry.set('rivalDefeated', next);
+  persistFromRegistry(scene.game.registry);
+
+  if (world === scene.world) {
+    scene.advanceToWorld(world, 'goal');
+    return;
+  }
+  destroyPanel(scene);
+  showOverlookPanel(scene, world, page);
+}

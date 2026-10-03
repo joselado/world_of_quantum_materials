@@ -244,7 +244,9 @@ type and throwing only your own basic moves, none of your levels, passives,
 clouds or doping. Last, The Quantum Adapted: a smoke that answers as a
 different real compound every round, before you pick, and throws whichever
 basic move your own crystal cannot host. Lose at any stage and the next
-attempt starts again from the first. See [Crystals](docs/crystals.md) for
+attempt starts again from the first. Beat it and the road ends at a cliff
+with the whole map lying below; from that edge you can pick any world and
+reset its rival, to fight it again. See [Crystals](docs/crystals.md) for
 every world's full wild-material list.
 
 Each world has its own history, its own way the Decoherence comes for it,
@@ -295,7 +297,8 @@ a finger does both.
 
 **With the mouse.** Everything on screen that offers something is clickable:
 the Lab's stations and the guardians standing in the room, every panel button,
-the prompt that appears at a pass, the answers to a wild crystal's question,
+the prompt that appears at a pass, the map lying below the last world's cliff
+once you stand at its edge, the answers to a wild crystal's question,
 your moves in battle, the arrows that page a long list or a question too long
 for one screen, and the line in the bottom right corner of a world that takes
 you back to the Lab.

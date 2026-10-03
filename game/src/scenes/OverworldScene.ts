@@ -29,7 +29,7 @@ import {
   projectTile,
   setActiveGridDims,
 } from './overworld/projection';
-import { drawSky, forwardHazeBlend, passReveal } from './overworld/sky';
+import { drawOverlook, drawSky, forwardHazeBlend, passReveal } from './overworld/sky';
 import type { GateView } from './overworld/sky';
 import { buildTerrainPlan, sampleBattleLocale } from './overworld/terrain/plan';
 import { drawTerrain } from './overworld/terrain/paint';
@@ -98,6 +98,8 @@ import { showDresselhausPanel } from './panels/dresselhaus';
 import { showMajoranaPanel } from './panels/majorana';
 import { showAndersonPanel } from './panels/anderson';
 import { showFranklinPanel } from './panels/franklin';
+import { showOverlookPanel } from './panels/overlook';
+import { destroyPanel } from './panels/listDetail';
 
 // Snapshot of an in-progress map, stashed in the game registry so a round
 // trip through BattleScene resumes exactly where the player left off instead
@@ -139,6 +141,10 @@ const PLAYER_CRYSTAL_SIZE = 34;
 // Above the ground graphics (the event horizon is drawn into them) and below
 // the wild crystals and The Adapted at 20.
 const MIRROR_GHOST_DEPTH = 15;
+// The tappable land below the Devouring Mirror's cliff. Only its place in the
+// input order matters (a zone draws nothing): under the prompts at 50 and the
+// panels at 100, so whatever is drawn over the land takes the tap first.
+const OVERLOOK_ZONE_DEPTH = 5;
 // A sprite's ground contact -- where its own shadow is drawn, in local px
 // below its container origin, before the depth scale is applied. The
 // projection puts this point on its tile's centre, so every landmark stands
@@ -711,6 +717,19 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // stands once the rival has fallen; the backward one always does.
   private gateSprites: WorldSprite[] = [];
   private worldGfx!: Phaser.GameObjects.Graphics;
+  // What lies below the Devouring Mirror's cliff (overworld/sky.ts's
+  // drawOverlook), in a layer of its own under the terrain so the cliff covers
+  // whatever of it the cliff is in front of. Only the last world has one.
+  // Redrawn when the camera has moved and not otherwise: nothing in it changes
+  // while the player stands still. `overlookCoast` is the outline of the land
+  // as last drawn, in screen px, which is what a tap on the land is tested
+  // against.
+  private overlookGfx?: Phaser.GameObjects.Graphics;
+  private overlookDrawnAt = '';
+  private overlookCoast: { x: number; y: number }[] | null = null;
+  // The land's own hit area: a screen-sized zone whose polygon is kept on that
+  // outline, live only while the player stands at the edge.
+  private overlookZone?: Phaser.GameObjects.Zone;
   private player!: Phaser.GameObjects.Container;
   private playerCrystalGfx!: Phaser.GameObjects.Container;
   // The player's reflection inside the Devouring Mirror's event horizon (see
@@ -1039,6 +1058,10 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.camPos = { x: this.playerTile.x, y: this.playerTile.y };
 
     drawSky(this, this.biome);
+    this.overlookGfx = this.world === FINAL_WORLD ? this.add.graphics() : undefined;
+    this.overlookDrawnAt = '';
+    this.overlookCoast = null;
+    this.overlookZone = this.overlookGfx ? this.makeOverlookZone() : undefined;
     this.worldGfx = this.add.graphics();
     this.spawnCrystalSprites();
     this.spawnTokenSprites();
@@ -1647,6 +1670,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.updateWorldSprites(this.gateSprites);
     this.updateGatePrompt();
     this.updateGuardianPrompt();
+    this.updateOverlookZone();
     this.updateGoalBanner();
     this.touchPad?.setVisible(!this.dialogueActive);
   }
@@ -1803,20 +1827,15 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // had of them (WORLDS.md section 4). Null everywhere else, which is every
   // other world and this one while the boss still stands in the way.
   //
-  // The lip is the near edge of the goal row, which is the last row the
+  // The lip is the far edge of the goal row, which is the last row the
   // terrain sweep draws: every generator paints its final band there and
-  // leaves the rows north of it unwalkable. So the gap the map fills is
-  // exactly the gap the ground leaves.
-  // The map below is placed off the lip's own depth rather than off the gap it
-  // leaves on screen (overworld/sky.ts's drawOverlook), so the country lies at
-  // a fixed distance past the edge and the walk out to it is what brings it up.
-  // `lane` is the goal column measured from the camera, the same
-  // tile-minus-camera lane every ground row is drawn at: it is what keeps the
-  // land still against the ground when the player walks along the cliff instead
-  // of straight at it.
+  // leaves the rows north of it unwalkable, and past a cliff no margin row is
+  // drawn beyond it. `lane` is the goal column measured from the camera, the
+  // same tile-minus-camera lane every ground row is drawn at, and it is the
+  // axis the land below is centred on (overworld/sky.ts's drawOverlook).
   private overlookView(): { lipY: number; lipDepth: number; lane: number } | null {
     if (!this.endsAtCliff()) return null;
-    const lipDepth = this.camPos.y - this.goalTile.y - 0.5;
+    const lipDepth = this.camPos.y - this.goalTile.y + 0.5;
     return { lipY: projectTile(0, lipDepth).y, lipDepth, lane: this.goalTile.x - this.camPos.x };
   }
 
@@ -1833,7 +1852,47 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.hazeCache.clear();
     const view = this.terrainView();
     drawTerrain(view);
+    this.drawOverlookLayer(view);
     this.placeMirrorGhost(view);
+  }
+
+  private drawOverlookLayer(view: TerrainView) {
+    if (!this.overlookGfx) return;
+    const at = view.overlook ? `${view.camX},${view.camY}` : '';
+    if (at === this.overlookDrawnAt) return;
+    this.overlookDrawnAt = at;
+    this.overlookGfx.clear();
+    this.overlookCoast = drawOverlook(this.overlookGfx, view);
+    (this.overlookZone?.input?.hitArea as Phaser.Geom.Polygon | undefined)?.setTo(this.overlookCoast ?? []);
+  }
+
+  // The land below the cliff can be taken hold of directly: a tap on it opens
+  // the same menu the finale's "Study the map" button does. Under every prompt
+  // and panel, so anything drawn over the land takes the tap instead.
+  private makeOverlookZone(): Phaser.GameObjects.Zone {
+    const zone = this.add.zone(0, 0, CANVAS_W, CANVAS_H).setOrigin(0, 0).setDepth(OVERLOOK_ZONE_DEPTH);
+    zone.setInteractive({ hitArea: new Phaser.Geom.Polygon([]), hitAreaCallback: Phaser.Geom.Polygon.Contains, useHandCursor: true });
+    zone.disableInteractive();
+    zone.on('pointerdown', () => this.studyOverlook());
+    return zone;
+  }
+
+  // Live under the same rule as the pass prompt: only while the player stands
+  // at the edge with nothing else on screen. From further back the land is
+  // scenery, like any landmark the player has not walked up to yet.
+  private updateOverlookZone() {
+    const zone = this.overlookZone;
+    if (!zone?.input) return;
+    const live = !!this.overlookCoast && !this.dialogueActive && !this.moving && this.gateAtPlayer() === 'forward';
+    if (live === zone.input.enabled) return;
+    if (live) zone.setInteractive();
+    else zone.disableInteractive(true);
+  }
+
+  private studyOverlook() {
+    if (this.dialogueActive || this.moving || !this.endsAtCliff()) return;
+    this.gatePrompt.setVisible(false).disableInteractive();
+    showOverlookPanel(this);
   }
 
   // The player's reflection inside the Devouring Mirror's event horizon
@@ -3162,17 +3221,32 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       .setOrigin(0.5, 0);
     container.add(thanks);
 
+    // Two ways on from the ending, side by side: down to the land the edge
+    // looks out over, or home.
+    const buttonPx = `${Math.round(13 * scale)}px`;
+    const study = this.addDialogueButtonAt(
+      container,
+      CANVAS_W / 2 - 128,
+      0,
+      'Study the map',
+      () => {
+        destroyPanel(this);
+        showOverlookPanel(this);
+      },
+      230,
+      buttonPx
+    );
     const button = this.addDialogueButtonAt(
       container,
-      CANVAS_W / 2,
+      CANVAS_W / 2 + 128,
       0,
       'Return to the Lab',
       () => {
         this.closeDialogue();
         this.returnToHub();
       },
-      260,
-      `${Math.round(13 * scale)}px`
+      230,
+      buttonPx
     );
 
     const body = this.add
@@ -3194,6 +3268,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     thanks.setY(y);
     y += thanks.height + 20;
 
+    study.setY(y);
     button.setY(y);
     y += button.height + top;
 

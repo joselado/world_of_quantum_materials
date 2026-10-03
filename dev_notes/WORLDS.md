@@ -980,28 +980,48 @@ horizon silhouette, no ground at all past the last row — the world stops, and
 the view opens. The event horizon that hung behind the pass while The Adapted
 stood (§2) goes with it. The finale is taken standing at that edge.
 
-**Render it as ground far below, not as an image pasted flat to the screen**: it
-lies in the gap between the cliff lip and the horizon, with the cliff's own
-shadow under the lip and a stretch of unseen ground between, dimmed and hazed by
-the same atmosphere that fogs everything else and more heavily toward its far
-coast. The haze is what does the work — fog is the cheapest signal that
-something is scenery, and an interface element is never fogged. Unhazed it will
-read as a misrendered minimap, and players will try to click it. Self-luminous,
-per the light rule: the record glows, nothing shines on it.
+**It is a thing that is there, not an image on the screen.** The land is a slab
+of country standing on a plane far below the cliff, drawn in the same
+perspective as the ground the player is standing on: its far coast is narrower
+than its near one, it has a side where its coast drops to the plane, and its own
+light lies in the plane under it. Because it lies far below the edge rather than
+further along the road, it moves against the edge as the player walks. From back
+along the road the lip hides it; its far coast rises over the lip on the walk
+up; only from the edge does the whole of it lie open, with a strip of the plane
+between it and the rock. Standing still leaves it still, and walking along the
+edge slides it exactly as far as something at that distance slides. A faint
+graticule ruled across the plane is what gives the drop a floor and a distance.
+The same atmosphere that fogs everything else hazes it, more heavily toward its
+far coast. Self-luminous, per the light rule: the record glows, nothing shines
+on it.
 
-**The shape is the point, and outranks the perspective.** It is drawn through
-the same uniform scale-to-fit the panel map uses, in the same land colours, so
-the coastline below is recognisably the same one Bloch's panel shows. The player
-has to *recognise* it — that recognition is the whole reveal — so the only
-concession to looking down at it is a mild vertical squash. A steeply
-foreshortened map that reads as a generic landmass has thrown away what it was
-for.
+**The shape is still the point.** It is the same coastline, in the same land
+colours and the same ten painted regions, as the map Bloch's panel shows, and
+the player has to *recognise* it — that recognition is the whole reveal. So the
+land lies close under the edge, where the view of it is steepest, and is sized
+so that perspective narrows its far coast without flattening the country into a
+generic landmass. A view so foreshortened that the coastline stops being the one
+the player knows has thrown away what it was for.
 
-Strip every interactive affordance from the asset — no markers, no labels.
-Two optional flourishes, both kept faint: a dim luminous trace of the player's
-actual route across the map (*it has your whole walk*), and a single slow pulse
-at the Espoo point. The route trace is the stronger; the pulse is skippable if it
-reads even slightly like a readout.
+**The land carries no interface; the edge offers one.** No markers and no labels
+are drawn on the land. What the player can do with it is offered the way every
+landmark in these worlds offers itself, by walking up to it: at the edge the
+prompt appears, and from there the land itself can be taken hold of. Either way
+opens the map as a panel — the same map, with its markers — listing every world
+and the rival that held its pass.
+
+**What the map lets the player do is stand a rival back up.** The view belonged
+to the thing that had consumed every world; the player took it by beating that
+thing, and the record is theirs to use. Choosing a world resets its rival: the
+golem stands in its pass again exactly as it did before it fell, the pass is
+shut, and the fight is there to be taken once more. Resetting The Adapted itself
+closes the edge. The view exists only while it is beaten, so the player who
+calls it back has to earn the view again.
+
+One flourish, kept faint: a dim luminous trace of the player's actual route
+across the map (*it has your whole walk*), with no marker at either end. A pulse
+at the Espoo point is not drawn; a single point pulsing on the land reads as a
+readout.
 
 ## 5. Story shape
 

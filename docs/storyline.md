@@ -582,6 +582,13 @@ still choose is choosing.
 
 **The Decoherence is stabilized.**
 
+The map below the cliff is yours to use after that. Standing at the edge you
+can study it, from the ending's own "Study the map" button or by clicking the
+land itself, and choose any world on it to reset its rival: the golem stands
+in its pass again, exactly as it did before it fell, ready to be fought once
+more. Reset the Adapted itself and the edge closes behind it until you beat it
+again.
+
 ---
 
 ## Where to look things up

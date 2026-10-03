@@ -189,15 +189,18 @@ is said by absence: no window, no sky, nothing implying an outside.
 **The Qumatuomi map** lies below World 10's cliff, which is what that world's
 road ends at once its rival falls — it has no neighbour to put on a horizon.
 Nothing is drawn past the edge, so the gap between the lip and the horizon is
-free for the drop's own shade and the land below it. The silhouette goes
-through the panel build's own uniform scale-to-fit, in its own land colours,
-squashed slightly: the player has to recognise the coastline, and that outranks
-perspective. Depth is carried by a veil graded across the land instead.
-Markers, labels and region tints are stripped. The route trace runs through the worlds the player
-has actually walked, in visit order, with no marker at either end. The Espoo
-pulse is deliberately not built: it is the flourish §4 marks skippable, and a
-single point pulsing on a map is exactly the affordance the rest of this
-treatment exists to remove.
+free for the drop and the land below it. The land is a slab standing on a plane
+far below the cliff, drawn through the world's own camera in a layer under the
+terrain: it narrows toward its far coast, has a wall down to the plane and a
+glow in the plane under it, and the cliff covers whatever of it the cliff is in
+front of, so it rises over the lip on the walk up. It keeps the panel build's
+coastline, land colours, regions and texture marks, since the player has to
+recognise the country. Markers and labels stay off the land; standing at the
+edge, the land opens a menu of the ten worlds from which a beaten rival can be
+reset. The route trace runs through the worlds the player has actually walked,
+in visit order, with no marker at either end. The Espoo pulse is deliberately
+not built: it is the flourish §4 leaves out, since a single point pulsing on the
+land reads as a readout.
 
 ---
 

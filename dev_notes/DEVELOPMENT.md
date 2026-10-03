@@ -513,10 +513,13 @@ the Canvas path is tested on purpose is `component-check`'s parity test.
 **`npm run component-check`** (`scripts/component-check.mjs`, about four
 minutes, longer on a loaded machine) --
 jumps directly into scenes/states via `scene.start(...)` and scene-private
-fields rather than playing through them, so each of its 57 tests exercises one
+fields rather than playing through them, so each of its 59 tests exercises one
 mechanism directly: world-entry dialogue termination for every world (the lore →
 goal/middle-tip → controls-tip chain), battle round-trips, all ten guardian
-panels' open/close, rival-gate win and loss paths, World 10's Adapted actually
+panels' open/close, rival-gate win and loss paths, the map menu at World 10's
+cliff (reached from the finale panel's button and from a tap on the land,
+resetting another world's rival and then The Adapted itself, which has to bring
+the world back with it standing in the pass), World 10's Adapted actually
 transmuting (once per move class, with both sides topped up so the swap is
 reached repeatedly -- the rival-gate loss path never gets there, since a
 fresh-save player dies before landing a hit on a living Adapted), World 10's

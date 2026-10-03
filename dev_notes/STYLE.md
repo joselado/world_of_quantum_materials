@@ -385,7 +385,8 @@ under one figure reads as floating even when neither is wrong on its own.
   opens with the Qumatuomi map (`art/qumatuomiMap.ts`) fixed at the top, rendered once showing all
   10 worlds regardless of which row is selected, with the previewed destination's own physics
   blurb/cost/status/confirm content stacked beneath it, in place of the crystal-render-plus-name
-  block a crystal-browsing panel's own detail pane opens with -- and Tutorial browses by *topic*
+  block a crystal-browsing panel's own detail pane opens with -- the map menu at World 10's cliff
+  browses by *world* the same way, map included ("The map menu" below) -- and Tutorial browses by *topic*
   ("Full tutorial recap" below), the one user of this scaffolding whose detail pane is *only*
   text and has no commit button either: just the selected topic's own title and body, since
   browsing a topic is the whole interaction.
@@ -1035,63 +1036,89 @@ different color. Every fill stays flat -- no per-tile diagonal shading -- matchi
 ground/floor fill in the game (`MAP_STYLE` in the module is the one line that picks this region
 treatment). The partition itself is resolved once for the whole module and shared by both builds
 (`regionRuns`), as horizontal runs of same-coloured cells rather than cell-by-cell: the overlook
-below is scenery redrawn every frame, so classifying the country cannot be per-draw work.
+below is redrawn on every frame the camera moves, so classifying the country cannot be per-draw
+work.
 The module wires no
-interactivity of its own -- Bloch's panel ("Bloch in the overworld" below) is the one consumer of
-that build, attaching its own `setInteractive`/`pointerdown` handling to each returned marker and
-reading back the module's actual rendered `width`/`height` (uniform scale-to-fit can make either
-one smaller than the caller's requested budget) for its own layout math.
+interactivity of its own. Two panels put this build on screen as something to click, each
+attaching its own `setInteractive`/`pointerdown` handling to the returned markers and reading back
+the module's actual rendered `width`/`height` (uniform scale-to-fit can make either one smaller
+than the caller's requested budget) for its own layout math: Bloch's ("Bloch in the overworld"
+below) and the map menu opened from World 10's cliff ("The map menu" below).
 
 ### The Qumatuomi map below (World 10's cliff)
 
-The same asset, drawn as scenery rather than as a panel. World 10's road ends at
+The same land, as a thing lying in the world rather than in a panel. World 10's road ends at
 a cliff once The Adapted falls, and what lies below the edge is *every* world at
 once, seen from above — precisely the view a trained model has of its training
 data.
 
-- **Ground far below, never an image pasted flat to the screen**: it lies in the
-  gap between the cliff lip and the horizon, with the cliff's shadow under the
-  lip, self-luminous per the light rule (the record glows, nothing shines on
-  it).
-- **Fixed in the world, not fitted to the screen.** The land's near and far
-  coasts are two ground rows a fixed number of tiles past the lip
-  (`OVERLOOK_NEAR_TILES`/`OVERLOOK_FAR_TILES` in `scenes/overworld/sky.ts`),
-  projected exactly like every other row of ground, and it is centred on the
-  goal column's own lane rather than on the middle of the frame. So the country
-  lies at a fixed place in the world: walking toward the edge brings it up and
-  opens it out by as much as ground at that distance opens out, walking along
-  the edge slides it with the ground, and standing still leaves it still. The
-  near offset clears the last row the terrain sweep actually draws, which is
-  what leaves the stretch of unseen ground a cliff puts between a standing
-  figure and what is below. Both lines drawn on the land -- its coast and the
-  route trace -- carry widths in the map's own native px, so they thin as it
-  recedes instead of staying a fixed width on the glass.
-- **The same land as the panel build.** One uniform scale for both axes, the
-  panel's own land colours, and the same ten painted regions with the same
-  texture marks, so the country below is recognisably the map Bloch's panel
-  shows; the only concession to the viewing angle is a mild vertical squash.
-  Recognition is what the view is for, and it outranks perspective. Every
-  region colour is lifted toward the record's own light and drowned into the
-  live fog on the way in, the texture marks included -- they are the most
-  saturated ink on the map, and undrowned they are the first thing that would
-  read as an interface.
-- **The haze is load-bearing.** The land is drowned into the same live fog target
-  every distant thing is drowned into, graded across its own depth so the far
-  coast dissolves and the near one does not. Fog is the cheapest signal that
-  something is scenery, and an interface element is never fogged; unhazed this
-  reads as a misrendered minimap and players try to click it.
+- **A slab on a plane far below, never an image on the screen.** The land stands on
+  a horizontal plane `OVERLOOK_DROP_TILES` below the ground, and every row of it is
+  projected through the world's own camera (`projectBelow` in
+  `scenes/overworld/projection.ts`), so its far coast is narrower than its near
+  one. Its near coast lies `OVERLOOK_NEAR_TILES` past the lip and it is centred on
+  the goal column's own lane, at `OVERLOOK_TILES_PER_NATIVE` tiles of ground per
+  native map px (all three in `scenes/overworld/sky.ts`).
+- **The cliff is in front of it.** It is painted in a layer of its own under the
+  terrain, so the ground the player stands on covers whatever of it the ground is
+  in front of. Because it lies far below rather than further along the road, it
+  moves against the lip as the camera moves and far more slowly than the lip does:
+  hidden from back along the road, rising over the lip on the walk up, whole only
+  from the edge, with a strip of the plane left between its near coast and the
+  rock. Walking along the edge slides it as far as something at that distance
+  slides, and standing still leaves it still.
+- **It has a side and it stands on something.** The coast drops to the plane down a
+  wall (`OVERLOOK_RELIEF` native px, the land's own colour in shade), and the land's
+  light lies in the plane under every stretch of coast, brightest against the foot
+  of the wall and gone a few native px out. Without the wall it is a shape printed
+  on the floor; without the glow the wall ends in nothing and the land hangs.
+- **The plane has a floor.** It runs from the fog colour at the horizon to something
+  much deeper under the cliff, and carries a faint graticule: parallels and
+  meridians `OVERLOOK_GRID_TILES` apart, counted from the land's own near coast and
+  axis so the land sits on the grid. Lines that converge on the vanishing point and
+  close up toward the horizon are what say the plane is a floor and how far down
+  it is; a plane of one flat colour has no distance in it. Parallels fade out as
+  they close up rather than merging into a tone.
+- **The same land as the panel build.** The panel's own coastline, land colours,
+  ten painted regions and texture marks, so the country below is recognisably the
+  map Bloch's panel shows. Recognition is what the view is for: the land lies
+  close under the edge, where the view of it is steepest, and is sized so the
+  perspective narrows its far coast without flattening the coastline out of
+  recognition. Every region colour is lifted toward the record's own light, the
+  texture marks included.
+- **The haze is by distance.** Every colour on the land is carried into the live
+  fog target by how far away its row lies, the far coast most and the near one
+  almost not at all, and the atmosphere pass that closes the terrain layer washes
+  the plane and the land together. An edge as crisp at the back as at the front
+  is a decal.
+- **Self-luminous**, per the light rule: the record glows, nothing shines on it.
+  The land casts no shadow and takes none except the dark under the lip, which is
+  the cliff's own shade over whatever is nearest its foot.
+- **Still.** Nothing on the land moves. It is redrawn only when the camera has.
+- **No markers and no labels on the land.** Those belong to the panel build. What
+  the player can do with the land is offered at the edge, the way a landmark offers
+  itself: the pass prompt appears there, and from there the land itself takes a
+  click or a tap (hand cursor over it, hit-tested against the hull of its coast as
+  far as the cliff leaves it in view). From further back it is scenery.
 - **The gap must actually be empty.** Past a cliff there is no repeated road and
   no repeated surround — the terrain sweep draws nothing there, which is what
   leaves room for the drop and the land below to be seen at all.
-- **Every interactive affordance is stripped** — no markers, no labels, nothing
-  to click. Those belong to the clickable panel build of the same asset and stay
-  there. The regions are not an affordance: they are what the country looks like
-  from above, and the shroud over an undiscovered one is, so nothing below the
-  cliff is shrouded — the view is of every world at once.
 - **The route trace** is a dim luminous line through the worlds the player has
-  actually walked, in the order they walked them. It is the one thing no other
-  copy of this map carries. No marker sits at either end of it: a marker is an
-  affordance, and this is a record.
+  actually walked, in the order they walked them, well under the coastline in
+  strength so it reads as a mark left on the land rather than a line charted over
+  it. Its width and the coastline's are in native map px, so both thin as the land
+  recedes. No marker sits at either end.
+
+### The map menu (World 10's cliff)
+
+What the land opens (`scenes/panels/overlook.ts`): a list+detail panel in Bloch's
+layout, gold-stroked like the finale panel it is reached from. A gold title and one
+muted line stand where a guardian's avatar and quote would; the left column lists
+the ten worlds, with a world whose rival still stands dimmed; the right column is the
+panel map with a pulsing gold ring on the selected world's marker, then that world's
+rival by name (pale when fallen, the boss label's red when standing), one status
+sentence, and a single "Reset this rival" button, present only for a fallen rival.
+The escape button reads "Step back".
 
 ### The star network (Worlds 7-10's sky)
 

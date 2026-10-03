@@ -67,14 +67,18 @@ game/src/
                                  DRAW_DISTANCE_TILES, VISIBLE_DEPTH_FRACTION -- the fraction
                                  of it a world sprite is still drawn within, and so the far
                                  edge of the player's field of vision OverworldScene's
-                                 respawn placement stays beyond -- CAMERA_BACK_TILES) plus projectTile() and
+                                 respawn placement stays beyond -- CAMERA_BACK_TILES) plus projectTile(),
+                                 projectBelow() (the same camera's view of a plane lying below
+                                 the ground: World 10's overlook) and
                                  laneClipAt(). The one place the camera pullback is applied
       sky.ts                   The static backdrop (drawSky: sky gradient, base ground wash,
                                  clouds) and the per-frame atmosphere (drawDepthHaze: the ground
                                  wash, the horizon band, the sky's own graduation into the fog,
                                  and drawDistantSelf's neighbour silhouette), plus
                                  hazeTarget/forwardHazeBlend and the HazeView/AtmosphereView
-                                 contexts they read
+                                 contexts they read, and drawOverlook: the plane and the land
+                                 below World 10's cliff, painted into a layer of its own under
+                                 the terrain
       touchControls.ts         createTouchPad() -- the four on-screen walking arrows in the
                                  world's bottom-left corner, and PAD_KEEPOUT, the corner width
                                  they claim. Built only when the Settings station's Touch
@@ -102,7 +106,10 @@ game/src/
                                  TERRAIN_ACCENTS table
     panels/                    One file per guardian's panel UI (see "Guardian panels" below),
                                  e.g. noether.ts's showNoetherShop(), sklodowskaCurie.ts's
-                                 showSklodowskaCuriePanel(), anderson.ts's showAndersonPanel() --
+                                 showSklodowskaCuriePanel(), anderson.ts's showAndersonPanel(),
+                                 plus overlook.ts's showOverlookPanel(), the one panel here that
+                                 belongs to a place rather than a guardian: the map menu at
+                                 World 10's cliff, where a beaten rival is reset --
                                  guardianHeader.ts's renderGuardianHeader() is the large-portrait-
                                  plus-opening-line block all of them (and showGuardianLore) open
                                  with,
@@ -123,9 +130,10 @@ game/src/
                                  (host-pick step only)/majorana.ts (both pick-a-crystal steps),
                                  noether.ts (both sections of its two-level column)/kondo.ts,
                                  landau.ts/sklodowskaCurie.ts (two rows each, one per fixed move),
-                                 and bloch.ts (its own destination table -- the one caller whose
-                                 right side is the persistent Qumatuomi map, art/qumatuomiMap.ts,
-                                 rather than a per-selection detail pane) all use.
+                                 bloch.ts (its own destination table, whose right side is the
+                                 persistent Qumatuomi map, art/qumatuomiMap.ts, rather than a
+                                 per-selection detail pane), and overlook.ts (the map menu at
+                                 World 10's cliff, laid out the same way) all use.
                                  Every one of these panels' own
                                  "which crystal"/"which move"/"which world" detail pane opens
                                  through -- renderDetailCrystalHeader for a crystal-plus-name
@@ -611,9 +619,14 @@ game/src/
                                   handling/tooltips later; width/height are the actual rendered size
                                   (uniform scale-to-fit is usually smaller than the requested budget
                                   on one axis). Knows nothing about scene.game.registry, travel
-                                  costs, or any guardian panel -- scenes/panels/bloch.ts is its one
-                                  consumer, wiring its own setInteractive/pointerdown handling onto
-                                  each returned marker.
+                                  costs, or any panel -- scenes/panels/bloch.ts and overlook.ts
+                                  each wire their own setInteractive/pointerdown handling onto
+                                  the returned markers, and TitleScene shows it as a backdrop.
+                                  drawQumatuomiOverlook(g, { row, target, route }) is the second
+                                  build of the same land: the slab below World 10's cliff, drawn
+                                  into a Graphics in the world's own perspective from a caller-
+                                  supplied row placement (see "The Qumatuomi map below the
+                                  cliff"); returns the coastline it drew, in screen px.
   audio/
     sfx.ts                      Procedural sound effects (attack/impact/playGuardianChime)
     music.ts                    MusicEngine, per-scene/per-world tracks in two selectable
@@ -1837,7 +1850,9 @@ passes share one grammar, and it lives in four methods on `OverworldScene`:
 - `confirmGate()` -- the commitment at a pass, reached from the prompt's own `pointerdown` and
   from `confirmAction()`. Backward: `returnToPreviousWorld()`. Forward and shut:
   `showRivalEncounter()`. Forward and open: `crossPass()`, or `showFinalePanel()` in World 10,
-  whose pass opens onto its own cliff edge rather than a next world.
+  whose pass opens onto its own cliff edge rather than a next world. The finale panel ends in two
+  buttons, "Study the map" (`showOverlookPanel`, the menu the land below the cliff also opens when
+  tapped -- see "The Qumatuomi map below the cliff") and "Return to the Lab".
 
 The same three steps carry the other thing a player walks up to, a guardian they have already
 met, in three more methods:
@@ -2189,46 +2204,65 @@ one value rather than two reads of the registry.
 
 **The Qumatuomi map below the cliff.** World 10 has no next world, so once its rival is beaten
 its road stops: `OverworldScene.endsAtCliff()` is the one predicate for that state, and it feeds
-three places. `overlookView()` turns it into the screen y of the cliff lip (the near edge of the
-goal row, which is the last row any generator paints) plus that lip's own depth and lane, so the
-land below can be projected against the world rather than pinned to the frame, carried on
-`AtmosphereView.overlook`;
+three places. `overlookView()` turns it into the cliff lip -- the far edge of the goal row, which
+is the last row the terrain sweep draws -- as a depth from the camera, the screen y that projects
+to, and the goal column's lane, carried on `AtmosphereView.overlook`;
 `terrain/paint.ts`'s `drawMarginRows` returns immediately on it, so nothing is drawn past the
 edge; and `terrain/plan.ts` skips `depthContinuedWalkable` on it, so the far edge row wears its
 own boundary curve, contact shadow and rim light instead of being smoothed into a road that
-continues. `sky.ts`'s `drawOverlook` then fills the gap it all leaves, with `art/qumatuomiMap.ts`'s
-`drawQumatuomiOverlook` for the land and its own graded shade for the drop under the lip.
+continues.
 
-It is drawn *after* the horizon band rather than under it. The band's job is to wash out the
-deepest rows of a road running on to the horizon, and the land past a cliff lies in exactly that
-stretch of the frame -- under the band it is simply erased, and from a few rows back the world
-would end in a flat line with nothing beyond it. Its own veil is the atmosphere it answers to,
-graded across the land so the far coast dissolves and the near one does not.
+**It is a layer of its own, under the terrain.** `OverworldScene.overlookGfx` is a Graphics
+created between `drawSky`'s backdrop and `worldGfx` (in World 10 only), and
+`drawOverlookLayer(view)` paints it with `sky.ts`'s `drawOverlook(g, view)` right after
+`drawTerrain`. Nothing in it is clipped to the lip: the ground rows in `worldGfx` cover whatever
+of it they are in front of, and `drawDepthHaze`, which closes the terrain layer, washes it with
+the same air as everything else. The layer is redrawn only when `camPos` has changed since the
+last draw (`overlookDrawnAt`), since nothing in it moves by itself.
 
-`overlookPlacement`/`toOverlook` are deliberately *not* a tilt: one uniform scale for both axes
-times a mild `OVERLOOK_SQUASH`, which is what keeps the coastline the same shape as
-`buildQumatuomiMap`'s, in the same land colours. Recognition is the whole point of the view
-(WORLDS.md section 4), so it outranks perspective; depth is carried by the veil and the drop
-instead.
+**The land lies on a lower plane.** `projection.ts`'s `projectBelow(lane, depth, drop)` is
+`projectTile` for a horizontal plane `drop` tiles under the ground: same x and scale, the distance
+below the horizon line multiplied by `1 + drop / CAMERA_HEIGHT_TILES` (the camera height the
+projection's own constants imply). `drawOverlook` paints that plane from the horizon line down to
+the lip, rules the graticule across it (parallels walked outward from the land's near coast until
+they close up, meridians run to the vanishing point), and hands `drawQumatuomiOverlook` a `row(ny,
+nz)` callback: the screen row a native map row lands on, at height `nz` native px above the plane,
+as `{ y, x0, sx }` -- a row of the map is a line of constant depth, so it projects to a horizontal
+run at one scale. `OVERLOOK_DROP_TILES`, `OVERLOOK_NEAR_TILES` and `OVERLOOK_TILES_PER_NATIVE`
+place it; the drop is what makes the land slide against the lip as the camera moves, so the lip
+hides it from back along the road and uncovers it on the walk up. The land is skipped altogether
+while the lip still hides its far coast.
 
-**The land is anchored to the world, not to the frame.** Its near and far coasts sit at fixed
-ground rows past the lip (`OVERLOOK_NEAR_TILES`/`OVERLOOK_FAR_TILES`) projected through
-`projectTile`, and it is centred on the goal column's own lane -- so walking toward the edge
-brings it up the way ground does, strafing slides it exactly as far as the ground slides, and
-standing still leaves it still. It is a country lying there, which is the whole claim of the
-view: from where The Adapted stood, this is what it was learning from.
-
-**The regions are drawn, the interface is not.** The land carries the same per-world terrain
-paint and texture marks the panel build draws, resolved once module-wide and consumed by both
-through `paintRegions`/`drawRegionTextures`, with the overlook passing a tint hook that lifts
-each colour toward the record's own light and drowns it into the live fog. What stays out is
-everything that is interface rather than country: no markers, no labels, and no discovery
-shroud, since a shroud is a state of the player's knowledge rather than a fact about the land.
+**`art/qumatuomiMap.ts`'s `drawQumatuomiOverlook`** builds the slab from that callback and nothing
+else: the glow in the plane (the base outline swept down `OVERLOOK_GLOW_REACH` in layers), the wall
+(one quad per coastline edge between the base and the top face `OVERLOOK_RELIEF` above it; every
+edge is drawn and the top face then covers the far-side ones), the top face, the ten regions (the
+panel build's own `regionRuns`, each run a trapezoid between two cached rows), the skerries as
+ellipses, the texture marks (`drawRegionTextures` with its per-mark `markAt` hook supplying each
+mark's scale and ink), the coastline and the route trace. Every colour goes through
+`overlookDrown(ny)` into the live fog target by its row's distance. No discovery shroud: a shroud
+is a state of the player's knowledge rather than a fact about the land. It returns the top face's
+outline in screen px.
 
 The route trace is a polyline through `WORLD_POSITIONS` for the worlds in `AtmosphereView.route`
 -- `getVisitedWorlds()`, which is append-ordered, so it is the order the player actually walked
-them -- projected through the same placement. It is drawn over the landmass and nothing else; no
-marker sits at either end, because a marker is an affordance and this is a record.
+them -- sampled along each leg and stroked segment by segment (`strokeReceding`) so it thins and
+dims with the land under it.
+
+**Taking hold of it.** `drawOverlook` returns the convex hull of the coast above the lip
+(`clipAbove`, `convexHull`), and `drawOverlookLayer` keeps the polygon hit area of
+`OverworldScene.overlookZone` on it -- a screen-sized Zone at `OVERLOOK_ZONE_DEPTH`, under every
+prompt and panel in the input order. `updateOverlookZone()` enables it only while the pass prompt
+would show at the cliff (`gateAtPlayer() === 'forward'`, no dialogue, not mid-step), so the land
+is clickable exactly where the prompt is offered. Its `pointerdown` and the finale panel's "Study
+the map" button both end in `showOverlookPanel` (`scenes/panels/overlook.ts`): a list+detail panel
+over `buildQumatuomiMap`, whose one commit, `resetRival`, deletes that world's `rivalDefeated`
+entry and persists. No other state is touched, so everything that reads `rivalDefeated` -- the
+rival standing in the pass, the shut goal row, the Story station's pass chapter, the Lab door's
+frontier (`HubScene.highestUnlockedWorld`) -- sees that world as not yet beaten. Resetting the
+rival of the world the panel is open in (only ever World 10's) leaves through
+`advanceToWorld(world, 'goal')`, which rebuilds the scene with the rival standing and the player
+at the pass mouth; any other world re-renders the panel in place.
 
 **The star network (`art/stars.ts`).** Worlds 7-10 share one sky that assembles a network across
 them (WORLDS.md section 1's "The stars"). `drawStarNetwork` is called from `drawDepthHaze` (and from `BattleScene.drawRealisticBackdrop`, for the arena's sky at the same stage, frozen at `R_FROZEN_NOW`)

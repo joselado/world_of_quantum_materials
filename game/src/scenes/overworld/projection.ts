@@ -1,4 +1,4 @@
-import { project, LANE_PX, CANVAS_W, ProjectedPoint } from '../../art/perspective';
+import { project, LANE_PX, CANVAS_W, CANVAS_H, HORIZON_Y, ProjectedPoint } from '../../art/perspective';
 import { BASE_GRID_H, BASE_GRID_W } from '../../data/settings';
 
 // Grid is deliberately fine-grained (many small tiles) rather than few large
@@ -65,6 +65,26 @@ export const CAMERA_BACK_TILES = 0.7;
 // itself on top of this.
 export function projectTile(lane: number, depth: number): ProjectedPoint {
   return project(lane * TILE_SCALE, (depth + CAMERA_BACK_TILES) * TILE_SCALE);
+}
+
+// How high the camera stands over the ground plane, in tile-lengths. Not a
+// setting: it is what the projection already implies. A pinhole camera puts a
+// point `X` to the side and `H` below it at `f*X/Z` and `f*H/Z` on screen, and
+// `project` draws one world unit of lane at `LANE_PX * scale` and the ground
+// itself at `(CANVAS_H - HORIZON_Y) * scale`, so `H` is the ratio of the two.
+const CAMERA_HEIGHT_TILES = (CANVAS_H - HORIZON_Y) / (LANE_PX * TILE_SCALE);
+
+// A point on a horizontal plane lying `drop` tiles below the ground plane (a
+// negative `drop` lies above it), seen by the same camera. Lane and depth mean
+// what they mean in projectTile; only the height differs, which moves the
+// point down the screen by the ratio of the two heights under the camera and
+// leaves its x and its scale alone. That is what makes something drawn through
+// here lie *below* the ground rather than further along it: it slides against
+// the ground as the camera moves, slower the deeper it lies, and the nearer
+// ground can stand in front of it.
+export function projectBelow(lane: number, depth: number, drop: number): ProjectedPoint {
+  const p = projectTile(lane, depth);
+  return { x: p.x, y: HORIZON_Y + (p.y - HORIZON_Y) * (1 + drop / CAMERA_HEIGHT_TILES), scale: p.scale };
 }
 
 // How far off-center the ground has to be painted, in tile-widths, for the

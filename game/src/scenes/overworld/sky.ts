@@ -4,10 +4,11 @@ import { BIOMES, getBiome } from '../../art/biomes';
 import type { Biome } from '../../art/biomes';
 import { HORIZON_Y, CANVAS_W, CANVAS_H, LANE_PX } from '../../art/perspective';
 import { DISTANT_SELVES, MAX_CREST, OVERHEAD_SKIES } from '../../art/horizons';
-import { drawQumatuomiOverlook } from '../../art/qumatuomiMap';
+import { drawQumatuomiOverlook, QUMATUOMI_NATIVE_H, QUMATUOMI_NATIVE_W } from '../../art/qumatuomiMap';
+import type { OverlookRow } from '../../art/qumatuomiMap';
 import { drawStarNetwork } from '../../art/stars';
 import type { HorizonPoint } from '../../art/horizons';
-import { DRAW_DISTANCE_TILES, TILE_SCALE, projectTile } from './projection';
+import { DRAW_DISTANCE_TILES, TILE_SCALE, laneClipAt, projectBelow, projectTile } from './projection';
 import { FOG_CLOSE, groundColor } from './terrain/color';
 
 // Where drawHorizonBand starts thickening the per-tile fog into pure
@@ -139,14 +140,12 @@ export interface AtmosphereView extends HazeView {
   route: number[];
   // Set only where the world ends at a cliff rather than running on: the
   // Devouring Mirror, once The Adapted has fallen. `lipDepth` is the edge's own
-  // depth from the camera in tiles and `lipY` the screen y that projects to, so
-  // the drop and the map below it fill exactly the gap between the last ground
-  // drawn and the horizon -- a gap that opens up as the player walks toward the
-  // edge, which is what makes the view something they walk out to rather than
-  // something that is simply on screen. `lane` is the country's own axis as a
-  // lane offset from the camera, which is what the land below is centred on:
-  // measured from the camera rather than the frame, it holds still against the
-  // ground when the player walks along the edge instead of sliding with them.
+  // depth from the camera in tiles and `lipY` the screen y that projects to:
+  // the far edge of the last row of ground, past which there is only the drop.
+  // `lane` is the goal column as a lane offset from the camera, which is the
+  // axis the land below is centred on: measured from the camera rather than the
+  // frame, it holds still against the ground when the player walks along the
+  // edge instead of sliding with them.
   overlook: { lipY: number; lipDepth: number; lane: number } | null;
 }
 
@@ -308,16 +307,6 @@ export function drawDepthHaze(g: Phaser.GameObjects.Graphics, view: AtmosphereVi
   // stops climbing is itself an edge -- the same rectangle read this pass
   // exists to remove, moved up the sky.
   fillVerticalFade(g, tone, mistTop, mist, (t) => smoothstep(Math.min(1, (t * mist) / SKY_BLEND_H)));
-  // After the horizon band rather than under it, and hazed by its own depth
-  // grade instead. The band's job is to wash out the deepest rows of a road
-  // running on to the horizon; the land past a cliff edge lies in exactly
-  // that stretch of the frame, so under the band it is simply erased, and
-  // from a few rows back the world would end in a flat line with nothing
-  // beyond it. Its own veil (art/qumatuomiMap.ts) is the atmosphere it
-  // answers to -- graded across the land so the far coast dissolves and the
-  // near one does not, which is the same thing the band would have done had
-  // it been able to do it in depth rather than in screen rows.
-  drawOverlook(g, view, target);
   // Under the distant self, never over it: what is visible through a gap in
   // the land cannot pass in front of the ridge behind the gap.
   drawPassAperture(g, view, target);
@@ -327,67 +316,161 @@ export function drawDepthHaze(g: Phaser.GameObjects.Graphics, view: AtmosphereVi
   OVERHEAD_SKIES[view.world]?.({ g, horizonY: HORIZON_Y, target, now: view.now, route: view.route, world: view.world });
 }
 
-// How dark the face of the cliff runs directly under the lip, and over how
-// many pixels it gives way to the land below. A drop is read from its own
-// shadow: the ground the player is standing on has to visibly stop having
-// anything under it, or the map beyond simply looks like more of the road.
+// What lies past the edge of a world that ends at one (WORLDS.md section 4's
+// "The Qumatuomi map below"): a plane far below the cliff, and the country
+// standing on it. Painted into a layer of its own *under* the terrain, so the
+// cliff the player stands on is in front of it exactly the way it is in front
+// of anything else lower than itself -- nothing here is clipped to the lip, the
+// ground simply covers it -- and the atmosphere pass the terrain layer ends
+// with (drawDepthHaze) hazes it with the same air as everything else.
+
+// How far below the ground plane that plane lies, in tiles. This is what makes
+// the land a place rather than a backdrop. Something this far down moves
+// against the cliff edge as the camera moves, and much more slowly than the
+// edge does: from back along the road the lip hides the country altogether,
+// its far coast rises over the lip on the walk up, and at the edge the whole
+// of it lies open with a strip of the plane between it and the rock.
+const OVERLOOK_DROP_TILES = 8;
+// Where the land lies on that plane and how big it is: its near coast this
+// many tiles past the lip, and this many tiles of ground per native map px.
+// Together with the drop they are set so that from the edge the near coast
+// clears the lip with room for the wall and its reflection under it, and the
+// country fills most of the width of the frame.
+const OVERLOOK_NEAR_TILES = 10.3;
+const OVERLOOK_TILES_PER_NATIVE = 0.135;
+// The plane itself: the fog colour where it meets the horizon, running down to
+// something much deeper under the cliff, where the sightline goes steeply down
+// into it instead of along it.
+const OVERLOOK_DEEP = 0x07040f;
+const OVERLOOK_DEEP_MIX = 0.72;
+// The graticule ruled across the plane: lines of constant depth and constant
+// lane, a fixed number of tiles apart and tied to the land's own position. A
+// bare plane of one colour has no distance in it; lines that converge on the
+// vanishing point and close up toward the horizon are what say it is a floor,
+// how far down it is, and that the land is standing on it.
+const OVERLOOK_GRID_TILES = 4;
+const OVERLOOK_GRID_COLOR = 0xb9a8f0;
+const OVERLOOK_GRID_ALPHA = 0.13;
+// Closer together than this on screen and the parallels stop being lines and
+// become a tone, so they fade out over the last few px before it.
+const OVERLOOK_GRID_MIN_PX = 3;
+// How dark the plane runs directly beyond the lip, and over how many pixels.
+// The ground the player is standing on has to visibly stop having anything
+// under it, or what is beyond simply looks like more of the road.
 const DROP_SHADE = 0x000000;
-const DROP_ALPHA = 0.42;
-// Sized against the gap it falls into rather than fixed, so the shade under
-// the lip never grows to swallow the land it is supposed to be in front of.
-const DROP_FRACTION = 0.16;
-const DROP_MAX_H = 26;
+const DROP_ALPHA = 0.5;
+const DROP_FRACTION = 0.2;
+const DROP_MAX_H = 46;
 
-// Where the land below actually lies, in tiles past the cliff lip: its near
-// (south) coast and its far (north) one. The map is placed by these two ground
-// rows and nothing else, which is what makes it a country lying at a fixed
-// distance rather than a backdrop -- walking toward the edge brings it up and
-// opens it out exactly as much as ground at that distance opens out, and
-// standing still leaves it standing still. The near offset is the stretch of
-// ground directly under a cliff that a standing figure cannot see, and the two
-// together also bound how wide the land can ever draw: the coastline is scaled
-// uniformly off the gap between them, so the country's own proportions turn a
-// depth budget into a width.
-const OVERLOOK_NEAR_TILES = 1.8;
-const OVERLOOK_FAR_TILES = 24;
-
-// What lies past the edge of a world that ends at one: the drop under the
-// lip, and the Qumatuomi map lying on the ground far below it (art/
-// qumatuomiMap.ts's drawQumatuomiOverlook, WORLDS.md section 4). Everything
-// between the horizon line and the lip belongs to this pass -- the terrain
-// sweep draws nothing past a cliff (terrain/paint.ts's drawMarginRows), so
-// this is what fills the gap it leaves.
-function drawOverlook(g: Phaser.GameObjects.Graphics, view: AtmosphereView, target: number) {
-  if (!view.overlook) return;
+/**
+ * Paints the plane below the cliff and the land on it, and returns the outline
+ * a tap on the land is tested against, in screen px: the hull of its coast as
+ * far as the cliff leaves it in view, so a tap in a bay counts as a tap on the
+ * country around it. Null while none of the land is in view.
+ */
+export function drawOverlook(g: Phaser.GameObjects.Graphics, view: AtmosphereView): { x: number; y: number }[] | null {
+  if (!view.overlook) return null;
   const { lipY, lipDepth, lane } = view.overlook;
-  if (lipY <= HORIZON_Y) return;
+  if (lipY <= HORIZON_Y) return null;
+  const target = hazeTarget(view, view.biome);
 
-  // The land's two coasts are two ground rows, projected the same way every
-  // tile in the world is; its middle row is what it is centred on sideways.
-  // Depth alone decides the screen y, so both edges are read at the country's
-  // own lane without that changing where they sit vertically.
-  drawQumatuomiOverlook(g, {
-    cx: projectTile(lane, lipDepth + (OVERLOOK_NEAR_TILES + OVERLOOK_FAR_TILES) / 2).x,
-    top: projectTile(lane, lipDepth + OVERLOOK_FAR_TILES).y,
-    bottom: projectTile(lane, lipDepth + OVERLOOK_NEAR_TILES).y,
-    target,
-    now: view.now,
-    route: view.route,
-  });
-
-  // The shadow under the lip, painted last of the three so it sits over the
-  // land's near edge: what is directly below a cliff is in the cliff's own
-  // shade, and the deepest part of it is right against the rock. Abutting
-  // rows, so no two share a scanline and double-blend.
-  const dropH = Math.min(DROP_MAX_H, (lipY - HORIZON_Y) * DROP_FRACTION);
-  const rows = 16;
-  for (let i = 0; i < rows; i++) {
-    const t = i / rows;
-    const y = lipY - dropH + t * dropH;
-    if (y < HORIZON_Y) continue;
-    g.fillStyle(DROP_SHADE, DROP_ALPHA * Math.pow(t, 1.6));
-    g.fillRect(0, y, CANVAS_W, dropH / rows + 1);
+  // The plane, from the horizon line down to the lip (and a little under it,
+  // where the terrain layer covers the join). Abutting bands, each one colour.
+  const span = CANVAS_H - HORIZON_Y;
+  const bandH = 3;
+  for (let y = HORIZON_Y; y < lipY + bandH; y += bandH) {
+    const t = Math.min(1, (y - HORIZON_Y) / span);
+    g.fillStyle(blend(target, OVERLOOK_DEEP, OVERLOOK_DEEP_MIX * Math.pow(t, 0.75)), 1);
+    g.fillRect(0, y, CANVAS_W, bandH);
   }
+
+  // Parallels: rows of the plane a fixed number of tiles apart, counted from
+  // the land's own near coast so the land sits on the grid rather than across
+  // it. Walked outward until they close up.
+  const grid = blend(target, OVERLOOK_GRID_COLOR, 0.7);
+  const nearCoast = lipDepth + OVERLOOK_NEAR_TILES;
+  const parallelY = (k: number) => projectBelow(0, nearCoast + k * OVERLOOK_GRID_TILES, OVERLOOK_DROP_TILES).y;
+  for (let k = -Math.floor(OVERLOOK_NEAR_TILES / OVERLOOK_GRID_TILES); k < 80; k++) {
+    const y = parallelY(k);
+    const gap = y - parallelY(k + 1);
+    if (gap < OVERLOOK_GRID_MIN_PX) break;
+    if (y > lipY) continue;
+    g.lineStyle(1, grid, OVERLOOK_GRID_ALPHA * Math.min(1, (gap - OVERLOOK_GRID_MIN_PX) / 14));
+    g.lineBetween(0, y, CANVAS_W, y);
+  }
+  // Meridians: lines of constant lane, which on a plane all run to the
+  // vanishing point. Counted from the land's own axis, for the same reason.
+  const reach = Math.ceil(laneClipAt(DRAW_DISTANCE_TILES * 4) / OVERLOOK_GRID_TILES);
+  const first = Math.round(-lane / OVERLOOK_GRID_TILES);
+  g.lineStyle(1, grid, OVERLOOK_GRID_ALPHA * 0.8);
+  for (let m = first - reach; m <= first + reach; m++) {
+    const l = lane + m * OVERLOOK_GRID_TILES;
+    const far = projectBelow(l, lipDepth + DRAW_DISTANCE_TILES * 12, OVERLOOK_DROP_TILES);
+    const near = projectBelow(l, lipDepth + OVERLOOK_NEAR_TILES * 0.5, OVERLOOK_DROP_TILES);
+    g.lineBetween(far.x, far.y, near.x, near.y);
+  }
+
+  // The land: each of its rows is a row of the plane (raised by the land's own
+  // relief), at the depth its place on the map puts it and centred on the goal
+  // column's lane.
+  const s = OVERLOOK_TILES_PER_NATIVE;
+  const row = (ny: number, nz: number): OverlookRow => {
+    const p = projectBelow(lane, nearCoast + (QUMATUOMI_NATIVE_H - ny) * s, OVERLOOK_DROP_TILES - nz * s);
+    const sx = s * TILE_SCALE * LANE_PX * p.scale;
+    return { y: p.y, x0: p.x - (QUMATUOMI_NATIVE_W / 2) * sx, sx };
+  };
+  // Skipped while the lip still hides its far coast: nothing of it is in view.
+  const inView = row(0, 0).y < lipY;
+  const coast = inView ? drawQumatuomiOverlook(g, { row, target, route: view.route }) : null;
+
+  // The dark under the lip, over the plane and whatever of the land reaches
+  // that far: what is nearest the foot of a cliff is deepest in its shade.
+  // Abutting rows, so no two share a scanline and double-blend.
+  const dropH = Math.min(DROP_MAX_H, (lipY - HORIZON_Y) * DROP_FRACTION);
+  const rows = Math.max(4, Math.round(dropH / 2));
+  for (let i = 0; i < rows; i++) {
+    const y0 = Math.round(lipY - dropH + (i / rows) * dropH);
+    const y1 = Math.round(lipY - dropH + ((i + 1) / rows) * dropH);
+    if (y1 <= y0 || y0 < HORIZON_Y) continue;
+    g.fillStyle(DROP_SHADE, DROP_ALPHA * Math.pow((i + 1) / rows, 1.8));
+    g.fillRect(0, y0, CANVAS_W, y1 - y0);
+  }
+
+  const seen = coast ? clipAbove(coast, lipY) : null;
+  return seen ? convexHull(seen) : null;
+}
+
+// Andrew's monotone chain.
+function convexHull(pts: { x: number; y: number }[]): { x: number; y: number }[] {
+  const sorted = [...pts].sort((a, b) => a.x - b.x || a.y - b.y);
+  const turn = (o: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }) =>
+    (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const half = (list: { x: number; y: number }[]) => {
+    const out: { x: number; y: number }[] = [];
+    for (const p of list) {
+      while (out.length >= 2 && turn(out[out.length - 2], out[out.length - 1], p) <= 0) out.pop();
+      out.push(p);
+    }
+    out.pop();
+    return out;
+  };
+  return half(sorted).concat(half(sorted.reverse()));
+}
+
+// The part of a closed outline that lies above screen row `maxY`: what is left
+// of the coast once the cliff in front of it has cut the rest off. One pass of
+// Sutherland-Hodgman against a single horizontal edge.
+function clipAbove(pts: { x: number; y: number }[], maxY: number): { x: number; y: number }[] | null {
+  const out: { x: number; y: number }[] = [];
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i];
+    const b = pts[(i + 1) % pts.length];
+    const aIn = a.y <= maxY;
+    const bIn = b.y <= maxY;
+    if (aIn) out.push({ x: a.x, y: a.y });
+    if (aIn !== bIn) out.push({ x: a.x + ((b.x - a.x) * (maxY - a.y)) / (b.y - a.y), y: maxY });
+  }
+  return out.length >= 3 ? out : null;
 }
 
 // How far above the horizon line an open pass reaches, and the depth its

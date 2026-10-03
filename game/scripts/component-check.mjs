@@ -1174,6 +1174,114 @@ async function main() {
     };
   }
 
+  // The land below World 10's cliff, and the menu it opens. The world is
+  // entered once so a bare registry seeds itself (OverworldScene.create's own
+  // fallback, which would otherwise wipe a preset `rivalDefeated`), then every
+  // rival is preset beaten and the world is entered again, so the scene under
+  // test is created already ending at its cliff -- the state a player returns
+  // to after the finale -- rather than having the edge appear under a
+  // standing scene. Walks both ways into the menu (the finale's own button,
+  // and a tap on the land itself), resets a rival in another world and checks
+  // only that entry of `rivalDefeated` went, then resets The Adapted from its
+  // own cliff and checks the world came back with it standing in the pass.
+  async function testOverlookReset() {
+    await resetRegistryOnly();
+    await jumpToScene('Overworld', { world: 10, regenerate: true });
+    if (!(await waitOverworldActive(10))) return { pass: false, detail: 'world 10: Overworld never active' };
+    const first = await resolveOverworldDialogue(15);
+    if (!first.cleared) return { pass: false, detail: `world 10: entry sequence never cleared (${first.reason})` };
+    await page.evaluate(() => {
+      const all = {};
+      for (let w = 1; w <= 10; w++) all[w] = true;
+      window.__game.registry.set('rivalDefeated', all);
+      window.__game.registry.set('visitedWorlds', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    });
+    await jumpToScene('Overworld', { world: 10, regenerate: true });
+    if (!(await waitOverworldActive(10))) return { pass: false, detail: 'world 10: Overworld never active on re-entry' };
+    const entry = await resolveOverworldDialogue(15);
+    if (!entry.cleared) return { pass: false, detail: `world 10: re-entry sequence never cleared (${entry.reason})` };
+
+    const at = await standAtPassMouth();
+    if (!at.prompt || !at.prompt.includes('look out over the worlds')) {
+      return { pass: false, detail: `cliff prompt read ${JSON.stringify(at.prompt)}` };
+    }
+    const fail = async (tag, detail) => {
+      await page.screenshot({ path: `${SHOT_DIR}/fail-overlook-${tag}.png` });
+      return { pass: false, detail };
+    };
+    const defeated = () => page.evaluate(() => ({ ...(window.__game.registry.get('rivalDefeated') || {}) }));
+
+    // Way in #1: the finale panel's own button.
+    await pressAtPass();
+    const study = await clickText(['Study the map']);
+    if (!study.clicked) return fail('finale', `finale panel did not offer 'Study the map'. available=${JSON.stringify(study.available)}`);
+    await sleep(350);
+    const row = await clickText(['The Mean Fields']);
+    if (!row.clicked) return fail('menu', `map menu did not list World 1. available=${JSON.stringify(row.available)}`);
+    await sleep(200);
+    const reset1 = await clickText(['Reset this rival']);
+    if (!reset1.clicked) return fail('reset1', `map menu offered no reset for a beaten rival. available=${JSON.stringify(reset1.available)}`);
+    await sleep(350);
+    const after1 = await defeated();
+    if (after1[1] || !after1[2] || !after1[10]) return fail('reset1-state', `resetting World 1 left rivalDefeated=${JSON.stringify(after1)}`);
+    const again = await clickText(['Reset this rival']);
+    if (again.clicked) return fail('reset1-again', 'a rival that already stands was still offered a reset');
+    const back = await clickText(['Step back']);
+    await sleep(350);
+    if (!back.clicked || (await readOverworldDialogueActive())) return fail('stepback', 'map menu did not close on Step back');
+
+    // Way in #2: the land itself, live only at the edge.
+    const tap = await page.evaluate(() => {
+      const s = window.__game.scene.getScene('Overworld');
+      s['updateOverlookZone']();
+      const zone = s['overlookZone'];
+      const live = !!zone && zone.input.enabled && zone.input.hitArea.points.length >= 3;
+      if (live) zone.emit('pointerdown');
+      return { live, open: !!s['dialogueActive'] };
+    });
+    if (!tap.live || !tap.open) return fail('tap', `tapping the land at the edge did not open the map menu (${JSON.stringify(tap)})`);
+    await sleep(350);
+
+    // Resetting The Adapted from its own cliff re-enters the world with it
+    // standing. Matched on a prefix, since the list column trims a long world
+    // name to fit; its row is on a later page at the largest text-size preset.
+    const MIRROR_ROW = 'The Devour';
+    let mirror = await clickText([MIRROR_ROW]);
+    if (!mirror.clicked) {
+      await clickText(['Next ->']);
+      await sleep(350);
+      mirror = await clickText([MIRROR_ROW]);
+    }
+    if (!mirror.clicked) return fail('w10-row', `map menu did not list World 10. available=${JSON.stringify(mirror.available)}`);
+    await sleep(200);
+    const reset10 = await clickText(['Reset this rival']);
+    if (!reset10.clicked) return fail('reset10', `no reset offered for The Adapted. available=${JSON.stringify(reset10.available)}`);
+    await sleep(900);
+    if (!(await waitOverworldActive(10))) return fail('reenter', 'world 10 did not come back after resetting The Adapted');
+    const reentry = await resolveOverworldDialogue(15);
+    if (!reentry.cleared) return fail('reenter-dialogue', `world 10 re-entry got stuck (${reentry.reason})`);
+    const end = await page.evaluate(() => {
+      const s = window.__game.scene.getScene('Overworld');
+      s['updateGatePrompt']();
+      s['updateOverlookZone']();
+      return {
+        defeated: { ...(window.__game.registry.get('rivalDefeated') || {}) },
+        boss: s['bossSprites'].length,
+        prompt: s['gatePrompt'].visible ? s['gatePrompt'].text : null,
+        zoneLive: !!s['overlookZone'] && s['overlookZone'].input.enabled,
+        player: s['playerTile'],
+        goal: s['goalTile'],
+      };
+    });
+    if (end.defeated[10] || end.boss !== 1 || !end.prompt || !end.prompt.includes('challenge') || end.zoneLive) {
+      return fail('w10-state', `after resetting The Adapted: ${JSON.stringify(end)}`);
+    }
+    return {
+      pass: true,
+      detail: `finale -> Study the map -> reset World 1 (rivalDefeated[1] cleared, others kept); land tap reopens the menu; resetting The Adapted re-entered world 10 with it standing ("${end.prompt}")`,
+    };
+  }
+
   // At least one rival fight actually fought to a real WON outcome (every
   // other rival-gate test either loses honestly or pre-sets rivalDefeated
   // rather than winning it) -- boosts the player's own defense stat well
@@ -1680,6 +1788,9 @@ async function main() {
   log('=== Test 4b: rival gate round-trip -- win path, preset rivalDefeated (world 5 mid, world 10 finale) ===');
   await runTest('rival gate (win path) w5 -> story beat -> world 6', () => testRivalGateWinPath(5));
   await runTest('rival gate (win path) w10 -> finale panel -> Hub', () => testRivalGateWinPath(10));
+
+  log('=== Test 4b2: the map below the cliff -- finale -> map menu -> reset a rival, land tap, resetting The Adapted ===');
+  await runTest('overlook map: reset rivals', () => testOverlookReset());
 
   log('=== Test 4c: rival gate round-trip -- actually WON battle (world 3, boosted defense) ===');
   await runTest('rival gate (actual win) w3', () => testRivalGateActualWin(3));
