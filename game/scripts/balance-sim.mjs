@@ -414,7 +414,7 @@ const WORLD_RIVALS = Object.fromEntries(
   Object.entries(WORLD_RIVALS_RAW).map(([world, val]) => [Number(world), materialFromEvaluated(val)])
 );
 
-// Kondo's three self-buff moves and Noether's shop list are computed in
+// Kondo's self-buff moves and Noether's shop list are computed in
 // materials.ts (`Object.values(MOVES).filter(...)`), not literal arrays --
 // re-derive them from the already-parsed MOVES table the same way, rather
 // than trying to AST-parse a filter expression.

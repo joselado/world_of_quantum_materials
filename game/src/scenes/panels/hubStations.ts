@@ -23,19 +23,24 @@ import {
   renderListColumnFooter,
   renderMoveDetailHeader,
   renderSelfBuffMoveDetailHeader,
+  renderPassiveDetailHeader,
   destroyPanel,
 } from './listDetail';
 import { ANALYTIC_SHAPES, ULTIMATE_SHAPES } from '../../art/attackEffects';
 import { stopMoveEffectPreview } from '../../art/moveEffectPreview';
 import { killTweensDeep } from '../../art/crystals';
+import { makeSlotPips, slotMeterStates, slotPipRadius, slotPipsWidth } from '../../art/slotIcons';
+import type { SlotPipState } from '../../art/slotIcons';
 import { MOVE_CLASS_LORE } from '../../data/moveLore';
 import {
   PASSIVES,
+  PASSIVE_MAX_SLOTS,
   PASSIVE_OWNERS,
   PASSIVE_OWNER_LABELS,
   BUILT_IN_PASSIVES,
   activePassiveIds,
   builtInPassiveIds,
+  passiveName,
   passiveSlotCount,
   passiveSlotsUsed,
 } from '../../data/passives';
@@ -389,120 +394,248 @@ function showInfoPanel(scene: HubScene, title: string, body: string) {
   container.addAt(panel, 0);
 }
 
-// The "checkable anytime" surface for every passive the player's crystal
-// currently runs (data/passives.ts, DESIGN.md §5): first the built-in ones
-// the current form carries by what it is ("Built in: Hybrid Aura", only
-// while the form is a hybrid -- a plain crystal shows no built-in block at
-// all rather than an empty one), then one name line per owner ("Franklin:
-// <active names> (N of M slots used)"), each followed by one description
-// line per passive, every line its own Text object with explicitly capped
-// font sizes rather than folding every full description into
-// showInfoPanel's single wrapped body, since that body's shrink-to-fit only
-// lowers font size and never truncates.
+// The Abilities station: every passive the player's crystal runs right now
+// (data/passives.ts, DESIGN.md §5), browsed one at a time in the same
+// list+detail layout (scenes/panels/listDetail.ts, STYLE.md's "List+detail
+// panels") the Moves station beside it uses. The rows are the built-in ones
+// the current form carries by what it is (a hybrid's Hybrid Aura) first,
+// then each owner's active passives in the order they were equipped; every
+// owner's row carries one filled diamond per slot that passive takes
+// (art/slotIcons.ts), and under the rows sits each owner's slot meter --
+// used slots filled, owned free ones open, unbought ones locked -- above
+// Close. The pane opens with the ability's own look on a stage
+// (renderPassiveDetailHeader): the player's crystal on its shadow wearing
+// that passive's halo (art/passiveHalos.ts, the halo BattleScene draws under
+// it in battle), or, for Hybrid Aura, just the hybrid crystal, whose own glow
+// is that aura's whole visual. Under it: the slots it takes, its
+// description, and where it is switched.
+//
+// A row click is a scoped update, the same as the Moves station's: only
+// `detailBlock`/`chromeBlock` re-render; a page flip rebuilds.
 export function showAbilitiesPanel(scene: HubScene) {
-  scene.dialogueContainer?.destroy(true);
+  destroyPanel(scene);
+  scene.dialogueActive = true;
 
-  const panelWidth = 560;
+  const panelWidth = LIST_DETAIL_PANEL_W;
   const top = 20;
   const container = scene.add.container(0, 0).setDepth(100);
   scene.dialogueContainer = container;
+
+  // Added first so everything below (divider, footer, panel background)
+  // renders beneath every row/button added to `container` afterward.
+  const chromeBlock = scene.add.container(0, 0);
+  container.add(chromeBlock);
 
   let y = top;
   const title = scene.add
     .text(CANVAS_W / 2, y, 'Your Abilities', { fontSize: fontPx(scene, 15), color: LAB_TITLE_COLOR, fontStyle: 'bold' })
     .setOrigin(0.5, 0);
   container.add(title);
-  y += title.height + 14;
+  y += title.height + 6;
 
-  const columns = labPanelColumns(panelWidth);
+  const hint = scene.add
+    .text(CANVAS_W / 2, y, 'Pick an ability to see it and read what it does.', {
+      fontSize: fontPx(scene, 11),
+      color: REFERENCE_BLUE_GREY_HEX,
+    })
+    .setOrigin(0.5, 0);
+  container.add(hint);
+  y += hint.height + 10;
 
-  const nameScale = Math.min(fontScale(scene), 1.3);
-  const namePx = `${Math.round(13 * nameScale)}px`;
-  const descScale = Math.min(fontScale(scene), 1.2);
-  const descPx = `${Math.round(10 * descScale)}px`;
+  const panelLeft = CANVAS_W / 2 - panelWidth / 2;
+  const columns = listDetailColumns(panelLeft);
+  const columnsTop = y;
 
-  // A name line plus one description line per id, the shape both the
-  // built-in block and every owner's block below are drawn in.
-  const addBlock = (headline: string, ids: string[], nameOf: (id: string) => string, descOf: (id: string) => string) => {
-    const nameLine = scene.add
-      .text(columns.contentCenterX, y, headline, {
-        fontSize: namePx,
-        color: '#ffffff',
-        fontStyle: 'bold',
-        align: 'center',
-        wordWrap: { width: columns.contentWrapW },
-      })
-      .setOrigin(0.5, 0);
-    container.add(nameLine);
-    y += nameLine.height + 3;
-    for (const id of ids) {
-      const descLine = scene.add
-        .text(columns.contentCenterX, y, `${nameOf(id)}: ${descOf(id)}`, {
-          fontSize: descPx,
-          color: REFERENCE_BLUE_GREY_HEX,
-          align: 'center',
-          wordWrap: { width: columns.contentWrapW },
-        })
-        .setOrigin(0.5, 0);
-      container.add(descLine);
-      y += descLine.height + 4;
-    }
-    y += 10;
+  // Read once per panel build and closed over, so nothing can shift the rows
+  // out from under a click. `?.`-style filtering drops a stale id left in an
+  // old save by a since-renamed passive, the same way BattleScene's
+  // passivePillText does.
+  const registry = scene.game.registry;
+  const material = getPlayerMaterial(registry);
+  const builtInIds = builtInPassiveIds(material);
+  const owners = PASSIVE_OWNERS.map((owner) => ({
+    owner,
+    activeIds: activePassiveIds(registry, owner).filter((id) => PASSIVES[id]),
+    slots: passiveSlotCount(registry, owner),
+  }));
+  const ids = [...builtInIds, ...owners.flatMap((o) => o.activeIds)];
+  let selected = ids.includes(scene.abilitiesSelectedId ?? '') ? (scene.abilitiesSelectedId as string) : ids[0] ?? null;
+
+  const pipR = slotPipRadius(fontScale(scene));
+  const meterPx = `${Math.round(11 * Math.min(fontScale(scene), 1.3))}px`;
+  const meterSample = scene.add.text(-1000, -1000, 'Slots', { fontSize: meterPx });
+  const meterH = Math.max(meterSample.height, 2 * pipR) + 4;
+  meterSample.destroy();
+  const metersH = owners.length * (meterH + 2);
+
+  const listResult = renderListColumn({
+    scene,
+    container,
+    x: columns.leftX,
+    y: columnsTop,
+    width: columns.leftColW,
+    items: ids,
+    idFor: (id) => id,
+    labelFor: (id) => passiveName(id) ?? id,
+    selectedId: selected,
+    page: scene.abilitiesPage,
+    emptyText: 'No abilities yet.',
+    onPageChange: (page) => {
+      scene.abilitiesPage = page;
+      destroyPanel(scene);
+      showAbilitiesPanel(scene);
+    },
+    onSelect: (id) => {
+      scene.abilitiesSelectedId = id;
+      selected = id;
+      listResult.setSelectedId(id);
+      renderDetail();
+    },
+    reserveBelow: metersH + 6,
+    badgeFor: (id) => {
+      const n = PASSIVES[id]?.slots ?? 0;
+      if (n === 0) return null;
+      return {
+        width: slotPipsWidth(n, pipR),
+        build: (cx, cy) => makeSlotPips(scene, Array(n).fill('filled'), pipR).setPosition(cx, cy),
+      };
+    },
+  });
+  scene.abilitiesPage = listResult.page;
+
+  const detailBlock = scene.add.container(0, 0);
+  container.add(detailBlock);
+
+  // A text with a group of slot diamonds beside it, the pair centered on
+  // `centerX` as one: each owner's meter under the list, and the selected
+  // passive's own "Takes" row in the pane. Returns the row's bottom.
+  const addPipRow = (
+    target: Phaser.GameObjects.Container,
+    centerX: number,
+    atY: number,
+    text: string,
+    states: SlotPipState[],
+    pipsFirst: boolean,
+    style: Phaser.Types.GameObjects.Text.TextStyle
+  ): number => {
+    const label = scene.add.text(0, 0, text, style).setOrigin(0, 0.5);
+    const pipsW = slotPipsWidth(states.length, pipR);
+    const gap = states.length > 0 ? 8 : 0;
+    const left = centerX - (pipsW + gap + label.width) / 2;
+    const rowH = Math.max(label.height, 2 * pipR) + 4;
+    const cy = atY + rowH / 2;
+    const pipsX = pipsFirst ? left + pipsW / 2 : left + label.width + gap + pipsW / 2;
+    label.setPosition(pipsFirst ? left + pipsW + gap : left, cy);
+    target.add(label);
+    if (states.length > 0) target.add(makeSlotPips(scene, states, pipR).setPosition(pipsX, cy));
+    return atY + rowH;
   };
 
-  // What the crystal is comes before what it learned: a hybrid form's
-  // Hybrid Aura, read off the current form the same way a battle reads it.
-  const builtInIds = builtInPassiveIds(getPlayerMaterial(scene.game.registry));
-  if (builtInIds.length > 0) {
-    addBlock(
-      `Built in: ${builtInIds.map((id) => BUILT_IN_PASSIVES[id].name).join(' · ')}`,
-      builtInIds,
-      (id) => BUILT_IN_PASSIVES[id].name,
-      (id) => BUILT_IN_PASSIVES[id].description
-    );
-  }
+  const renderDetail = () => {
+    // The pane draws a real crystal and a halo whose own tweens outlive a
+    // plain removeAll (listDetail.ts's destroyPanel comment).
+    killTweensDeep(scene, detailBlock);
+    detailBlock.removeAll(true);
+    chromeBlock.removeAll(true);
 
-  const loadout = PASSIVE_OWNERS.map((owner) => ({
-    guardian: PASSIVE_OWNER_LABELS[owner],
-    // `?.` guards a stale id left in an old save by a since-renamed passive,
-    // the same way BattleScene's passivePillText does.
-    activeIds: activePassiveIds(scene.game.registry, owner).filter((id) => PASSIVES[id]),
-    slots: passiveSlotCount(scene.game.registry, owner),
-  }));
-  loadout.forEach(({ guardian, activeIds, slots }) => {
-    const names = activeIds.length > 0 ? activeIds.map((id) => PASSIVES[id].name).join(' · ') : 'None equipped';
-    addBlock(
-      `${guardian}: ${names} (${passiveSlotsUsed(activeIds)} of ${slots} slots used)`,
-      activeIds,
-      (id) => PASSIVES[id].name,
-      (id) => PASSIVES[id].description
-    );
-  });
+    let rightY = columnsTop;
+    if (selected !== null) {
+      const passive = PASSIVES[selected];
+      const name = passiveName(selected) ?? selected;
+      rightY = renderPassiveDetailHeader(
+        scene,
+        detailBlock,
+        material,
+        name,
+        passive ? [selected] : [],
+        1,
+        columns.rightColCenterX,
+        rightY,
+        columns.rightColW
+      );
 
-  const footer = scene.add
-    .text(
-      columns.contentCenterX,
-      y,
-      `Switch which ones are active by revisiting ${PASSIVE_OWNERS.map((o) => PASSIVE_OWNER_LABELS[o]).join('/')}.`,
-      {
-        fontSize: fontPx(scene, 11),
-        color: REFERENCE_BLUE_GREY_HEX,
-        align: 'center',
-        wordWrap: { width: columns.contentWrapW },
+      const textScale = Math.min(fontScale(scene), 1.2);
+      if (passive) {
+        rightY = addPipRow(
+          detailBlock,
+          columns.rightColCenterX,
+          rightY,
+          `Takes ${passive.slots} ${passive.slots === 1 ? 'slot' : 'slots'}`,
+          Array(passive.slots).fill('filled'),
+          false,
+          { fontSize: `${Math.round(11 * textScale)}px`, color: GOLD_ACCENT_HEX }
+        );
+      } else {
+        const builtInLine = scene.add
+          .text(columns.rightColCenterX, rightY, 'Built into your form: takes no slot.', {
+            fontSize: `${Math.round(11 * textScale)}px`,
+            color: GOLD_ACCENT_HEX,
+            align: 'center',
+            wordWrap: { width: columns.rightColW },
+          })
+          .setOrigin(0.5, 0);
+        detailBlock.add(builtInLine);
+        rightY += builtInLine.height + 4;
       }
-    )
-    .setOrigin(0.5, 0);
-  container.add(footer);
-  y += footer.height + 18;
+      rightY += 4;
 
-  const closeBtn = scene.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => scene.closeDialogue(), 260);
-  y += closeBtn.height + 12;
+      const description = passive?.description ?? BUILT_IN_PASSIVES[selected]?.description ?? '';
+      const descText = scene.add
+        .text(columns.rightColCenterX, rightY, description, {
+          fontSize: `${Math.round(11 * textScale)}px`,
+          color: '#cfd8ff',
+          align: 'center',
+          wordWrap: { width: columns.rightColW },
+        })
+        .setOrigin(0.5, 0);
+      detailBlock.add(descText);
+      rightY += descText.height + 8;
 
-  const panelHeight = y - top;
-  const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
-    .setStrokeStyle(2, REFERENCE_BLUE_GREY);
-  container.addAt(panel, 0);
+      const whereText = scene.add
+        .text(
+          columns.rightColCenterX,
+          rightY,
+          passive
+            ? `Switch which ones are active by revisiting ${PASSIVE_OWNER_LABELS[passive.owner]}.`
+            : 'Carried for as long as you wear this form.',
+          {
+            fontSize: `${Math.round(10 * textScale)}px`,
+            color: REFERENCE_BLUE_GREY_HEX,
+            align: 'center',
+            wordWrap: { width: columns.rightColW },
+          }
+        )
+        .setOrigin(0.5, 0);
+      detailBlock.add(whereText);
+      rightY += whereText.height + 10;
+    }
+
+    // Each owner's slot meter, between the rows and Close.
+    let meterY = listResult.bottom + 6;
+    for (const { owner, activeIds, slots } of owners) {
+      meterY = addPipRow(
+        chromeBlock,
+        columns.leftX + columns.leftColW / 2,
+        meterY,
+        `${PASSIVE_OWNER_LABELS[owner]} slots`,
+        slotMeterStates(passiveSlotsUsed(activeIds), slots, PASSIVE_MAX_SLOTS),
+        false,
+        { fontSize: meterPx, color: REFERENCE_BLUE_GREY_HEX }
+      );
+      meterY += 2;
+    }
+
+    const leftBottom = renderListColumnFooter(scene, chromeBlock, columns, meterY + 4, 'Close', () => scene.closeDialogue());
+    const columnsBottom = Math.max(leftBottom, rightY);
+    insertColumnDivider(scene, chromeBlock, columns.dividerX, columnsTop, columnsBottom);
+
+    const panelHeight = columnsBottom + 14 - top;
+    const panel = scene.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
+      .setStrokeStyle(2, REFERENCE_BLUE_GREY);
+    chromeBlock.addAt(panel, 0);
+  };
+  renderDetail();
 }
 
 // List+detail layout (scenes/panels/listDetail.ts, STYLE.md's "List+detail

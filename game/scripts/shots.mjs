@@ -374,6 +374,10 @@ async function main() {
         g.registry.set('unlockedMoves', ['thermalFluctuation', 'magneticField', 'spinScreening', 'skyfallBeam', 'ultimateMeteor']);
         g.registry.set('kondoActiveMove', 'spinScreening');
         g.registry.set('passivesUnlocked', ['fractionalGuard', 'anyonEcho']);
+        // One slot bought, so the active passive has the room it is running in
+        // (Franklin's slot diamonds would otherwise show a passive using a slot
+        // the crystal does not own).
+        g.registry.set('passiveSlotsByOwner', { franklin: 1 });
         g.registry.set('activePassivesByOwner', { franklin: ['fractionalGuard'] });
         g.registry.set('ultimateClassesUnlocked', { ultimateMeteor: ['phonon'] });
         // Tuned, not left untuned: an untuned Analytic move plays no

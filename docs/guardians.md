@@ -121,8 +121,8 @@ physics blurb before deciding.
 
 Every hybrid also carries the built-in Hybrid Aura passive (see
 [Hybrids](hybrids.md#hybrid-aura)): 30% harder hits and 30% less damage
-taken, for as long as you wear the form, at no slot cost. It shows up at
-the Lab's Abilities station beside whatever you have learned from Franklin.
+taken, for as long as you wear the form, at no slot cost. It shows up in
+the Lab's Abilities station above whatever you have learned from Franklin.
 
 <img src="../screenshots/docs-guardians-majorana-panel.png" width="300" alt="Majorana's fusion panel: the hybrids currently reachable, one previewed as its two component crystals, the fused result and a 60-qumatessence cost">
 
@@ -164,7 +164,7 @@ base form (Double, Triple, and Infinite), each one a bigger boost (1.5x,
 then 2x, then 3x) and its own name prefix ("Electron Pulse" becomes
 "Double Electron Pulse," then "Triple Electron Pulse," then "Infinite
 Electron Pulse"). For an ordinary attack, that boost multiplies its power;
-for one of Kondo's three self-buffs, it strengthens the buff itself instead
+for one of Kondo's self-buffs, it strengthens the buff itself instead
 (see [Kondo's Clouds](#kondos-clouds) below). You can only attempt the next
 tier once you've already landed the one before it.
 
@@ -182,7 +182,7 @@ landed stays available as a free choice, so a move sitting at Triple can be
 swung at Triple, at Double, or at its uncorrected base, and you switch
 between them at Feynman's panel as often as you like. The tier you are
 carrying is the move's real level in every sense: its damage, its name
-prefix, the cascade it fires, and how hard one of Kondo's clouds screens.
+prefix, the cascade it fires, and how strong one of Kondo's clouds is.
 A tier you have just landed is the one you walk away carrying, so a move
 you never come back to behaves exactly as it always has.
 
@@ -197,10 +197,16 @@ real escalating cascade rather than just a stronger single hit.
 
 <img src="../screenshots/docs-guardians-kondo-avatar.png" width="300" alt="Kondo: a small local moment drawn as an arrow, sitting inside two counter-rotating screening shells">
 
-Sells three self-buff moves, cast on yourself rather than the opponent, dealing no
-damage. Each raises a cloud around you for a few turns, and a cloud screens
-one thing only: an incoming attack lands for half damage if its quasiparticle
-carries what the cloud screens, and lands in full if it does not.
+Sells five self-buff moves, cast on yourself rather than the opponent, dealing no
+damage. Each raises a cloud around you that works from the moment you cast it
+until your third turn after that, fading as you act. It always meets three of
+your opponent's turns: if you are faster, the swing right after your cast and
+the next two; if your opponent is faster and has already swung that round, the
+next three.
+
+Three of the clouds screen, and a screening cloud screens one thing only: an
+incoming attack lands for half damage if its quasiparticle carries what the
+cloud screens, and lands in full if it does not.
 
 - **Spin Screening**: halves attacks carried by a quasiparticle with spin,
   such as Electron Pulse, Magnon Wave, Spinon Swap, Triplon Surge,
@@ -215,20 +221,35 @@ carries what the cloud screens, and lands in full if it does not.
   Switch, Electromagnon Drive and Higgs Oscillation
 
 Two attacks are carried by a quasiparticle with no charge, no spin and no
-order parameter of its own, so no cloud touches them at all: Majorana Split
-and Vison Loop. Landau's and Skłodowska-Curie's tunable moves are screened as
-whichever quasiparticle you have tuned them to, so an untuned one counts as a
+order parameter of its own, so no screening cloud touches them at all: Majorana
+Split and Vison Loop. Landau's and Skłodowska-Curie's tunable moves are screened
+as whichever quasiparticle you have tuned them to, so an untuned one counts as a
 phonon.
 
+The other two screen nothing and work on you instead:
+
+- **Restoring Cloud**: the screening carried through to its end, the moment
+  bound into a singlet and the electron sea settling back around you. It heals
+  you 5% of your max HP when you cast it and again on each of its three turns.
+- **Anomalous Cloud**: the cloud held at a quantum critical point, where
+  fluctuations run to extremes. Your own chance rolls lean toward their best
+  outcome: your chance to land a coherent hit, how high your damage rolls, and
+  (if you hold Franklin's Full Reflection) your chance to send a hit back. The
+  opponent's own rolls are untouched.
+
 Picking a move picks the cloud. Only one can be active at a time; switching
-means talking to Kondo again, so holding one quantum number always means
-giving up the other two.
+means talking to Kondo again, so holding one cloud always means giving up the
+other four.
 
-<img src="../screenshots/docs-guardians-kondo-panel.png" width="300" alt="Kondo's self-buff shop: his three screening moves, with the one currently being held marked active">
+<img src="../screenshots/docs-guardians-kondo-panel.png" width="300" alt="Kondo's self-buff shop: his cloud moves, with the one currently being held marked active">
 
-Each of these three can also be leveled up at [Feynman's](#feynmans-diagrammatics),
-same as any other move, leveling one deepens its screening past the base half,
-up to a cap so it never becomes complete immunity.
+Each of these five can also be leveled up at [Feynman's](#feynmans-diagrammatics),
+same as any other move. Leveling a screening cloud deepens its screening past
+the base half, up to a cap so it never becomes complete immunity. Leveling
+Restoring Cloud raises each heal, up to 15% of your max HP at Infinite. Leveling
+Anomalous Cloud pulls your rolls further toward their best outcome, and at
+Infinite all the way: every hit you land is a coherent hit at the top of its
+damage range, and with Full Reflection every hit you take goes back.
 
 ## Franklin's Scatterings
 
@@ -240,8 +261,12 @@ runs while it has room: your crystal starts with no passive slot, and
 Franklin sells up to three of them, one at a time, with the "Buy slot"
 button under her list, at 200, then 800, then 3200 qumatessence. Each
 passive takes up a fixed number of slots while active (the table below):
-one for most, two for Full Reflection, all three for Last Scattering. Talk
-to Franklin again to switch which ones are active: making a passive active
+one for most, all three for Last Scattering and for Full Reflection, which
+cost ten times as much as the others. Slots show as diamonds: each passive's
+row carries one per slot it takes, and beside the "Buy slot" button your
+own slots show filled when in use, hollow when free and faint when not yet
+bought. The Lab's Abilities station shows the same diamonds for your active
+passives. Talk to Franklin again to switch which ones are active: making a passive active
 uses your free slots, or sets aside the ones you equipped longest ago until
 it fits, and you can set any active one aside yourself. Themed around X-ray diffraction of a defect-riddled or porous
 crystal, the way a real diffraction pattern blurs from sharp spots into
@@ -251,21 +276,21 @@ Two of the five act on a whole hit rather than on the damage number. Last
 Scattering leaves you with one point of life from any attack that would
 have finished you, as long as you had more than one going in (an
 attenuated beam never drops to nothing); the next hit at one point is not
-caught. Full Reflection sends one incoming attack in ten straight back at
-the attacker for its full damage, and you take nothing from it.
+caught. Full Reflection sends three incoming attacks in ten straight back at
+the attacker for their full damage, and you take nothing from them.
 
-<img src="../screenshots/docs-guardians-franklin-panel.png" width="300" alt="Franklin's panel: the five passives beside your crystal wearing the halo of the passive being looked at, with its price and slot size, and the Buy slot button under the list">
+<img src="../screenshots/docs-guardians-franklin-panel.png" width="300" alt="Franklin's panel: the five passives, each with its slot diamonds, beside your crystal wearing the halo of the passive being looked at, and your own slots shown as diamonds next to the Buy slot button under the list">
 
 <!-- GENERATED:FRANKLIN_PASSIVES_TABLE START -->
 #### Franklin's passives
 
 | Passive | Effect | Slots | Cost |
 | --- | --- | --- | --- |
-| Diffraction Shadow | A defect-riddled lattice scatters and attenuates an incoming blow, the way porous carbon attenuates an X-ray beam. | 1 | 40 |
-| Satellite Reflection | Coherent hits come twice as often, and each one throws off a secondary diffraction peak: a bonus follow-up damage tick. | 1 | 45 |
-| Amorphous Halo | A diffuse, defect-broadened halo softens the quasiparticle-mismatch double damage to a smaller multiplier. | 1 | 45 |
-| Last Scattering | An attenuated beam never drops to nothing: a blow that would finish you leaves one point of life, as long as you had more than one. | 3 | 55 |
-| Full Reflection | Below the critical angle a beam reflects entirely off the surface: one incoming attack in ten bounces back at the attacker, and you take nothing. | 2 | 50 |
+| Diffraction Shadow | A defect-riddled lattice scatters and attenuates an incoming blow, the way porous carbon attenuates an X-ray beam. | 1 | 200 |
+| Satellite Reflection | Coherent hits come twice as often, and each one throws off a secondary diffraction peak: a bonus follow-up damage tick. | 1 | 225 |
+| Amorphous Halo | A diffuse, defect-broadened halo softens the quasiparticle-mismatch double damage to a smaller multiplier. | 1 | 225 |
+| Last Scattering | An attenuated beam never drops to nothing: a blow that would finish you leaves one point of life, as long as you had more than one. | 3 | 2750 |
+| Full Reflection | Below the critical angle a beam reflects entirely off the surface: three incoming attacks in ten bounce back at the attacker, and you take nothing. | 3 | 2500 |
 <!-- GENERATED:FRANKLIN_PASSIVES_TABLE END -->
 
 ## Skłodowska-Curie's Experiments

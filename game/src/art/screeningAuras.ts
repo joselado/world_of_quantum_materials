@@ -1,17 +1,17 @@
 import Phaser from 'phaser';
-import type { ScreeningChannel } from '../data/materials';
+import type { KondoCloud } from '../data/materials';
 import { shade } from './colors';
 import { killTweensDeep } from './crystals';
 
-// Persistent battle auras for Kondo's three screening self-buffs (§5,
+// Persistent battle auras for Kondo's five self-buff clouds (§5,
 // data/materials.ts's KONDO_MOVE_IDS) -- the cloud a cast raises stays
 // visibly wrapped around the carrying crystal for as long as the buff is
 // active (BattleScene.syncScreeningAura, driven off setStatus), added inside
 // the crystal's own container so idle bob and hit squash carry it for free,
-// the same free ride addBoostHalo's aura gets. All three stay in Kondo's own
+// the same free ride addBoostHalo's aura gets. All five stay in Kondo's own
 // rust-orange family (the status pill's one color already carries that
-// contract; the label names the channel) and are told apart by silhouette,
-// each drawing the physics of what its cloud actually screens:
+// contract; the label names the cloud) and are told apart by silhouette,
+// each drawing the physics of what its cloud actually is:
 //
 // - **spin** is the Kondo effect proper: circulating conduction electrons
 //   binding the screened moment into a singlet. It extends art/kondo.ts's
@@ -28,6 +28,17 @@ import { killTweensDeep } from './crystals';
 //   circle a broken continuous symmetry leaves (the Mexican hat's brim),
 //   drawn as one ring crossed by evenly spaced radial ticks in slow uniform
 //   rotation -- every orientation visited, none preferred.
+// - **restoring** is the screened moment's ground state: the conduction sea
+//   settling back into a Fermi liquid around the singlet. One still, sharp
+//   circle -- the Fermi surface, crisp again -- with ripples that start on
+//   it and converge inward onto the crystal, fading as they close: a
+//   scattered wave run backward, the sea calming rather than being stirred.
+// - **anomalous** is a quantum critical point, where fluctuations have no
+//   characteristic size. Short arcs on geometrically spaced shells, each
+//   arc's length and weight in proportion to its shell so the pattern looks
+//   the same at every scale, flickering in and out independently and coming
+//   back at a fresh orientation each time -- patches of order forming and
+//   dissolving at every scale at once.
 //
 // Additive-blended like every battle effect, with small bright structure
 // and low-alpha falloff carrying the glow (STYLE.md's wash-toward-white
@@ -39,7 +50,7 @@ const AURA_LIGHT = 0xff8f6a;
 const FADE_IN_MS = 650;
 const FADE_OUT_MS = 280;
 
-// Builds the aura for `channel` sized to wrap a crystal whose painted body
+// Builds the aura for `cloud` sized to wrap a crystal whose painted body
 // reaches roughly `r` from its center, mounts it behind the crystal's own
 // art (index 0 of `crystal`) at a local y of `cy` (0 for a crystal whose
 // anchor is its body center; the boss golem's anchor is a ground reference,
@@ -50,7 +61,7 @@ const FADE_OUT_MS = 280;
 export function addScreeningAura(
   scene: Phaser.Scene,
   crystal: Phaser.GameObjects.Container,
-  channel: ScreeningChannel,
+  cloud: KondoCloud,
   r: number,
   cy = 0
 ): Phaser.GameObjects.Container {
@@ -62,9 +73,11 @@ export function addScreeningAura(
   glow.fillCircle(0, 0, r);
   aura.add(glow);
 
-  if (channel === 'spin') buildSpinAura(scene, aura, r);
-  else if (channel === 'charge') buildChargeAura(scene, aura, r);
-  else buildSymmetryAura(scene, aura, r);
+  if (cloud === 'spin') buildSpinAura(scene, aura, r);
+  else if (cloud === 'charge') buildChargeAura(scene, aura, r);
+  else if (cloud === 'symmetry') buildSymmetryAura(scene, aura, r);
+  else if (cloud === 'restoring') buildRestoringAura(scene, aura, r);
+  else buildAnomalousAura(scene, aura, r);
 
   aura.setAlpha(0);
   scene.tweens.add({ targets: aura, alpha: 1, duration: FADE_IN_MS, ease: 'Sine.easeOut' });
@@ -212,4 +225,70 @@ function buildSymmetryAura(scene: Phaser.Scene, aura: Phaser.GameObjects.Contain
   }
   aura.add(manifold);
   scene.tweens.add({ targets: manifold, angle: 360, duration: 9000, repeat: -1, ease: 'Linear' });
+}
+
+function buildRestoringAura(scene: Phaser.Scene, aura: Phaser.GameObjects.Container, r: number) {
+  // The Fermi surface, sharp again: one still circle.
+  const surface = scene.add.graphics();
+  surface.setBlendMode(Phaser.BlendModes.ADD);
+  surface.lineStyle(2, shade(AURA_COLOR, 15), 0.5);
+  surface.strokeCircle(0, 0, r * 0.9);
+  aura.add(surface);
+
+  // The sea settling: ripples leave the surface and converge onto the
+  // crystal, fading out just short of its body so the closing stays in
+  // view, staggered evenly so one is always on its way in.
+  const rippleCount = 3;
+  const period = 2400;
+  for (let i = 0; i < rippleCount; i++) {
+    const ripple = scene.add.graphics();
+    ripple.setBlendMode(Phaser.BlendModes.ADD);
+    ripple.lineStyle(2, AURA_LIGHT, 1);
+    ripple.strokeCircle(0, 0, r * 0.9);
+    ripple.setAlpha(0);
+    aura.add(ripple);
+    scene.tweens.add({
+      targets: ripple,
+      scale: { from: 1, to: 0.66 },
+      alpha: { from: 0.8, to: 0 },
+      duration: period,
+      delay: (i * period) / rippleCount,
+      repeat: -1,
+      ease: 'Sine.easeIn',
+    });
+  }
+}
+
+function buildAnomalousAura(scene: Phaser.Scene, aura: Phaser.GameObjects.Container, r: number) {
+  // Geometrically spaced shells (each 1.2x the last, the innermost just
+  // clear of the crystal's body) with arcs of one angular sweep, so an arc's
+  // length -- and its weight -- grow with its shell: the same pattern at
+  // every scale.
+  const shells = [0.56, 0.67, 0.8, 0.96];
+  const arcsPerShell = 4;
+  const sweep = Phaser.Math.DegToRad(48);
+  shells.forEach((f) => {
+    for (let i = 0; i < arcsPerShell; i++) {
+      const arc = scene.add.graphics();
+      arc.setBlendMode(Phaser.BlendModes.ADD);
+      arc.lineStyle(1 + 1.6 * f, shade(AURA_COLOR, 20), 1);
+      arc.beginPath();
+      arc.arc(0, 0, r * f, -sweep / 2, sweep / 2, false);
+      arc.strokePath();
+      arc.setAngle(Phaser.Math.Between(0, 359));
+      arc.setAlpha(0);
+      aura.add(arc);
+      // Each patch flickers on its own clock and comes back somewhere new.
+      scene.tweens.add({
+        targets: arc,
+        alpha: { from: 0, to: 0.35 + 0.35 * f },
+        duration: Phaser.Math.Between(260, 720),
+        delay: Phaser.Math.Between(0, 900),
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+        onRepeat: () => arc.setAngle(Phaser.Math.Between(0, 359)),
+      });
+    }
+  });
 }

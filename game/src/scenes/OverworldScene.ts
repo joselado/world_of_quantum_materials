@@ -259,9 +259,9 @@ export function applySuperpositionUnlocks(registry: Phaser.Data.DataManager) {
     'discoveredMaterials',
     allCrystals().map((material) => ({ name: material.name, type: material.type }))
   );
-  // Kondo's three self-buff moves are all granted above, but only one is
+  // Kondo's five self-buff moves are all granted above, but only one is
   // ever the active `kondoActiveMove` getBattleMoves actually surfaces --
-  // seeded to a random one of the three (not always the same one) so a
+  // seeded to a random one of the five (not always the same one) so a
   // fresh Superposition save doesn't always start on the same move. Only
   // seeded if nothing's chosen yet, so a deliberate pick made via
   // showKondoPanel survives every later re-application of this grant.

@@ -428,10 +428,13 @@ under one figure reads as floating even when neither is wrong on its own.
   their own status text and confirm button on top of), an attack move-browsing
   guardian's (the move's own real battle-effect animation, looping centered in the
   pane, in place of a crystal render + name + cost/status text + a commit button, via the shared
-  `renderMoveDetailHeader` block -- "Attack effects" below has the animation's own details), and
-  Kondo's own self-buff move-browsing step (the same centered loop, but *over a rendered player
-  crystal* -- a self-buff has to be seen buffing something -- via the shared
-  `renderSelfBuffMoveDetailHeader` block, "Kondo in the overworld" below). **A move preview
+  `renderMoveDetailHeader` block -- "Attack effects" below has the animation's own details), a
+  self-buff cast where Feynman's pane or the Lab's Moves station shows one of Kondo's moves (the
+  same centered loop, but *over a rendered player crystal* -- a self-buff has to be seen buffing
+  something -- via the shared `renderSelfBuffMoveDetailHeader` block), and what stays on the
+  crystal rather than any cast in Kondo's own panel (`renderCloudDetailHeader`, the cloud's
+  persistent aura, "Kondo in the overworld" below) and in Franklin's panel and the Lab's
+  Abilities station (`renderPassiveDetailHeader`, a passive's ground halo). **A move preview
   plays inside its own stage and nowhere else.** The art block those two blocks reserve is drawn
   as a recessed, bordered pane (`drawPreviewStage`: a dark fill at `0.55` and a hairline
   `REFERENCE_BLUE_GREY` border at `0.5`, inset `8`px from the column so two stages side by side
@@ -1930,33 +1933,31 @@ station motifs are deliberately not tunnels with a visible far end.
   edge; there is no robe under them. Silhouette: the roster's only round, enclosing outline.
 - List+detail layout (`scenes/panels/listDetail.ts`, "List+detail panels" above), the same shape
   Noether's Moves tab and Feynman's own move-leveling list use: the left column names all
-  three of `data/materials.ts`'s `KONDO_MOVE_IDS` (Spin Screening, Charge Screening, Symmetry
-  Cloud) via `moveDisplayName`. Clicking a row only *previews* it (`scene.kondoMovePreview`),
-  free regardless of how many moves are looked at. A Kondo move is a self-buff rather than a
-  travelling attack -- `BattleScene.resolveSelfBuff` plays its real effect centered on the
-  caster's own position (`from === to === pos`), not flying from attacker to target the way an
-  ordinary move does -- so the right column shows the player's own current crystal, rendered
-  by the shared `renderSelfBuffMoveDetailHeader` (`scenes/panels/listDetail.ts`) at the shared
-  `DETAIL_CRYSTAL_SIZE` (`44`) with the player material's own `seed`/`hybridParents`,
-  standing on a ground-shadow ellipse, with the
-  move's `'screening'`-class ring effect (`art/attackStyles.ts`'s `EFFECT_STYLE`, tinted
-  `0xe86a44`) looping *centered on the crystal itself* rather than travelling across the pane --
-  the self-buff sibling of the ordinary `renderMoveDetailHeader` that Noether's, Landau's and
-  Skłodowska-Curie's own panes use, and that Feynman's uses for everything but a screening
-  move. Like that
-  sibling, it plays the move at the player's real Feynman level, so a leveled Kondo move previews
-  the same escalating multi-trigger cascade a real cast plays. Below that:
+  five of `data/materials.ts`'s `KONDO_MOVE_IDS` (Spin Screening, Charge Screening, Symmetry
+  Cloud, Restoring Cloud, Anomalous Cloud) via `moveDisplayName`, paged like every list+detail
+  column. Clicking a row only *previews* it (`scene.kondoMovePreview`),
+  free regardless of how many moves are looked at. What tells Kondo's five moves apart is not
+  the cast -- the one screening ring for all five -- but the cloud a cast leaves standing, so
+  the right column shows that cloud, not the cast: the player's own current crystal, rendered
+  by `renderCloudDetailHeader` (`scenes/panels/listDetail.ts`) at the shared
+  `DETAIL_CRYSTAL_SIZE` (`44`) with the player material's own `seed`/`hybridParents`, standing
+  on a ground-shadow ellipse at the stage's vertical middle and wrapped in the move's
+  persistent battle aura (`art/screeningAuras.ts`'s `addScreeningAura`, the same call the
+  battle makes, see "Battle status effects" below), sized in battle's own proportion to its
+  crystal (`PLAYER_HEAD_RISE + 5` around a `PLAYER_CRYSTAL_SIZE` body) and capped to stay
+  inside the stage. No cast plays -- the same "show what stays" choice Franklin's pane makes
+  with a passive's halo. Below that:
   the move's own one-line `description` (`data/materials.ts`'s `Move.description`, only Kondo's
-  three moves carry one), then a cost/status line and a confirm button -- "Learn `<name>`"
+  five moves carry one), then a cost/status line and a confirm button -- "Learn `<name>`"
   for a still-unbought move (dimmed if unaffordable, priced by `shopCost`),
   "Make `<name>` active" for an already-bought but inactive move, or a dimmed "`<name>` (active)"
   tag (no-op click) for whichever one is currently active (registry/save `kondoActiveMove`) --
   the confirm button is the one action that actually checks/spends the cost. Buying the first
   Kondo move activates it immediately (still shows the dimmed "(active)" tag right away, no
-  separate click needed); buying a second or third afterward doesn't, and switching which one is
+  separate click needed); buying another afterward doesn't, and switching which one is
   active always requires reopening this panel and clicking "Make active," not a per-turn choice
-  in the battle move menu. None of the three self-buff moves is gated by a crystal's own physics
-  at all, so all three always stand in this list whatever form the player is wearing -- no
+  in the battle move menu. None of the five self-buff moves is gated by a crystal's own physics
+  at all, so all five always stand in this list whatever form the player is wearing -- no
   wrong-form state to render here, unlike Noether's shop.
 
 ## Franklin in the overworld (`OverworldScene.showFranklinPanel`)
@@ -1978,13 +1979,26 @@ station motifs are deliberately not tunnels with a visible far end.
 - List+detail layout (`scenes/panels/franklin.ts`, `LIST_DETAIL_PANEL_W`, the same shape
   and column geometry as Kondo's panel above): the left column lists the five passives (`data/passives.ts`'s
   `FRANKLIN_PASSIVE_IDS` -- Diffraction Shadow, Satellite Reflection, Amorphous Halo, Last
-  Scattering, Full Reflection), then, under the rows and above Farewell, one button that is
-  not a row: "Buy slot N (`<cost>`)", the next rung of the passive-slot ladder
-  (200/800/3200), dimmed when unaffordable and a dimmed "3 slots owned" tag once the ladder
-  is climbed. It is kept out of the list on purpose -- room listed among the abilities reads
-  as a sixth ability. Its label is capped at `1.3` so it stays on one line in the 200px
-  column at the Large preset. A row click previews; only that button and the pane's confirm
-  button commit.
+  Scattering, Full Reflection), each row carrying one filled slot diamond per slot that
+  passive takes at its right edge (see **Slot icons** below), then, under the rows and above
+  Farewell, one row that is not a passive: the crystal's slot ladder as three diamonds
+  (used filled, owned-free open, unbought locked) beside "Buy slot N (`<cost>`)", the next
+  rung of the ladder (200/800/3200), dimmed when unaffordable and a dimmed "All slots owned"
+  tag once the ladder is climbed. Where the full label and the diamonds don't fit the 200px
+  column side by side (the label is capped at `1.3`, so from the Normal preset up) the label
+  drops to "Buy (`<cost>`)"/"All owned". Sharing the button's row is what keeps the ladder
+  from costing the list a row at the Large preset, where all five passives still fit one
+  page. It is kept out of the list on purpose -- room listed among the abilities reads as a
+  sixth ability. A row click previews; only that button and the pane's confirm button
+  commit.
+- **Slot icons** (`art/slotIcons.ts`'s `makeSlotPips`, shared by Franklin's panel and the
+  Lab's Abilities station): one small diamond per slot, half-diagonal `4` px times the text
+  scale (capped at `1.5`), in Franklin's own lavender `0xc9a8e0`. Filled for a slot an
+  ability takes or an active one is using, a `1.5` px lavender outline for an owned slot
+  nothing uses, a faint `1` px blue-grey outline (`0.5` alpha) for one not bought yet. A list
+  row's diamonds sit at its right edge and are taken out of the label's own fit
+  (`renderListColumn`'s `badgeFor`), so a long name ellipsizes rather than running under
+  them.
 - The **detail pane** opens with the player's own current crystal (`makeCrystal`, the same
   call convention `BattleScene` uses, at size `40`) standing on a plain `0x000000`-at-`0.3`
   ground-shadow ellipse inside the shared recessed preview stage
@@ -2640,7 +2654,7 @@ world are shaped, since world N's start is world N-1's exit.
   small grey raincloud (`addFailCloud`) just above the crystal, bobbing gently. Everything
   is added directly to the player crystal's container so it moves with the existing
   idle-bob tween for free.
-- Kondo's three screening self-buffs (DESIGN.md §4) present as two pieces for as long
+- Kondo's five self-buff clouds (DESIGN.md §4) present as two pieces for as long
   as a cloud is active. The bookkeeping is a plain text pill (`playerStatusLabel`/
   `opponentStatusLabel`) sitting as the next row down that side's own floating nameplate
   (see "Battle HUD frame and nameplates" above), reading `"<Cloud> (<turns left>)"`
@@ -2653,9 +2667,9 @@ world are shaped, since world N's start is world N-1's exit.
   `BattleScene.syncScreeningAura` off `setStatus`) wrapped around the carrying crystal for
   the buff's whole duration, on either side -- mounted inside the crystal's own container
   behind its body so idle bob and hit squash carry it for free, fading in under the cast's
-  ring pulse and fading out on expiry or on replacement by another channel. All three
-  auras stay in the same rust-orange family (the pill's label is what names the channel)
-  and are told apart by silhouette, each drawing the physics of what its cloud screens:
+  ring pulse and fading out on expiry or on replacement by another cloud. All five
+  auras stay in the same rust-orange family (the pill's label is what names the cloud)
+  and are told apart by silhouette, each drawing its cloud's physics:
   **Spin Screening** extends `art/kondo.ts`'s avatar-cloud vocabulary -- two
   counter-rotating shells of open conduction-electron arcs, each trailing a mote -- plus a
   still ring of small downward spin arrows: the orbital motion circulates while the
@@ -2664,12 +2678,21 @@ world are shaped, since world N's start is world N-1's exit.
   piled-up glow densest at the center, ringed by faint closed Friedel rings decaying
   outward; nothing circulates. **Symmetry Cloud** is the restored order-parameter
   manifold: one ring crossed by evenly spaced radial ticks in slow uniform rotation --
-  every orientation visited, none preferred. Each aura's bright structure stays at or
+  every orientation visited, none preferred. **Restoring Cloud** is the conduction sea
+  settling back into a Fermi liquid around the singlet: one still, sharp circle (the Fermi
+  surface, crisp again) with three staggered ripples that leave it and converge onto the
+  crystal, fading out just short of its body -- a scattered wave run backward, the sea
+  calming rather than being stirred. **Anomalous Cloud** is a quantum critical point, where
+  fluctuations have no characteristic size: short arcs on four geometrically spaced shells
+  (each 1.2x the last), every arc's length and line weight in proportion to its shell so the
+  pattern looks the same at every scale, each flickering in and out on its own clock and
+  coming back at a fresh orientation -- patches of order forming and dissolving at every
+  scale at once. Each aura's bright structure stays at or
   under its crystal's own measured painted extent (sized off hud.ts's
   `*_HEAD_RISE`/`BOSS_FOOT_DROP` offsets; the boss golem's is centered on its body's
   measured midpoint, since its anchor is a ground reference), so the nameplate stack above
-  never sits inside it, and additive alphas are kept low so all three silhouettes survive
-  the greyscale squint test.
+  never sits inside it, and additive alphas are kept low so every silhouette survives the
+  greyscale squint test.
 - Franklin's active passives (DESIGN.md §5, up to three one-slot ones at once) get their own pill as the
   last row of the same nameplate stack, directly below that side's status pill, same
   size/background as the status pill but in a muted
@@ -2731,8 +2754,11 @@ world are shaped, since world N's start is world N-1's exit.
   the move menu it would otherwise have to stay clear of is already destroyed by then.
 - Per-turn log text appends "No natural defense against this!" when the quasiparticle
   mismatch multiplier fires (`BattleScene.resolveHit`, the sole type-interaction rule in
-  battle -- see DESIGN.md §3/§4), then "A coherent critical hit!" for a crit -- up to two
-  clauses can stack on one line, in that fixed order.
+  battle -- see DESIGN.md §3/§4), then "A coherent critical hit!" for a crit, then the
+  attacker's own Kondo cloud clauses (a Restoring Cloud's "<name> recovers N HP." and a
+  cloud's expiry line), then Satellite Reflection's echo and Last Scattering's hold -- in that
+  fixed order, each one short. A cast's own line carries the cloud's raise clause and, for a
+  Restoring Cloud, its heal. A line that wraps past the band shrinks to fit (above).
 
 ## Turn-order preview (`BattleScene.drawTurnPreview`)
 
@@ -2914,18 +2940,24 @@ world are shaped, since world N's start is world N-1's exit.
 - "Stats" keeps the generic info panel (`showInfoPanel`, `560` wide, same blue-grey stroke):
   Energy/Momentum/Lifetime plus qumatessence and current form name, ending in a single
   "Close" button.
-- "Abilities" is its own dedicated panel (`showAbilitiesPanel`, `560` wide, same blue-grey
-  stroke) rather than a third `showInfoPanel` body -- first, only while the current form is a
-  hybrid, a "Built in: Hybrid Aura" block (`data/passives.ts`'s `BUILT_IN_PASSIVES`; a plain
-  crystal shows no block rather than an empty one), then per passive owner (`PASSIVE_OWNERS`,
-  currently just Franklin) one bold name line, "`<owner>`: `<active names>` (N of M slots
-  used)", every block being one bold name line followed by one description line per passive,
-  each its own `Text` object with explicitly capped font sizes (`nameScale`/`descScale`, the
-  same caps Franklin's own pane uses) rather
-  than folding the full descriptions into `showInfoPanel`'s single wrapped body, since that
-  body's shrink-to-fit only lowers font size and never truncates -- two full passive
-  descriptions back to back could still overflow the canvas at that panel's largest text-size
-  preset even at the shrink loop's own floor.
+- **"Abilities" is a list+detail browse** (`showAbilitiesPanel`, `LIST_DETAIL_PANEL_W`, the
+  same scaffolding and blue-grey stroke as the Moves station above): the left column lists the
+  passives the crystal runs right now -- first, only while the current form is a hybrid, its
+  built-in Hybrid Aura (`data/passives.ts`'s `BUILT_IN_PASSIVES`, no slot diamonds since it
+  takes no slot), then each owner's active passives (`PASSIVE_OWNERS`, currently just
+  Franklin) in equip order, each row carrying one filled slot diamond per slot it takes
+  (**Slot icons** under "Franklin in the overworld" above). Under the rows and above Close,
+  one meter row per owner, "`<owner>` slots" beside that owner's whole ladder (used filled,
+  owned-free open, unbought locked). An empty loadout reads "No abilities yet." The detail
+  pane opens with the selected ability's look on the shared stage
+  (`renderPassiveDetailHeader`, the opener Franklin's own pane uses): the player's crystal on
+  its shadow wearing that passive's ground halo at full alpha, or, for Hybrid Aura, the hybrid
+  crystal alone, whose own additive glow is that aura's whole visual. Under it: a gold
+  "Takes N slots" line with its diamonds (or "Built into your form: takes no slot."), the
+  description, and a dim line naming where it is switched ("Switch which ones are active by
+  revisiting Franklin." / "Carried for as long as you wear this form."). A row click is a
+  scoped update (`abilitiesSelectedId`/`abilitiesPage` on `HubScene`, panel state only, reset
+  by `closeDialogue()`); a page flip rebuilds.
 ## The Lab's guardian gallery (`HubScene.spawnGuardianAvatars`/`guardianSlot`)
 
 - **Every guardian the player has met stands in the Lab as their own avatar, and clicking one
@@ -3235,7 +3267,8 @@ world are shaped, since world N's start is world N-1's exit.
   a flat shape -- which does mean a bright class color over a bright sky washes toward white;
   the fix used here is to keep white cores small and let the colored falloff carry the hue,
   since a second, normally-blended Graphics per effect would cost an object per shape.
-- Kondo's three self-buff moves (Spin Screening, Charge Screening, Symmetry Cloud) share
+- Kondo's five self-buff moves (Spin Screening, Charge Screening, Symmetry Cloud, Restoring
+  Cloud, Anomalous Cloud) share
   the `'screening'` class's one cast look, unlike Landau's/Skłodowska-Curie's moves below --
   a single expanding wavefront with a fainter white echo (its own `'buffring'` shape,
   reading as an effect enveloping the caster -- deliberately one front where Plasmon
@@ -3490,7 +3523,8 @@ world are shaped, since world N's start is world N-1's exit.
   at the same time. A rebuild that changes nothing on the stage (a purchase, a page turn, a
   picker row highlighted but not yet committed) leaves the loop running where it was
   (`moveEffectPreview.ts`'s `sameDemonstration`, which keys on the pane's own caption as well as
-  the class/shape/level, so even two moves that look identical -- Kondo's three screening rings --
+  the class/shape/level, so even two moves that look identical -- Kondo's five screening rings,
+  where Feynman's pane or the Lab's Moves station casts them --
   restart when the player switches between them). `moveEffectPreview.ts` tracks any number of
   independent, simultaneously-looping preview *chains* at once, each identified by its own
   caller-supplied string key (default `'default'`, what every caller lands on, since every pane

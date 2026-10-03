@@ -70,7 +70,7 @@ export const GUARDIAN_QUOTES: Record<GuardianQuoteId, GuardianQuote> = {
   },
   kondo: {
     story:
-      'I am Kondo. A cloud of conduction electrons wraps a magnetic moment until the moment is gone. That is my whole trade, and it generalizes: gather the right cloud and a blow carrying spin, or charge, or the tremor of a broken symmetry, arrives at half strength. A cloud screens one thing only. Learn all three if you like, then tell me which one to hold.',
+      'I am Kondo. A cloud of conduction electrons wraps a magnetic moment until the moment is gone. That is my whole trade, and it generalizes: gather the right cloud and a blow carrying spin, or charge, or the tremor of a broken symmetry, arrives at half strength. Let the cloud finish its work and the sea settles back around you, mending what was torn. Hold it at the edge of forming and every chance you take swings to its extreme. Learn all five if you like, then tell me which one to hold.',
   },
   franklin: {
     story:
@@ -111,7 +111,7 @@ export const GUARDIAN_QUOTES_BRIEF: Partial<Record<GuardianQuoteId, Partial<Guar
   },
   kondo: {
     story:
-      "I am Kondo. A cloud of conduction electrons screens a magnetic moment. The right cloud halves a blow carrying spin, charge, or a broken symmetry's tremor, nothing else.",
+      "I am Kondo. A cloud of conduction electrons screens a magnetic moment. The right cloud halves a blow carrying spin, charge, or a broken symmetry's tremor; a settled one mends you; a critical one tips chance your way.",
   },
   franklin: {
     story:

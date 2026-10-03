@@ -142,9 +142,9 @@ guardians waiting partway through each world, ten in all, each teaching a
 different way of bending the game's usual rules: new moves and stats,
 teleportation, transmuting into a crystal you've defeated, quiz-gated power
 moves, fusing two crystals into a hybrid, doping an impurity into yourself,
-leveling up a move you already know, screening clouds that halve what a whole
-class of attack does to you, always-on passive abilities, and a capstone
-quiz-gated ultimate move. Each one greets you the first time you reach their
+leveling up a move you already know, clouds that halve what a whole class of
+attack does to you, heal you, or tip your luck, always-on passive abilities,
+and a capstone quiz-gated ultimate move. Each one greets you the first time you reach their
 row, and once you have met them you can walk back up to them any time and
 press Space to talk again. Every guardian you've met also stands in the Lab,
 one click away. See [Guardians](docs/guardians.md) for what each one does.
@@ -273,8 +273,8 @@ raised one point at a time at Noether's shop. A fifth of all hits land as a
 coherent hit for half again the damage, whoever throws them. HP is fully
 healed after each battle, so qumatessence, not HP attrition, is what is
 actually on the line from one fight to the next. The move menu shows one kind
-of move at a time (ordinary attacks, the quiz-gated ones, and the screening
-clouds you cast on yourself), with the Left/Right keys or the on-screen arrows
+of move at a time (ordinary attacks, the quiz-gated ones, and the clouds you
+cast on yourself), with the Left/Right keys or the on-screen arrows
 to page between kinds.
 
 For the full mechanics, meaning every move and which crystals can use it,

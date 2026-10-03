@@ -7,7 +7,7 @@ import { killTweensDeep } from '../../art/crystals';
 import { CANVAS_W } from '../../art/perspective';
 import { fontScale } from '../../ui/text';
 import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
-import { MOVES, KONDO_MOVE_IDS, shopCost, moveDisplayName, getMoveLevel } from '../../data/materials';
+import { MOVES, KONDO_MOVE_IDS, KONDO_CLOUD_BY_MOVE, shopCost, moveDisplayName } from '../../data/materials';
 import { persistFromRegistry } from '../../data/save';
 import {
   LIST_DETAIL_PANEL_W,
@@ -16,45 +16,46 @@ import {
   destroyPanel,
   insertColumnDivider,
   renderListColumnFooter,
-  renderSelfBuffMoveDetailHeader,
+  renderCloudDetailHeader,
   renderStatusAndConfirm,
 } from './listDetail';
 
-// Kondo stands at world 8's middle tile (WORLD_GUARDIANS) and sells three
+// Kondo stands at world 8's middle tile (WORLD_GUARDIANS) and sells five
 // self-buff moves (data/materials.ts's KONDO_MOVE_IDS -- Spin
-// Screening/Charge Screening/Symmetry Cloud, kept out of Noether's and
-// Landau's own lists so Kondo is their one source), usable from any
-// crystal form the player is currently wearing since a self-buff isn't
-// gated by MOVE_COMPATIBILITY at all. Each one raises a cloud that screens
-// one quantum number, halving only those incoming attacks whose
-// quasiparticle carries it (data/materials.ts's SCREENING_CHANNELS), so
-// which of the three to hold is a read of what the next opponent is likely
-// to throw rather than a strictly-better/worse ranking.
+// Screening/Charge Screening/Symmetry Cloud/Restoring Cloud/Anomalous
+// Cloud, kept out of Noether's and Landau's own lists so Kondo is their one
+// source), usable from any crystal form the player is currently wearing
+// since a self-buff isn't gated by MOVE_COMPATIBILITY at all. The first
+// three each raise a cloud that screens one quantum number, halving only
+// those incoming attacks whose quasiparticle carries it (data/materials.ts's
+// SCREENING_CHANNELS); Restoring Cloud mends its caster and Anomalous Cloud
+// pulls its caster's chance rolls toward their best outcome. Which one to
+// hold is a read of the next fight rather than a strictly-better/worse
+// ranking.
 //
 // List+detail layout (scenes/panels/listDetail.ts, STYLE.md's "List+detail
 // panels"), the same shape Noether's/Landau's/Skłodowska-Curie's own
-// move-browsing steps use: the left column names all three KONDO_MOVE_IDS
+// move-browsing steps use: the left column names all five KONDO_MOVE_IDS
 // (moveDisplayName, folding in Feynman's level prefix -- always a no-op for
 // a still-unbought move, since leveling requires already owning it). A row
 // click only *previews* it (scene.kondoMovePreview), free regardless of how
 // many rows are looked at. Unlike those three guardians' own moves, a Kondo
-// move is a self-buff, not a travelling attack -- BattleScene.resolveSelfBuff
-// plays its real effect centered on the caster's own position (from === to
-// === pos), not flying across the field -- so the right column's own detail
-// header (renderSelfBuffMoveDetailHeader, listDetail.ts) shows the player's
-// own current crystal standing on a ground shadow with the move's
-// 'screening'-class ring effect looping centered on it, rather than a
-// projectile crossing the pane. Below that: the move's own physics
-// description (data/materials.ts's Move.description, only Kondo's three
+// move is a self-buff, not a travelling attack, and what tells the five apart
+// is the cloud a cast leaves standing rather than the cast itself (one
+// screening ring for all five) -- so the right column's own detail header
+// (renderCloudDetailHeader, listDetail.ts) shows the player's own current
+// crystal standing on a ground shadow wrapped in that move's persistent
+// battle aura (art/screeningAuras.ts), with no cast playing. Below that: the move's own physics
+// description (data/materials.ts's Move.description, only Kondo's five
 // moves carry one), then a cost/status line and a confirm button -- "Learn
 // <name> (<cost> qumatessence)" for a still-unbought move (buying the very
 // first Kondo move ever bought auto-activates it, so a purchase is never
 // silently unusable), "Make <name> active" for an already-bought, inactive
 // move, or a dimmed "<name> (active)" tag (no-op click) for whichever one is
-// currently active (registry/save kondoActiveMove) -- only one of the three
+// currently active (registry/save kondoActiveMove) -- only one of the five
 // is ever usable in battle at a time, switched by returning to this panel,
-// never a per-turn choice in the battle move menu. None of the three is
-// gated by MOVE_COMPATIBILITY, so all three are always for sale until
+// never a per-turn choice in the battle move menu. None of the five is
+// gated by MOVE_COMPATIBILITY, so all five are always for sale until
 // bought -- no empty/wrong-form state to render here.
 //
 // A preview click is a scoped update, not a panel rebuild (CODEMAP's
@@ -128,16 +129,15 @@ export function showKondoPanel(scene: GuardianPanelHost) {
     const move = MOVES[id];
     const displayName = moveDisplayName(scene.game.registry, id);
     let rightY = columnsTop;
-    rightY = renderSelfBuffMoveDetailHeader(
+    rightY = renderCloudDetailHeader(
       scene,
       detailBlock,
       scene.playerMaterial,
       displayName,
-      move.class,
+      KONDO_CLOUD_BY_MOVE[id],
       columns.rightColCenterX,
       rightY,
-      columns.rightColW,
-      getMoveLevel(scene.game.registry, id)
+      columns.rightColW
     );
 
     const descScale = Math.min(fontScale(scene), 1.2);

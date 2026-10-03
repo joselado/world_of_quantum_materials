@@ -149,10 +149,10 @@ export interface SaveData {
   // (data/settings.ts's STORY_LENGTH_PRESETS). Read live at the moment a
   // screen opens, so a change lands on the next one.
   storyLength: StoryLength;
-  // Which of Kondo's three screening-class moves (data/materials.ts's
+  // Which of Kondo's five screening-class moves (data/materials.ts's
   // KONDO_MOVE_IDS) is currently the active/usable one -- null until the
   // player picks one for the first time in OverworldScene.showKondoPanel.
-  // All three can be bought independently (they stay in unlockedMoves
+  // All five can be bought independently (they stay in unlockedMoves
   // regardless), but getBattleMoves only ever surfaces this one.
   kondoActiveMove: string | null;
   // Every passive ability the player has ever bought, flat across every

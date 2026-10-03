@@ -162,30 +162,45 @@ export const MOVES: Record<string, Move> = {
   // magnons rather than replacing them (MOVE_COMPATIBILITY still grants
   // multiferroics 'magnon' too).
   electromagnonPulse: { id: 'electromagnonPulse', name: 'Electromagnon Drive', class: 'electromagnon', power: 9 },
-  // Kondo's three moves (§5, World 8) -- self-buffs, not attacks: casting
-  // one applies a 3-turn buff to the caster's own side (BattleScene's
-  // resolveSelfBuff) instead of dealing damage, so `power` here is never
-  // read as damage -- it only feeds shopCost, the same pricing role it
-  // plays for every other move. Never listed in any wild/rival material's
-  // `moves` array -- only the player can currently learn them, and only
-  // one of the three is ever active in battle at a time (registry/save
-  // `kondoActiveMove`, switched only by talking to Kondo again --
-  // OverworldScene.showKondoPanel/getBattleMoves). A self-buff isn't gated
-  // by MOVE_COMPATIBILITY at all, so these are castable from any form, not
-  // just a Kondo-lattice or defect state.
+  // Kondo's five moves (§5, World 8) -- self-buffs, not attacks: casting
+  // one raises a cloud on the caster's own side (BattleScene's
+  // resolveSelfBuff) instead of dealing damage, active from the slot it is
+  // cast on until its caster's last slot STATUS_DURATION rounds later, so
+  // `power` here is never read as damage -- it only feeds
+  // shopCost, the same pricing role it plays for every other move. Never
+  // listed in any wild/rival material's `moves` array -- only the player
+  // can currently learn them, and only one of the five is ever active in
+  // battle at a time (registry/save `kondoActiveMove`, switched only by
+  // talking to Kondo again -- OverworldScene.showKondoPanel/getBattleMoves).
+  // A self-buff isn't gated by MOVE_COMPATIBILITY at all, so these are
+  // castable from any form, not just a Kondo-lattice or defect state.
   //
-  // Each one screens one quantum number: a screening cloud only damps a
-  // disturbance it can actually couple to, so a buff halves an incoming
-  // hit exactly when that hit's quasiparticle carries the quantum number
-  // the cloud screens (SCREENING_CHANNELS below decides which, per
+  // The first three each screen one quantum number: a screening cloud only
+  // damps a disturbance it can actually couple to, so a buff halves an
+  // incoming hit exactly when that hit's quasiparticle carries the quantum
+  // number the cloud screens (SCREENING_CHANNELS below decides which, per
   // quasiparticle class) and does nothing at all otherwise. Spin Screening
   // is the Kondo effect proper, a conduction-electron cloud wrapping a
   // local moment; Charge Screening is Thomas-Fermi screening, mobile
   // charge damping any charge-density or dipole disturbance; Symmetry
   // Cloud restores the continuous symmetry an ordered state broke, and so
-  // damps that order parameter's own modes. None of the three names
-  // doubles as a MoveClass, so a buff name never reads as if this generic
-  // technique were tied to one specific move's quasiparticle.
+  // damps that order parameter's own modes.
+  //
+  // The other two screen nothing coming in; they act on the caster.
+  // Restoring Cloud is the Kondo effect carried through to its ground
+  // state: below the Kondo temperature the cloud binds the moment into a
+  // singlet, and the conduction sea the free moment was scattering settles
+  // back into a Fermi liquid around it (Nozieres' local Fermi liquid), so
+  // the cloud mends its caster (data/balance.ts's restoringHealFraction).
+  // Anomalous Cloud is a Kondo lattice held at its quantum critical point,
+  // the Kondo breakdown YbRh2Si2 sits at: the cloud is neither formed nor
+  // gone, fluctuations grow at every scale and the metal turns anomalous
+  // (non-Fermi-liquid), so every chance roll its caster makes swings toward
+  // its extreme (data/balance.ts's anomalousPull).
+  //
+  // None of the five names doubles as a MoveClass, so a buff name never
+  // reads as if this generic technique were tied to one specific move's
+  // quasiparticle.
   spinScreening: {
     id: 'spinScreening',
     name: 'Spin Screening',
@@ -206,6 +221,20 @@ export const MOVES: Record<string, Move> = {
     class: 'screening',
     power: 7,
     description: 'Restores the symmetry a broken-symmetry state gave up: halves the damage of incoming attacks carried by an order parameter\'s own mode, for 3 turns.',
+  },
+  restoringCloud: {
+    id: 'restoringCloud',
+    name: 'Restoring Cloud',
+    class: 'screening',
+    power: 7,
+    description: 'Binds the moment into a singlet and lets the electron sea settle back around you: restores 5% of your max HP when cast and on each of its 3 turns.',
+  },
+  anomalousCloud: {
+    id: 'anomalousCloud',
+    name: 'Anomalous Cloud',
+    class: 'screening',
+    power: 7,
+    description: 'Holds the cloud at a quantum critical point, where fluctuations run to extremes: your crit chance, damage rolls and Franklin reflections lean toward their best outcome, for 3 turns.',
   },
 };
 
@@ -363,7 +392,7 @@ export function quasiparticleLabel(moveClass: MoveClass): string {
   return QUASIPARTICLE_NAMES[moveClass] ?? moveClass;
 }
 
-// Kondo is the sole seller of the three screening-class moves
+// Kondo is the sole seller of the five screening-class moves
 // (OverworldScene.showKondoPanel) -- kept out of SHOP_MOVE_IDS so Noether
 // never also offers them. Unlike ANALYTIC_MOVE_IDS, buying one of these
 // doesn't make it usable on its own -- see getBattleMoves below for the
@@ -376,19 +405,30 @@ export const KONDO_MOVE_IDS = Object.values(MOVES)
 // physics side of MOVES.spinScreening/chargeScreening/symmetryCloud.
 export type ScreeningChannel = 'spin' | 'charge' | 'symmetry';
 
-// Which of Kondo's buffs each buff move raises, and the inverse lookup.
-// The pair is derived from one literal so the two can never drift apart:
-// BattleScene needs both directions (move id -> channel when the buff is
-// cast, channel -> move id when reading the caster's Feynman level for the
-// buff that is currently up).
-export const SCREENING_MOVE_BY_CHANNEL: Record<ScreeningChannel, string> = {
+// Every cloud one of Kondo's moves can raise on its caster: the three
+// screening channels, plus Restoring Cloud and Anomalous Cloud, which screen
+// nothing coming in and act on the caster instead (MOVES' own comment).
+export type KondoCloud = ScreeningChannel | 'restoring' | 'anomalous';
+
+export function isScreeningChannel(cloud: KondoCloud): cloud is ScreeningChannel {
+  return cloud === 'spin' || cloud === 'charge' || cloud === 'symmetry';
+}
+
+// Which cloud each Kondo move raises, and the inverse lookup. The pair is
+// derived from one literal so the two can never drift apart: BattleScene
+// needs both directions (move id -> cloud when the buff is cast, cloud ->
+// move id when reading the caster's Feynman level for the cloud that is
+// currently up).
+export const KONDO_MOVE_BY_CLOUD: Record<KondoCloud, string> = {
   spin: 'spinScreening',
   charge: 'chargeScreening',
   symmetry: 'symmetryCloud',
+  restoring: 'restoringCloud',
+  anomalous: 'anomalousCloud',
 };
-export const SCREENING_CHANNEL_BY_MOVE: Record<string, ScreeningChannel> = Object.fromEntries(
-  Object.entries(SCREENING_MOVE_BY_CHANNEL).map(([channel, id]) => [id, channel])
-) as Record<string, ScreeningChannel>;
+export const KONDO_CLOUD_BY_MOVE: Record<string, KondoCloud> = Object.fromEntries(
+  Object.entries(KONDO_MOVE_BY_CLOUD).map(([cloud, id]) => [id, cloud])
+) as Record<string, KondoCloud>;
 
 // Which quantum numbers each quasiparticle carries, and therefore which of
 // Kondo's clouds can screen an attack of that class (BattleScene's
@@ -483,7 +523,7 @@ export const SHOP_MOVE_IDS = ORDINARY_MOVE_IDS.filter((id) => id !== 'thermalFlu
 // insulator/semiconductor like Silicon. This is what makes "Si doesn't have
 // magnons" a rule the game enforces, not just flavor text -- both the
 // battle move list (getBattleMoves) and Noether's shop filter through this.
-// Kondo's three self-buff moves (class 'screening', §5) are left off every
+// Kondo's self-buff moves (class 'screening', §5) are left off every
 // list here entirely rather than added to all of them -- they're not
 // attacks, so canHost/the quasiparticle-mismatch rule never applies to them
 // in the first place (BattleScene.resolveHit routes them to
@@ -671,11 +711,11 @@ export function hostableMoveIds(registry: RegistryLike): Set<string> {
 // moves are currently usable, so switching back later restores the rest for
 // free.
 //
-// One narrow special case: Kondo's three self-buff moves (KONDO_MOVE_IDS)
+// One narrow special case: Kondo's five self-buff moves (KONDO_MOVE_IDS)
 // can all be *learned* independently, but only one is ever *usable* at a
 // time -- the registry/save `kondoActiveMove` id, switched only by talking
 // to Kondo again (OverworldScene.showKondoPanel), not per-turn like every
-// other learned move (only one buff channel can be tuned at a time). A
+// other learned move (only one cloud can be held at a time). A
 // bought-but-inactive Kondo move stays in `unlockedMoves` (still "learned")
 // -- it just never passes this filter until it's made active. Checked
 // before (not intersected with) `allowed` -- a self-buff isn't gated by
@@ -792,11 +832,13 @@ export function moveShapeName(moveId: string): string {
 // claim the move's power is actually unbounded: the real bump is
 // MOVE_LEVEL_MULTIPLIERS (balance.ts), a flat 1.5x/2x/3x, read by
 // effectiveMovePower below for an ordinary attack move and, separately, by
-// BattleScene.kondoMitigationFraction for one of Kondo's three self-buffs
-// (whose own `power` is never read as damage in the first place, see
-// KONDO_MOVE_IDS' own comment) -- there it scales that buff's own
-// mitigation strength instead, capped well under 100% so even an
-// Infinite-tier buff leaves real risk on the table. MOVE_LEVEL_STREAKS
+// BattleScene's cloud terms for one of Kondo's five self-buffs (whose own
+// `power` is never read as damage in the first place, see KONDO_MOVE_IDS'
+// own comment) -- there it scales that cloud's own effect instead: a
+// screening cloud's screened fraction (screenReduction, capped well under
+// 100% so even an Infinite-tier buff leaves real risk on the table),
+// Restoring Cloud's heal (restoringHealFraction) and Anomalous Cloud's pull
+// on its caster's chance rolls (anomalousPull). MOVE_LEVEL_STREAKS
 // (balance.ts) is how many of Feynman's own quiz questions (data/quiz.ts's
 // getAnalyticQuestions) the player must answer correctly in a row to land
 // that tier -- missing even one loses the attempt (the qumatessence
@@ -824,8 +866,8 @@ export function getUnlockedMoveLevel(registry: RegistryLike, moveId: string): Mo
 // unlocked (scenes/panels/feynman.ts), and the level everything else in the
 // game means when it asks what level a move is: its damage
 // (effectiveMovePower), its displayed name prefix (moveDisplayName), the
-// escalating repeat its effect animates at, and the screening strength of
-// one of Kondo's clouds. A move with no entry is carried at its ceiling, so
+// escalating repeat its effect animates at, and the strength of one of
+// Kondo's clouds. A move with no entry is carried at its ceiling, so
 // a player who never visits the picker sees the same always-strongest
 // behaviour as before opting in, and Superposition Mode's blanket
 // max-everything grant (OverworldScene.applySuperpositionLeveling, which
@@ -852,7 +894,7 @@ export function effectiveMovePower(registry: RegistryLike, moveId: string): numb
 // guardian shop, Feynman's own panel) should show for a move -- folds in
 // both Feynman's level prefix (Double/Triple/Infinite, empty at level 0) and,
 // for an ordinary attack move, whichever quasiparticle it's currently tuned
-// to (tunedMoveDisplayName). Kondo's three 'screening'-class self-buffs are
+// to (tunedMoveDisplayName). Kondo's 'screening'-class self-buffs are
 // the one exception: they have no quasiparticle to tune, so
 // tunedMoveDisplayName would read back the untuned 'screening' class's own
 // bare label instead of a real name (see that function's own comment) --

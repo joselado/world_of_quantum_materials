@@ -347,8 +347,9 @@ Both curves are concave rather than straight so the full range stays meaningful 
 is front-loaded: the first few points already buy something a player can feel, which is what keeps
 an early, cheap stat purchase worth making at all. A crit ("a coherent critical hit") is not one of
 the three levers -- it is a flat `BASE_CRIT_CHANCE` (20%) for every attacker, worth
-`CRIT_DAMAGE_MULTIPLIER` (1.5x) when it lands, and the one thing that moves it is Franklin's
-Satellite Reflection (§5), which doubles its holder's own rate (`ANYON_ECHO_CRIT_MULTIPLIER`).
+`CRIT_DAMAGE_MULTIPLIER` (1.5x) when it lands, and the two things that move it are Franklin's
+Satellite Reflection (§5), which doubles its holder's own rate (`ANYON_ECHO_CRIT_MULTIPLIER`), and
+Kondo's Anomalous Cloud (§4's Self-buffs), which pulls it toward certainty while it is up.
 
 The three levers are deliberately comparable per qumatessence over the range a real playthrough
 can afford (a few points each, not tens), and they are comparable in different shapes. Momentum's
@@ -691,10 +692,10 @@ moves ∩ compatible moves) and Noether's shop (same intersection, so she only e
 what the player's *current* crystal form can actually carry — see the transmutation
 mechanic in §5).
 
-**One deliberate exception: Kondo's three moves aren't attacks at all, so
+**One deliberate exception: Kondo's five moves aren't attacks at all, so
 `MOVE_COMPATIBILITY` doesn't apply to them.** Spin Screening, Charge Screening,
-and Symmetry Cloud (`screening`, §5) are self-buffs — casting one raises a
-3-turn cloud on the caster's own side instead of hitting the opponent, so there's
+Symmetry Cloud, Restoring Cloud and Anomalous Cloud (`screening`, §5) are self-buffs —
+casting one raises a cloud on the caster's own side instead of hitting the opponent, so there's
 no defender to mismatch against and no compatibility list to check. Left off
 every main type's `MOVE_COMPATIBILITY` list entirely rather than added to all of
 them, they're purchasable and usable from any form regardless. Landau's two Analytic moves (`skyfallBeam`/
@@ -746,8 +747,9 @@ rule above — the one universal move is also the one that never gets the mismat
 design. Landau's two Analytic moves (`skyfallBeam`/`groundEruption`) sit at power 10 on
 purpose — level with the `spinon`/`vison`/`chiral`/`helical`/`higgs`/`heavyFermion` tier and
 below only Anyon Braid/Majorana Split among the ordinary attack moves — since their real payoff is the answer-gated
-2x/0.5x multiplier above, not raw power. Kondo's three moves (Spin Screening, Charge
-Screening, Symmetry Cloud, §5) carry the same low `power` value, on par with Electron Pulse,
+2x/0.5x multiplier above, not raw power. Kondo's five moves (Spin Screening, Charge
+Screening, Symmetry Cloud, Restoring Cloud, Anomalous Cloud, §5) carry the same low `power`
+value, on par with Electron Pulse,
 but it's never read as damage at all — they're self-buffs, not attacks, so `power` only
 feeds their qumatessence price (§5's shop-cost formula), the same role it plays for every
 other move. Skłodowska-Curie's two Ultimate moves (power 100, ten
@@ -781,17 +783,49 @@ The "Turns" widget is what makes a multi-slot round readable: its leading icons 
 round's own remaining slots, so how many picks are left before the opponent swings is on screen
 throughout, with the tail tiling the next round's predicted shape.
 
-**Self-buffs (Kondo's three moves, §5).** Kondo teaches three moves that are self-buffs, not
-attacks — casting one raises a 3-turn screening cloud on the *caster's own* side instead of
-hitting the opponent, dealing no damage and never triggering the quasiparticle-mismatch rule
-below. Never randomly rolled: the player picks which cloud by picking the move. A cast spends
-one slot like any other pick, so raising a cloud on the first of several swings still leaves the
-rest of them to attack with, and a side with a single slot spends its whole round on it. The
-cloud takes hold on whichever slot it is cast on; a side's cloud ticks down once per round, on
-that side's last slot, and never on the round it was raised in, so it always screens for exactly
-its full duration.
+**Self-buffs (Kondo's five moves, §5).** Kondo teaches five moves that are self-buffs, not
+attacks — casting one raises a cloud on the *caster's own* side instead of hitting the
+opponent, dealing no damage and never triggering the quasiparticle-mismatch rule below. Never
+randomly rolled: the player picks which cloud by picking the move. A cast spends one slot like
+any other pick, so raising a cloud on the first of several swings still leaves the rest of them
+to attack with, and a side with a single slot spends its whole round on it.
 
-**A cloud screens one quantum number, and only damps a quasiparticle that carries it.** An
+**A cloud acts from the slot it is cast on until its caster's last slot `STATUS_DURATION` (3)
+rounds later.** A side's cloud ticks down once per round, on that side's last slot, and never on
+the round it was raised in; the third tick expires it. The caster's own slots in those rounds,
+that final one included, all act under it (its crit and variance rolls, a Restoring Cloud's
+heal), and it always meets exactly three of the opponent's rounds, whichever side is faster.
+The faster side acts first in a round (above): a faster caster's cloud covers the opponent's
+swing in the cast round and in the next two, then expires on the caster's own slot of the third
+before the opponent swings; a slower caster has already taken the cast round's swing before its
+cloud is up, and is covered for the next three, the cloud expiring after the opponent's third
+swing.
+
+Three of the clouds screen (below). The other two screen nothing coming in and act on the
+caster instead:
+- **Restoring Cloud** mends its caster `RESTORING_HEAL_FRACTION` (5%) of its max HP on the
+  cast itself and again on each of its three turns — four heals a cast — never past max. The
+  physics is the Kondo effect carried through to its ground state: below the Kondo temperature
+  the cloud binds the moment into a singlet, and the conduction sea the free moment was
+  scattering settles back into a Fermi liquid around it (Nozières' local Fermi liquid).
+- **Anomalous Cloud** pulls each of its caster's own chance rolls toward its best outcome
+  (`data/balance.ts`'s `pullToward`): the crit chance toward 100%, the ±15% damage-variance
+  roll toward +15%, and Franklin's Full Reflection (§5) on hits it takes toward 100%. Satellite
+  Reflection's follow-up hit comes with every crit it pulls in. Only the caster's own rolls
+  move: the opponent's crits against it are untouched, as is every term with no roll in it
+  (mismatch, screening, Diffraction Shadow, Amorphous Halo, Last Scattering, Hybrid Aura, the
+  quiz gates on Landau's and Skłodowska-Curie's moves) and every random draw that is not an
+  effect of the caster's (the opponent's move pick, the Adapted's reshaping, World 9's rival
+  type, which quiz question is drawn, a wild's stat roll). The physics is a Kondo lattice held
+  at its quantum critical point, the Kondo breakdown YbRh₂Si₂ sits at: the cloud is neither
+  formed nor gone, fluctuations grow at every scale, and the metal turns anomalous
+  (non-Fermi-liquid).
+
+Restoring Cloud re-arms Franklin's Last Scattering (§5): the floor only holds a side above 1 HP,
+and every heal lifts it back above, so a side holding both that acts before a one-swing
+opponent cannot be knocked out for as long as it keeps the cloud up.
+
+**A screening cloud screens one quantum number, and only damps a quasiparticle that carries it.** An
 incoming hit is halved when the attacking move's *effective* class (`getTunedMoveClass`, so a
 tuned Analytic/Ultimate move screens as whatever the player assigned it) carries the screened
 quantum number, and lands in full otherwise — `data/materials.ts`'s `SCREENING_CHANNELS` is
@@ -815,34 +849,41 @@ the per-class table, and `BattleScene.screeningMultiplier` the single term it fe
 parameter of their own. `phonon` being a Symmetry Cloud target means the universal move, and
 every untuned Analytic/Ultimate move, is screened by that one cloud.
 
-The screened fraction starts at half and deepens with Feynman's own move-leveling (§5, World
-7) applied to that specific Kondo move, the caster's own level only
-(`BattleScene.screenReduction`, the same isPlayer-gated shape `effectiveMovePower` uses for an
-ordinary attack's power): `SCREEN_REDUCTION_BY_LEVEL` in `data/balance.ts` is a flat per-level
-table, 50% / 62% / 68% / 75%, rather than a base scaled by `MOVE_LEVEL_MULTIPLIERS` — a half
-scaled by the 3x top tier passes 1 outright, so a single cap would swallow the middle two
-tiers. The top tier stays short of full immunity by design.
+Every cloud deepens with Feynman's own move-leveling (§5, World 7) applied to that specific
+Kondo move, the caster's own level only (`BattleScene.cloudLevel`, the same isPlayer-gated shape
+`effectiveMovePower` uses for an ordinary attack's power):
+- A screening cloud's screened fraction starts at half and follows `SCREEN_REDUCTION_BY_LEVEL`
+  in `data/balance.ts`, a flat per-level table, 50% / 62% / 68% / 75%, rather than a base
+  scaled by `MOVE_LEVEL_MULTIPLIERS` — a half scaled by the 3x top tier passes 1 outright, so a
+  single cap would swallow the middle two tiers. The top tier stays short of full immunity by
+  design.
+- Restoring Cloud's heal is scaled by `MOVE_LEVEL_MULTIPLIERS` directly
+  (`restoringHealFraction`): 5% / 7.5% / 10% / 15% of max HP a heal, 20% / 30% / 40% / 60%
+  over a cast.
+- Anomalous Cloud's pull is `MOVE_LEVEL_MULTIPLIERS` over the top tier's own 3
+  (`anomalousPull`): 1/3, 1/2, 2/3, 1. A 20% crit chance becomes 47% / 60% / 73% / 100%, a
+  Satellite-Reflection 40% becomes 60% / 70% / 80% / 100%, and Full Reflection's 30% becomes
+  53% / 65% / 77% / 100%. At "Infinite" every one of the caster's hits crits at the top of the
+  variance band, and with Full Reflection slotted every hit it takes goes back to its attacker
+  for as long as the cloud is up — the top of the curve reaches certainty on purpose.
 
-None of the three buff names doubles as a `MoveClass`, so a buff name never reads as if this
+None of the five buff names doubles as a `MoveClass`, so a buff name never reads as if this
 generic technique were tied to one specific move's quasiparticle.
 
 Only one cloud can be active per side at a time — a fresh cast replaces whatever was already
-there rather than stacking, so screening one quantum number always means giving up the other
-two, matching the deliberately simple "one type-interaction rule, not a chart" philosophy
-above. Implemented generically per-side in `BattleScene.resolveSelfBuff`/
-`resolveHit` (the same multiplier-term shape every other `resolveHit` factor already uses)
-rather than hardcoded to "player only," even though only the player can currently learn the
-moves that apply them — no `WORLD_CRYSTALS` entry knows them yet. Ticks down once per round
-per side regardless of how many actions that side took this round (a Momentum advantage no
-longer repeats a self-buff cast — see §4's velocity-ratio paragraph above — so this only
-matters for a side continuing to hold an already-active buff while using ordinary moves) and
-expires with its own battle-log line appended the same way a mismatch/crit clause stacks onto
-a hit's log line. Clouds are battle-only and reset at the start of every fight — never
+there rather than stacking, so holding one cloud always means giving up the other four,
+matching the deliberately simple "one type-interaction rule, not a chart" philosophy above.
+Implemented generically per-side in `BattleScene.resolveSelfBuff`/`resolveHit` (the same
+multiplier-term shape every other `resolveHit` factor already uses) rather than hardcoded to
+"player only," even though only the player can currently learn the moves that apply them — no
+`WORLD_CRYSTALS` entry knows them yet. Ticks down once per round per side regardless of how many
+actions that side took this round, and expires with its own battle-log line appended the same
+way a mismatch/crit clause stacks onto a hit's log line; a Restoring Cloud's heal adds its own
+clause the same way. Clouds are battle-only and reset at the start of every fight — never
 persisted to the save. A small pill under each side's HP bar in battle shows which cloud (if
 any) is active and how many turns remain, and the cloud itself is visible for its whole
-duration as an aura wrapped around the carrying crystal, one silhouette per channel drawing
-the physics of what it screens (`art/screeningAuras.ts`, STYLE.md's "Battle status
-effects").
+duration as an aura wrapped around the carrying crystal, one silhouette per cloud drawing its
+physics (`art/screeningAuras.ts`, STYLE.md's "Battle status effects").
 
 **Quasiparticle mismatch.** The sole type-interaction rule in battle (§3): a defender
 whose own type can't physically host the attacking move's quasiparticle class at all
@@ -868,8 +909,8 @@ only a change of type. The Adapted never carries it (§6), whatever hybrid compo
 reshapes into: it is a model of a material, not a fused one. A reflected hit (Full
 Reflection, §5) carries the number the hit resolved to, both aura terms included. Built into
 the form rather than bought: it takes no Franklin slot, is never set aside, sits first on the
-battle pill and at the Lab's Abilities station ("Built in: Hybrid Aura", above Franklin's
-line), and lasts exactly as long as the player wears a hybrid form. The additive glow every
+battle pill and in the Lab's Abilities station (the first row of its list, above Franklin's,
+with no slot diamonds), and lasts exactly as long as the player wears a hybrid form. The additive glow every
 hybrid already wears (STYLE.md's **Hybrid materials**) is the aura's whole visual; there is
 no separate ground halo for it.
 
@@ -1320,11 +1361,12 @@ state can mark her met before the player has actually reached her.
   4-question streak), **Infinite** (3x, an 8-question streak) -- "Infinite" is
   hyperbole, not a literal unbounded-power claim; the real cap is the flat 3x.
   For an ordinary attack move that multiplier scales its `power` (`effectiveMovePower`,
-  below); for Kondo's three self-buffs, whose own `power` is never read as damage in the
-  first place (§5 Kondo bullet, §3/§4), it instead deepens that cloud's own screened
-  fraction (`BattleScene.screenReduction`, capped well under 100% -- see §4's
-  Self-buffs paragraph for the exact per-level figures), so leveling a Kondo move is a
-  real mechanical upgrade too, not a name-only one.
+  below); for Kondo's five self-buffs, whose own `power` is never read as damage in the
+  first place (§5 Kondo bullet, §3/§4), it instead strengthens that cloud's own effect
+  (`BattleScene.cloudLevel`): a screening cloud's screened fraction (capped well under
+  100%), Restoring Cloud's heal, Anomalous Cloud's pull -- see §4's Self-buffs paragraph
+  for the exact per-level figures -- so leveling a Kondo move is a real mechanical upgrade
+  too, not a name-only one.
   Registry/save `moveLevels` (moveId → 0-3, `data/save.ts`) is permanent once a tier is
   reached, the same "first time costs, permanent afterward" shape every other
   guardian's one-time unlock already uses. **That is a ceiling, not a setting: a move is
@@ -1332,7 +1374,7 @@ state can mark her met before the player has actually reached her.
   (`carriedMoveLevels`, written from the tier row in Feynman's own pane and free to change
   as often as they like, since the tier was paid for when it was landed). `getMoveLevel`
   reads the carried tier and is what every other part of the game means by a move's level
-  -- its power, its name prefix, its cascade, a Kondo cloud's screening strength --
+  -- its power, its name prefix, its cascade, a Kondo cloud's strength --
   while `getUnlockedMoveLevel` reads the ceiling and is used only to decide what the next
   attempt targets. A move with no carried entry is carried at its ceiling, so a player who
   never touches the row sees the always-deepest behaviour, and a freshly landed tier is
@@ -1354,7 +1396,7 @@ state can mark her met before the player has actually reached her.
   Landau's/Skłodowska-Curie's own quiz gates fire -- Feynman's leveling attempt is a
   standalone decision made at his panel, not something triggered by using a move in a
   fight. A leveled move's effective power (`effectiveMovePower`) -- or, for one of
-  Kondo's three, its screened fraction (`screenReduction`) -- only
+  Kondo's five, its cloud's strength (`cloudLevel`) -- only
   applies to the *player's own* copy of that move id -- an opponent's own use of the
   same move id (an ordinary wild's Electron Pulse, say) is never affected, since move
   levels are the player's own save state, not a property of the move itself; the level prefix folds
@@ -1362,7 +1404,7 @@ state can mark her met before the player has actually reached her.
   move menu/log, every guardian's own move-list panel, and Feynman's own) the same way
   Landau's/Skłodowska-Curie's tuned-quasiparticle name already does
   (`tunedMoveDisplayName`) -- `moveDisplayName` falls back to a move's own static name
-  for Kondo's three `'screening'`-class self-buffs specifically, since they have no
+  for Kondo's five `'screening'`-class self-buffs specifically, since they have no
   quasiparticle for `tunedMoveDisplayName` to read. Feynman has no single "active" slot
   the way Kondo/Franklin/Anderson/Dresselhaus-Majorana do (§7) -- every move he levels
   stands independently -- so Superposition Mode's blanket unlock grant treats
@@ -1373,28 +1415,33 @@ state can mark her met before the player has actually reached her.
   Kondo's/Franklin's/Anderson's/Dresselhaus-or-Majorana's own picks. A Superposition Mode playthrough never
   has to actually answer Feynman's own questions to reach max level -- his panel still
   works exactly as in Story Mode if visited, each row already reading "max level."
-- **Kondo** → world 8 middle → sells three self-buff moves (`scenes/panels/kondo.ts`'s `showKondoPanel`,
+- **Kondo** → world 8 middle → sells five self-buff moves (`scenes/panels/kondo.ts`'s `showKondoPanel`,
   `data/materials.ts`'s `KONDO_MOVE_IDS`) -- Spin Screening, Charge Screening, Symmetry
-  Cloud -- each of which deterministically raises one 3-turn cloud on the *caster's own*
-  side instead of attacking the opponent, dealing no damage and never checking
-  `MOVE_COMPATIBILITY` at all. Each cloud screens exactly one quantum number and halves only
-  the incoming attacks whose quasiparticle carries it (§4's Self-buffs paragraph for the
-  three class lists, `SCREENING_CHANNELS` for the table itself), which is what makes the
-  choice between them a read of what the next opponent throws rather than a ranking. The
-  generalization is the guardian's own physics: the Kondo effect is a conduction-electron
-  cloud screening a local moment until the moment is gone, Charge Screening is that same
-  cloud doing Thomas-Fermi screening of a charge disturbance instead, and Symmetry Cloud
-  restores the continuous symmetry an ordered state gave up, so it damps that order
-  parameter's own modes. Each of the three, like every other move in the game, can be
+  Cloud, Restoring Cloud, Anomalous Cloud -- each of which deterministically raises one
+  cloud on the *caster's own* side instead of attacking the opponent, active from the cast
+  slot until its caster's last slot three rounds later (§4), dealing no damage and never checking
+  `MOVE_COMPATIBILITY` at all. Each of the first three screens exactly one quantum number and
+  halves only the incoming attacks whose quasiparticle carries it (§4's Self-buffs paragraph
+  for the three class lists, `SCREENING_CHANNELS` for the table itself); Restoring Cloud mends
+  its caster instead, and Anomalous Cloud pulls its caster's chance rolls toward their best
+  outcome. That is what makes the choice between them a read of the next fight rather than a
+  ranking. The generalization is the guardian's own physics: the Kondo effect is a
+  conduction-electron cloud screening a local moment until the moment is gone, Charge
+  Screening is that same cloud doing Thomas-Fermi screening of a charge disturbance instead,
+  Symmetry Cloud restores the continuous symmetry an ordered state gave up, so it damps that
+  order parameter's own modes, Restoring Cloud is the screening carried through to the singlet
+  and the local Fermi liquid it leaves behind, and Anomalous Cloud is a Kondo lattice held at
+  its quantum critical point. Each of the five, like every other move in the game, can be
   leveled up at Feynman's panel (§5/§4 above) -- since Kondo's `power` is never read as
-  damage, leveling one instead deepens its screened fraction
-  (`BattleScene.screenReduction`), not a power number: 50% unleveled up to 75% at Infinite
-  tier, capped so even a maxed-out cloud leaves real damage coming through.
-  The player can buy all three
+  damage, leveling one instead strengthens its cloud (`BattleScene.cloudLevel`), not a power
+  number: a screening cloud from 50% unleveled up to 75% at Infinite tier, capped so even a
+  maxed-out cloud leaves real damage coming through; Restoring Cloud from 5% of max HP a heal
+  up to 15%; Anomalous Cloud from a third of the way to each roll's best outcome up to all of
+  it. The player can buy all five
   independently, but only one is ever usable in battle at a time -- registry/save
   `kondoActiveMove`, switched only by returning to Kondo's own panel (a bought-but-inactive
   move stays in `unlockedMoves`, it just fails `getBattleMoves`' own extra check), since
-  Kondo's own technique resolves one channel at a time, not every channel at once -- the same
+  Kondo's own technique resolves one cloud at a time, not every cloud at once -- the same
   reasoning DESIGN.md gives for excluding a generic "impurity scattering" damage move in §3
   applies here too: this isn't free-form disorder, it's one specific technique the player has
   to choose and commit to. The shop panel itself doubles as the switch -- a bought-and-inactive
@@ -1404,12 +1451,12 @@ state can mark her met before the player has actually reached her.
   list+detail shape Franklin's own panel uses. Buying the *first*
   Kondo move activates it automatically (still "picked by talking to Kondo," just in the same
   click as the purchase) so a fresh purchase is never invisible in battle with no explanation;
-  buying a second or third on top of an already-active one doesn't, and switching between
+  buying another on top of an already-active one doesn't, and switching between
   already-bought moves is always its own explicit click either way. Superposition Mode's
   blanket unlock grant (`OverworldScene.applySuperpositionUnlocks`, §7 -- shared by every
-  world entry and by the Lab itself) seeds `kondoActiveMove` to a random one of the three
+  world entry and by the Lab itself) seeds `kondoActiveMove` to a random one of the five
   moves if it's still unset, for the same reason -- granting every move id doesn't help if
-  none of Kondo's three actually pass `getBattleMoves`' extra check -- picked randomly
+  none of Kondo's five actually pass `getBattleMoves`' extra check -- picked randomly
   rather than always the same one so a fresh Superposition save doesn't always start on the
   same move.
 - **Franklin** → world 9 middle → teaches five passive abilities
@@ -1419,10 +1466,10 @@ state can mark her met before the player has actually reached her.
   room: the crystal starts with no passive slot, Franklin sells up to three
   (`PASSIVE_MAX_SLOTS`) one at a time, and every passive takes up a fixed number of them
   while active (`Passive.slots` -- one each for Diffraction Shadow, Satellite Reflection
-  and Amorphous Halo, two for Full Reflection, all three for Last Scattering). Which are
+  and Amorphous Halo, all three for Last Scattering and for Full Reflection). Which are
   active lives in registry/save `activePassivesByOwner`, oldest-equipped first, and the
   slots bought in `passiveSlotsByOwner`; both change only at Franklin's panel -- the
-  "learn several, equip what fits" shape Kondo's three self-buff moves use with a single
+  "learn several, equip what fits" shape Kondo's five self-buff moves use with a single
   free slot (above) -- fitting, since Franklin's own physics (X-ray diffraction of a defect-riddled
   or porous crystal -- a real, if lesser-known, tie between Rosalind Franklin's
   characterization work and world 9's "excitations and defects" topic) is world 9's
@@ -1431,7 +1478,8 @@ state can mark her met before the player has actually reached her.
   - **Diffraction Shadow** -- incoming damage is multiplied down (×0.85) for the whole
     battle, the way porous carbon attenuates and scatters an X-ray beam.
   - **Satellite Reflection** -- doubles its holder's own crit rate (20% → 40%,
-    `ANYON_ECHO_CRIT_MULTIPLIER`, the one thing in the game that moves that rate), and
+    `ANYON_ECHO_CRIT_MULTIPLIER`; Kondo's Anomalous Cloud is the only other thing that moves
+    that rate, §4), and
     each critical hit throws off a secondary diffraction peak: a bonus follow-up damage
     tick (~30% of that hit's damage) immediately after.
   - **Amorphous Halo** -- softens the quasiparticle-mismatch double-damage rule
@@ -1447,7 +1495,7 @@ state can mark her met before the player has actually reached her.
     again -- the passive buys exactly one more hit than the numbers allow, never
     immortality. The name is the game's own coinage rather than diffraction vocabulary;
     the physics it stands on is the attenuation law.
-  - **Full Reflection** -- one incoming hit in ten (`FULL_REFLECTION_CHANCE`) bounces
+  - **Full Reflection** -- three incoming hits in ten (`FULL_REFLECTION_CHANCE`) bounce
     straight back onto the attacker for the full damage number it would have done, and
     the holder takes nothing: total external reflection, a grazing X-ray beam below the
     critical angle never entering the crystal at all. The reflected damage is the number
@@ -1457,20 +1505,23 @@ state can mark her met before the player has actually reached her.
     subject to the attacker's own Last Scattering floor. An attacker can KO itself this
     way -- the ordinary win/lose check runs after every hit regardless of whose swing it
     was, the finale's stage-falling path included. A whiffed Ultimate is never
-    reflected (nothing reaches the defender), nor is a hit that rounds to zero.
+    reflected (nothing reaches the defender), nor is a hit that rounds to zero. The roll
+    is the holder's own, so the holder's Anomalous Cloud (§4) pulls it toward
+    certainty -- every hit, at that cloud's top tier.
 
-  **Pricing.** The passives themselves stay cheap, a 40-55 band (`Passive.cost`, the two
-  situational ones at the top of it: Last Scattering 55, Full Reflection 50); what a
-  player really pays for is the room to run them. Slots are bought one at a time from the
+  **Pricing.** A one-slot passive costs about what a first slot does, a 200-225 band
+  (`Passive.cost`), so learning a lesson and making room for it are purchases of the same
+  size. A passive that takes all three slots costs ten times that much (Last Scattering
+  2750, Full Reflection 2500), since each is a whole loadout by itself. Slots are bought one at a time from the
   same panel at `PASSIVE_SLOT_COSTS` -- 200, 800, 3200 -- each rung four times the one
   before, so the ladder reads as three different purchases rather than one price paid
   thrice: the first slot is about one world-9 battle stake (~180) and is what makes any
   passive active at all; the second is a real late-game saving; the third -- the only way
-  to hold Last Scattering, or Full Reflection beside another lesson -- costs more than
-  three of Skłodowska-Curie's per-class Ultimate unlocks (1000 each), a finale-scale goal
-  rather than a world-9 shopping trip. A passive's slot size is its weight in the
-  loadout, sized by how much of a fight it decides: a flat multiplier is one, a hit
-  bounced back whole is two, a guaranteed survival is all three. Slots are the same
+  to hold Last Scattering or Full Reflection -- costs more than three of
+  Skłodowska-Curie's per-class Ultimate unlocks (1000 each), a finale-scale goal rather
+  than a world-9 shopping trip. A passive's slot size is its weight in the loadout, sized
+  by how much of a fight it decides: a flat multiplier is one; a guaranteed survival and
+  three hits in ten bounced back whole are all three. Slots are the same
   pay-once-then-free-forever shape as Bloch's/Dresselhaus's/Anderson's/Majorana's
   per-option unlocks; filling them with an already-bought passive is free, as is setting
   one aside.
@@ -1482,9 +1533,17 @@ state can mark her met before the player has actually reached her.
   halo stacked, since that is what the crystal wears in battle; an inactive one shows
   its own halo alone, dimmed), its description, a status line and one confirm button --
   "Learn", "Make active", or "Set aside", the status line always naming how many slots
-  the passive takes. Slots are not passives and are not rows among them: the next rung
-  of the ladder is its own button under the list, between the passives and Farewell --
-  "Buy slot N (`<cost>`)", then a dimmed "3 slots owned" tag. Making a passive active
+  the passive takes. Slots read as icons (`art/slotIcons.ts`'s diamonds, in Franklin's
+  lavender): every passive's row carries one filled diamond per slot it takes, and the
+  crystal's whole ladder -- used slots filled, owned free ones open, unbought ones a faint
+  outline -- stands beside the slot button. Slots are not passives and are not rows among
+  them: the next rung of the ladder is its own button under the list, between the
+  passives and Farewell -- "Buy slot N (`<cost>`)" (shortened to "Buy (`<cost>`)" where the
+  diamonds leave too little room), then a dimmed "All slots owned" tag. The Lab's
+  Abilities station shows the same icons: its list is the passives the crystal runs (a
+  hybrid's built-in Hybrid Aura first, then the active Franklin ones), each Franklin row
+  with its diamonds, Franklin's slot ladder under the list, and the selected one's halo,
+  slots and description in the detail pane. Making a passive active
   uses the free slots; when they are not enough it sets the oldest-equipped passives
   aside until it fits, and the status line names them before the click; a passive that
   needs more slots than the crystal owns says so and its button is inert. Buying a
@@ -2058,7 +2117,7 @@ rather than inheriting it.
   the same grant also seeds the active slot(s) to random picks among the unlocked
   options, but only if still unset -- a deliberate pick made at that guardian's own
   panel always survives every later re-application of the grant: `kondoActiveMove` to a
-  random one of Kondo's three self-buff moves, `activePassivesByOwner.franklin` to random
+  random one of Kondo's five self-buff moves, `activePassivesByOwner.franklin` to random
   picks among Franklin's five passives drawn until no further one fits the three slots
   (the grant also buys all three, `passiveSlotsByOwner`), `andersonDopant` to a random non-hybrid
   crystal, and `playerForm` to a random pick from a pool coin-flipped between
@@ -2198,11 +2257,11 @@ Not yet built:
 - **Subtype combination rules** — which main+subtype pairs are physically/
   narratively sensible needs a full compatibility table, not just one example.
 - **Debuffs-on-the-opponent aren't implemented at all today** — no guardian teaches a move
-  that inflicts anything on the *defender*; Kondo's three (§4) are self-buffs instead. An
+  that inflicts anything on the *defender*; Kondo's five (§4) are self-buffs instead. An
   earlier design sketch described a "Gapped down" (defense drops, mirroring gap closing) and
   a "Symmetry-broken" (forced type shift for N turns) debuff; neither is implemented, and no
   guardian is currently slated to teach them -- if one ever is, it would need its own
-  MOVE_COMPATIBILITY treatment (a real debuff move is an attack, unlike Kondo's three), not
+  MOVE_COMPATIBILITY treatment (a real debuff move is an attack, unlike Kondo's five), not
   the "left off every list" self-buff shape.
 - **Scope vs. solo-dev reality** — 10 worlds + full art + guardian roster is large for
   one person; consider cutting to 3–4 flagship worlds for a v1 before building all 10.

@@ -123,6 +123,7 @@ game/src/
                                  renderListColumn()/listDetailColumns()/fitListLabel()/
                                  insertColumnDivider()/renderDetailCrystalHeader()/
                                  renderMoveDetailHeader()/renderSelfBuffMoveDetailHeader()/
+                                 renderCloudDetailHeader()/renderPassiveDetailHeader()/
                                  renderStatusAndConfirm()/destroyPanel() is the
                                  shared detail-pane scaffolding (STYLE.md's "List+detail panels") --
                                  renderListColumn/listDetailColumns back the paginated-left-column
@@ -365,12 +366,19 @@ game/src/
                                   makeBossIcon() -- the same silhouette reduced to a static HUD-scale icon
                                   (battle/hud.ts's turn-order row), no shards/seams/sparks/tweens
     screeningAuras.ts           addScreeningAura()/removeScreeningAura() -- the persistent
-                                  per-channel aura a Kondo screening buff wraps around the
-                                  carrying crystal in battle for the buff's whole duration
+                                  per-cloud aura a Kondo buff wraps around the carrying
+                                  crystal in battle for the buff's whole duration
                                   (see "Stats and battle resolution" below for the lifecycle);
-                                  one silhouette per ScreeningChannel, each drawing the
-                                  physics of what that cloud screens, all in Kondo's own
-                                  rust-orange (STYLE.md's "Battle status effects")
+                                  one silhouette per KondoCloud, each drawing that cloud's
+                                  physics, all in Kondo's own
+                                  rust-orange (STYLE.md's "Battle status effects"); the same
+                                  aura previews each cloud in Kondo's own panel
+                                  (listDetail.ts's renderCloudDetailHeader)
+    slotIcons.ts                makeSlotPips()/slotPipsWidth()/slotPipRadius()/
+                                  slotMeterStates() -- Franklin's passive slots as small
+                                  lavender diamonds (filled/open/locked), shared by
+                                  franklin.ts's rows and slot row and the Lab's Abilities
+                                  station (STYLE.md's "Slot icons")
     tokens.ts                   makeToken() -- qumatessence pickup sprite
     labMotifs.ts                 One small icon builder per Lab station (Qumatex/Door/
                                   Moves/Stats/Abilities/Tutorial/Settings/Title Screen -- see
@@ -536,7 +544,7 @@ game/src/
                                   real cast does. `params.subject` is the pane's own caption for
                                   the move (`displayName`, passed by both of listDetail.ts's
                                   openers): it is what tells two moves of one class apart (Kondo's
-                                  three self-buffs all play the one screening ring), so picking
+                                  five self-buffs all play the one screening ring), so picking
                                   the other one still reads as a change. Tracks any number of
                                   independent, simultaneously-looping preview *chains* in a
                                   `Map<string, PreviewChain>` keyed by `key` (default
@@ -677,7 +685,9 @@ game/src/
                                   HYBRID_AURA_ATTACK_MULT/HYBRID_AURA_DAMAGE_MULT (every
                                   hybrid's built-in Hybrid Aura, §4),
                                   MISMATCH_MULTIPLIER, SCREEN_REDUCTION_BY_LEVEL (Kondo's buff-cap
-                                  math, §4/§5), energyFactor()/lifetimeFactor() (the two mirror
+                                  math, §4/§5), restoringHealFraction()/anomalousPull()/
+                                  pullToward() (Restoring Cloud's heal, Anomalous Cloud's pull on
+                                  chance rolls), energyFactor()/lifetimeFactor() (the two mirror
                                   stat levers off the shared statLever curve),
                                   BASE_CRIT_CHANCE/CRIT_DAMAGE_MULTIPLIER, and
                                   resolveHitDamage() -- the exact
@@ -967,7 +977,7 @@ World 10's Adapted and nowhere else.
   (what the attacker can use) and `canHost` (whether the defender takes the mismatch 2x), so
   leaving a new *attack* class off every type's list doesn't make it "unavailable," it makes
   every defender mismatch against it -- a silent, permanent 2x stacked on top of whatever
-  bonus the move's own mechanic already applies. `'screening'` (Kondo's three self-buff
+  bonus the move's own mechanic already applies. `'screening'` (Kondo's five self-buff
   moves) is the one class this doesn't apply to at all: it's deliberately left off *every*
   type's list, since a self-buff never attacks in the first place -- `BattleScene.resolveHit`
   routes it to `resolveSelfBuff` before `canHost` is ever checked, so it's simply never
@@ -1104,8 +1114,8 @@ everything else by absence, so only two things in it carry meaning.
   fits beside the portrait, never below `INTRO_FLOOR_SCALE` (`1.15`), so no panel caps its own
   intro and a Brief line reads at full size where a Detailed one gives up pixels. It also plays the shared
   `playGuardianChime`, so a panel never calls that itself. `listDetail.ts`'s own
-  `renderListColumn`/`renderMoveDetailHeader`/
-  `renderSelfBuffMoveDetailHeader`/`renderPassiveDetailHeader`/`renderStatusAndConfirm`/
+  `renderListColumn` (with its optional `badgeFor` row-icon hook)/`renderMoveDetailHeader`/
+  `renderSelfBuffMoveDetailHeader`/`renderCloudDetailHeader`/`renderPassiveDetailHeader`/`renderStatusAndConfirm`/
   `insertColumnDivider`/`renderListColumnFooter`/`destroyPanel` (see the file-tree entry above)
   is the genuinely multi-caller case, shared today by Dresselhaus/Anderson/Majorana/Noether/Kondo/
   Franklin/Feynman's own
@@ -1142,11 +1152,11 @@ everything else by absence, so only two things in it carry meaning.
   panel is a single browse step and its own preview field alone -- holding the previewed
   *hybrid result's*/*move's*/*world number's* name -- drives its whole detail (or, for Bloch,
   status/confirm) pane (Kondo's own committed choice,
-  which of its three moves is actually usable in battle, lives in registry/save
+  which of its five moves is actually usable in battle, lives in registry/save
   `kondoActiveMove` instead, written by the detail pane's own confirm button -- the same
   "browsing is free, committing is the confirm button" split every other list+detail panel
   uses -- with Superposition Mode's `applySuperpositionUnlocks` additionally seeding it to a
-  random one of the three while it's still unset)) -- Landau's and Skłodowska-Curie's own
+  random one of the five while it's still unset)) -- Landau's and Skłodowska-Curie's own
   panels have no pagination/preview field of their own at all, since each always renders both of its two fixed moves at once rather than
   browsing a candidate list -- and the player-form
   mutator `applyPlayerForm` (shared by Dresselhaus's `transmuteInto` and Majorana's
@@ -1409,7 +1419,8 @@ The stat-lever/crit/mismatch/final-product arithmetic itself lives in `data/
 balance.ts`'s `resolveHitDamage` (Phaser-free, so `game/scripts/balance-sim.mjs` can run the
 same math outside the browser) -- `resolveHit` assembles that hit's own per-term multipliers
 (mismatch bool + which multiplier applies, quiz/Analytic/Ultimate bonus, Kondo/Franklin
-defensive terms) and calls into it rather than computing the product inline.
+defensive terms, the attacker's Anomalous Cloud pull as `luck`) and calls into it rather than
+computing the product inline.
 This is the only type-interaction term in the damage formula (DESIGN.md §3/§4) -- there is no
 separate type-chart multiplier. Which move the opponent swings is decided one level up, in
 `playerAttack`'s `opponentMoveId` thunk (re-rolled per opponent hit): it draws from
@@ -1478,43 +1489,55 @@ any other pick, and since their quiz panels hang off `addMoveButton`'s click han
 off the round, each slot one is picked for asks its own question (or, for an Ultimate, its own
 three) before `playerAttack` is reached with the resulting `bonusMultiplier`.
 
-**Self-buffs (Kondo's three moves).** `this.playerStatus`/`this.opponentStatus`
-(`ActiveStatus | null`, `{ kind: ScreeningChannel; turnsLeft: number }`, where
-`ScreeningChannel` is `data/materials.ts`'s `'spin' | 'charge' | 'symmetry'`)
-are battle-only fields, explicitly reset to `null` in `create()` (Phaser reuses the same Scene
+**Self-buffs (Kondo's five moves).** `this.playerStatus`/`this.opponentStatus`
+(`ActiveStatus | null`, `{ kind: KondoCloud; turnsLeft: number }`, where `KondoCloud` is
+`data/materials.ts`'s `ScreeningChannel` (`'spin' | 'charge' | 'symmetry'`) plus `'restoring' |
+'anomalous'`, `isScreeningChannel` telling the two apart) are battle-only fields, explicitly reset to `null` in `create()` (Phaser reuses the same Scene
 instance across `scene.start()` calls, so a field initializer alone doesn't reset them between
 battles -- same gotcha `OverworldScene`'s own dialogue-state fields already call out). A Kondo
 move (`KONDO_MOVE_IDS`) is never an attack -- `resolveHit` checks for one first thing and routes
 it to `resolveSelfBuff(isPlayer, move, onDone)` instead, which never touches
 `canHost`/`dmg`/`applyDamage` at all, raising the cloud on the *caster's own* side
-(`isPlayer`, not `defenderIsPlayer`). One per-side lookup feeds the cloud's actual effect
-into the existing damage formula rather than adding a parallel path:
+(`isPlayer`, not `defenderIsPlayer`). Per-side lookups feed each cloud's actual effect into
+the existing damage formula rather than adding a parallel path:
 `screeningMultiplier(defenderIsPlayer, effectiveClass)` returns `1 - screenReduction` when
-the defender's own cloud screens the incoming hit's effective quasiparticle class
-(`SCREENING_CHANNELS[moveClass].includes(status.kind)`) and a flat `1` otherwise -- so which
+the defender holds a screening cloud that screens the incoming hit's effective quasiparticle
+class (`isScreeningChannel(status.kind) && SCREENING_CHANNELS[moveClass].includes(status.kind)`)
+and a flat `1` otherwise -- so which
 attack is coming decides whether the buff does anything at all, and the class read is the
 *effective* one (`getTunedMoveClass`, already resolved a few lines above for the mismatch
 check), meaning a tuned Analytic/Ultimate move is screened as the quasiparticle the player
-assigned it. `screenReduction(isPlayer, channel)` is where Feynman's own move-leveling (§5,
-World 7) lands: it reads the *caster's own* level of the buff move that raised this cloud
-(`SCREENING_MOVE_BY_CHANNEL[channel]`) and indexes `data/balance.ts`'s flat
-`SCREEN_REDUCTION_BY_LEVEL` table (50% / 62% / 68% / 75%) -- a table rather than a
-`MOVE_LEVEL_MULTIPLIERS` product, since a half scaled by the 3x top tier would pass 1 outright
--- gated on `isPlayer` the same isPlayer-only way `effectiveMovePower` is, since no wild
-ever casts a Kondo move. Raising a cloud and spending a turn of one are two separate
-functions, since a cast can land on any slot while a tick may only happen once a round.
-`castBuff(move, isPlayer)` runs unconditionally from `resolveSelfBuff`: it reads
-`SCREENING_CHANNEL_BY_MOVE` (`Record<moveId, ScreeningChannel>`, a fixed lookup -- no
-randomness), replaces the caster's cloud outright via `setStatus` (one cloud per side, never
-stacked) and sets that side's `buffCastThisRound` flag. `tickBuff(isPlayer)` runs from
+assigned it. `anomalousPullFor(isPlayer)` is the Anomalous Cloud's term: `data/balance.ts`'s
+`anomalousPull` for that side's level while it holds one, `0` otherwise. `resolveHit` passes
+the attacker's as `resolveHitDamage`'s `luck` (which runs both the crit chance and the
+variance roll through `pullToward`, without adding an RNG draw) and runs the defender's
+through the inline Full Reflection roll, `pullToward(FULL_REFLECTION_CHANCE, 1, ...)`.
+`cloudLevel(isPlayer, cloud)` is where Feynman's own move-leveling (§5, World 7) lands for
+every cloud: it reads the *caster's own* level of the buff move that raises that cloud
+(`KONDO_MOVE_BY_CLOUD[cloud]`), gated on `isPlayer` the same isPlayer-only way
+`effectiveMovePower` is, since no wild ever casts a Kondo move. `screenReduction(isPlayer,
+channel)` indexes the flat `SCREEN_REDUCTION_BY_LEVEL` table with it (50% / 62% / 68% / 75%)
+-- a table rather than a `MOVE_LEVEL_MULTIPLIERS` product, since a half scaled by the 3x top
+tier would pass 1 outright; `restore(isPlayer)` scales Restoring Cloud's heal by it
+(`restoringHealFraction`), caps it at that side's max HP, writes the player's HP through the
+same registry-write/`persistFromRegistry` rule `applyDamage` uses, and returns the log clause
+(`restoreText`, empty when nothing was mended). Raising a cloud and spending a turn of one are
+two separate functions, since a cast can land on any slot while a tick may only happen once a
+round. `castBuff(move, isPlayer)` runs unconditionally from `resolveSelfBuff`: it reads
+`KONDO_CLOUD_BY_MOVE` (`Record<moveId, KondoCloud>`, the inverse of `KONDO_MOVE_BY_CLOUD`, a
+fixed lookup -- no randomness), replaces the caster's cloud outright via `setStatus` (one
+cloud per side, never stacked), sets that side's `buffCastThisRound` flag, and for a Restoring
+Cloud mends the caster on the cast itself. `tickBuff(isPlayer)` runs from
 `resolveHit`'s `applyResult` under the `tickStatus` param (default `true`), which `runNextSlot`
 passes as `true` only on `playerLastSlot`/`enemyLastSlot` -- that side's last slot of the round.
-It returns immediately if that side's `buffCastThisRound` flag is up, and otherwise takes one off
-`turnsLeft`, clearing the cloud once it reaches 0. The two guards are what make a cloud last
+It returns immediately if that side's `buffCastThisRound` flag is up, and otherwise mends a
+Restoring Cloud's caster, then takes one off `turnsLeft`, clearing the cloud once it reaches 0.
+The two guards are what make a cloud last
 exactly `STATUS_DURATION` rounds past the one it was raised in: ticking on a side's last slot
 rather than its first lets a cloud on its final turn keep screening through every one of that
 side's earlier slots, and the cast flag stops the same round that raised it from also spending
-it. Both return a log-line clause (`STATUS_INFO[kind].applyText`/`.expireText`) appended to that
+it. Both return a log-line clause (`STATUS_INFO[kind].applyText`/`.expireText`, plus
+`restoreText` for a heal) appended to that
 hit's own message, the same "stack a clause onto the existing line" pattern
 `mismatchText`/`critText` already use. `setStatus` also calls `renderStatusLabel`, which updates a small
 always-present-but-usually-empty `Text` pill (`playerStatusLabel`/`opponentStatusLabel`,
@@ -1628,8 +1651,8 @@ presentational, since `resolveHit`'s own `power`/`dmg` already fold in the real
 `MOVE_LEVEL_MULTIPLIERS` bump once, upstream of any of this. `resolveHit` computes `level =
 isPlayer ? getMoveLevel(this.game.registry, moveId) : 0` (an opponent's copy of the same move id
 never carries a level) and passes it as `playAttackEffect`'s last param on both its ordinary and
-Ultimate call sites, and `resolveSelfBuff` does the same for Kondo's three self-buff moves (also
-leveled by Feynman, `screenReduction`). Inside `art/attackEffects.ts`,
+Ultimate call sites, and `resolveSelfBuff` does the same for Kondo's five self-buff moves (also
+leveled by Feynman, `cloudLevel`). Inside `art/attackEffects.ts`,
 `playOrdinaryRepeats`/`playUltimateRepeats` fire `LEVEL_TRIGGER_COUNTS[level]` (1/2/3/4) copies
 of the single-hit beat, each `LEVEL_TRIGGER_SCALES` bigger than the last and staggered by a
 shape-family-specific delay (see STYLE.md's "Attack effects" for the exact numbers) -- only the
@@ -2791,14 +2814,19 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   and one confirm button. An active passive's pane passes the whole active list as `haloIds`
   at full alpha (what the crystal wears in battle); an inactive passive's passes its own id
   alone at `0.45`. The crystal in that header is size `40` rather than `DETAIL_CRYSTAL_SIZE`
-  so Amorphous Halo's `2.8x` glow stays inside the stage. Slots are bought from their own
-  button in the left column between the rows and Farewell (`renderSlotButton`, rendered
-  into `chromeBlock` with the footer: "Buy slot N (`<cost>`)" for the next rung of
-  `PASSIVE_SLOT_COSTS`, dimmed when unaffordable, then a dimmed no-op "3 slots owned" tag),
-  never as a row -- a slot is room, not a sixth ability, and a row would read as one. The
-  button's height is measured off a throwaway sample and handed to `renderListColumn` as
-  `reserveBelow`, and its label is capped at `SLOT_BUTTON_CAP` (`1.3`) so it stays on one
-  line in the 200px column at the largest text-size preset. State is read through
+  so Amorphous Halo's `2.8x` glow stays inside the stage. Each row carries its passive's
+  slot diamonds through `renderListColumn`'s `badgeFor` hook (`art/slotIcons.ts`'s
+  `makeSlotPips`, `slotPipsWidth` taken out of the label's fit). Slots are bought from their
+  own row in the left column between the rows and Farewell (`renderSlotRow`, rendered into
+  `chromeBlock` with the footer: the crystal's ladder as `slotMeterStates(used, owned,
+  PASSIVE_MAX_SLOTS)` diamonds beside "Buy slot N (`<cost>`)" for the next rung of
+  `PASSIVE_SLOT_COSTS`, dimmed when unaffordable, then a dimmed no-op "All slots owned" tag;
+  the label drops to its short form, "Buy (`<cost>`)"/"All owned", when the measured button
+  and the diamonds would not fit the column side by side), never as a passive row -- a slot
+  is room, not a sixth ability, and a row would read as one. Sharing the button's row keeps
+  the ladder from costing the list a row at the largest text-size preset. The button's
+  height is measured off a throwaway sample and handed to `renderListColumn` as
+  `reserveBelow`, and its label is capped at `SLOT_BUTTON_CAP` (`1.3`). State is read through
   `data/passives.ts`'s `activePassiveIds`/`passiveSlotCount`/`passiveSlotsUsed` and written
   by four panel-local functions -- `buyPassive` (deducts, appends to `passivesUnlocked`, and
   activates in the same click if the passive fits the free slots), `activatePassive` (adds
@@ -3024,32 +3052,35 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   `symmetryCloud`, each tied to one of `types.ts`'s `'screening'`-class `MOVES` entries,
   deliberately excluded from `SHOP_MOVE_IDS`/`ANALYTIC_MOVE_IDS`/`ULTIMATE_MOVE_IDS`). List+detail
   browse-by-move shop like Noether's above (`scenes/panels/
-  listDetail.ts`, "Candidate-crystal lists" above): the left column names all three
-  `KONDO_MOVE_IDS` via `moveDisplayName`; a row click only sets `scene.kondoMovePreview`
+  listDetail.ts`, "Candidate-crystal lists" above): the left column names all five
+  `KONDO_MOVE_IDS` via `moveDisplayName` (paged like every list+detail column); a row click only sets `scene.kondoMovePreview`
   (browsing costs nothing regardless of how many moves are looked at, same as every other
   list+detail panel). Unlike Noether's/Landau's/Skłodowska-Curie's own moves, a Kondo move is a
-  self-buff rather than a travelling attack -- `BattleScene.resolveSelfBuff` plays its real
-  effect centered on the caster's own position (`from === to === pos`, not flying attacker to
-  target) -- so the right column's detail header is `renderMoveDetailHeader`'s self-buff sibling,
-  `renderSelfBuffMoveDetailHeader`: it renders the player's own current crystal
+  self-buff rather than a travelling attack, and what tells the five apart is the cloud a cast
+  leaves standing, not the cast (one screening ring for all five) -- so the right column's
+  detail header is `listDetail.ts`'s `renderCloudDetailHeader(scene, container, material,
+  displayName, cloud, centerX, y, rightColW)`: the player's own current crystal
   (`scene.playerMaterial`, same `makeCrystal` call/ground-shadow-ellipse convention as
-  Franklin's own crystal block, `art/franklin.ts`) standing in the block with the move's
-  `'screening'`-class single-wavefront `'buffring'` effect looping centered on it (`art/moveEffectPreview.ts`'s
-  `startMoveEffectPreview`, whose `travelsAcrossField` check keeps a `'buffring'` preview on the
-  one point it is given rather than flying it across the stage -- which works because
-  `art/attackShapes.ts`'s `playRing` collapses its own `Phaser.Math.Linear(from, to, 0.12)`
-  origin to that single point when `from` equals `to`, the same call `resolveSelfBuff` makes
-  for a real cast, there passing the caster's own anchor twice). Below that: the move's own `description`
-  (`data/materials.ts`'s `Move.description`, only Kondo's three moves carry one), then a
+  Franklin's own crystal block) at the stage's vertical middle, wrapped in
+  `art/screeningAuras.ts`'s `addScreeningAura` for `KONDO_CLOUD_BY_MOVE[id]` -- the very call
+  `BattleScene.syncScreeningAura` makes -- at battle's own aura-to-crystal proportion
+  (`PLAYER_HEAD_RISE + 5` over `PLAYER_CRYSTAL_SIZE`, from `battle/hud.ts`), capped to the
+  stage, with no cast playing. Feynman's pane and the Lab's Moves station still show a Kondo
+  move being cast, through `renderSelfBuffMoveDetailHeader` (the `'buffring'` loop centered on
+  the crystal: `art/moveEffectPreview.ts`'s `travelsAcrossField` check keeps it on the one
+  point it is given, and `art/attackShapes.ts`'s `playRing` collapses its own
+  `Phaser.Math.Linear(from, to, 0.12)` origin to that point when `from` equals `to`, the same
+  call `resolveSelfBuff` makes for a real cast). Below that: the move's own `description`
+  (`data/materials.ts`'s `Move.description`, only Kondo's five moves carry one), then a
   cost/status line and a confirm button -- "Learn `<name>`" for a
   still-unbought move (dimmed if unaffordable), "Make `<name>` active" for an already-bought,
   inactive move, or a dimmed "`<name>` (active)" tag (no-op click) for whichever one is currently
   active (registry/save `kondoActiveMove: string | null`) -- the one action that actually
   checks/spends the cost and, for a still-unbought move, appends it to `unlockedMoves`. Buying
   the very first Kondo move auto-activates it (so a purchase is never silently unusable); buying
-  a second or third on top of an already-active one doesn't -- switching between already-bought
+  another on top of an already-active one doesn't -- switching between already-bought
   moves is always its own explicit click either way, and only one can ever be active at a time.
-  None of the three is gated by `MOVE_COMPATIBILITY`, so every one of them is always for sale
+  None of the five is gated by `MOVE_COMPATIBILITY`, so every one of them is always for sale
   until bought -- there's no empty/wrong-form state to render here, unlike Noether's shop. Kondo
   has no committed-choice field of its own the way Anderson's two-step pick does -- like
   Majorana/Landau/Skłodowska-Curie, `scene.kondoMovePreview` alone drives the whole detail
@@ -3059,9 +3090,9 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   whether it equals `kondoActiveMove`, checked before (not intersected with) the ordinary
   `compatibleMoves` filter every other learned move goes through -- no other move class has (or
   needs) an equip-slot-style mechanic like this. In battle, casting one calls `BattleScene`'s
-  `resolveSelfBuff`/`applyOrTickBuff` (see "Self-buffs (Kondo's three moves)" above) to apply its
-  one fixed cloud (`SCREENING_CHANNEL_BY_MOVE`, no randomness -- the move id decides which
-  quantum number is screened) on the caster's own side, not the opponent.
+  `resolveSelfBuff`/`tickBuff` (see "Self-buffs (Kondo's five moves)" above) to apply its
+  one fixed cloud (`KONDO_CLOUD_BY_MOVE`, no randomness -- the move id decides which cloud
+  is raised) on the caster's own side, not the opponent.
 - **Anderson's impurity-doping panel** (`scenes/panels/anderson.ts`'s `showAndersonPanel`/
   `learnImpurityMove`) is its own two-step pick (host, then move), and
   only its first step uses the list+detail layout ("Candidate-crystal lists" above) -- the
@@ -3160,17 +3191,21 @@ move's own `Move.description`; then `data/moveLore.ts`'s `MOVE_CLASS_LORE` parag
 the quasiparticle is in physics, shrink-fitted with `fitProseToBudget`. A row click is a
 scoped update (`movesSelectedId`/`movesPage` on `HubScene`, panel state only, reset by
 `closeDialogue()`); a page flip rebuilds. `showAbilitiesPanel`
-is the "check anytime" surface for every passive the crystal currently runs -- its own
-dedicated panel (not folded into `showStatsPanel`/its shared `showInfoPanel` body). One local
-`addBlock` (a bold name line plus one description line per id) draws first the built-in block
-("Built in: Hybrid Aura", from `builtInPassiveIds(getPlayerMaterial(...))`/`BUILT_IN_PASSIVES`,
-present only while the form is a hybrid -- a plain crystal shows no block rather than an
-empty one), then, looping over `data/passives.ts`'s `PASSIVE_OWNERS` (rather than a
-hand-written block), one block per owner ("`<owner>`: `<active names>` (N of M slots used)",
-labeled via `PASSIVE_OWNER_LABELS` and read through
-`activePassiveIds`/`passiveSlotsUsed`/`passiveSlotCount`), so a player doesn't have to walk
-back to the guardian's own panel just to remember which passives are running (and doesn't
-have to remember what each actually does either, since the full descriptions show here too).
+is the "check anytime" surface for every passive the crystal currently runs, the same
+list+detail scaffolding as `showMovesPanel`: its rows are `builtInPassiveIds(getPlayerMaterial(
+...))` (a hybrid's Hybrid Aura) followed by every `PASSIVE_OWNERS` owner's
+`activePassiveIds` (stale ids dropped), each owner row carrying its slot diamonds through
+`renderListColumn`'s `badgeFor`; under the rows, one meter row per owner
+("`<PASSIVE_OWNER_LABELS[owner]>` slots" beside `slotMeterStates(passiveSlotsUsed(...),
+passiveSlotCount(...), PASSIVE_MAX_SLOTS)`), reserved through `reserveBelow`, then Close. The
+detail pane opens with `renderPassiveDetailHeader` (the selected passive's own halo at full
+alpha, or no halo for a built-in one, whose look is the hybrid crystal's own glow), then a
+"Takes N slots" row with its diamonds or "Built into your form: takes no slot.", the
+`description`, and where it is switched. A local `addPipRow` lays a text and a diamond group
+out centered as one, for both the meters and the pane's slot row. Row clicks are scoped
+updates (`abilitiesSelectedId`/`abilitiesPage` on `HubScene`, panel state only, reset by
+`closeDialogue()`), so a player doesn't have to walk back to the guardian's own panel just
+to remember which passives are running or what each does.
 
 **The Lab's guardian gallery** (`HubScene.spawnGuardianAvatars`/`guardianSlot`/
 `showGuardianTooltip`, called once from `create()`): every guardian in registry `metGuardians`
@@ -3472,13 +3507,15 @@ guardian's mechanic. `insertColumnDivider` draws the line between the two column
 known (inserted at container index 0, so it renders *beneath* every row/button -- Franklin's own
 bespoke 760px two-column panel calls it too, with its own divider x, rather than hand-drawing a
 second copy), `fitListLabel` is the shared ellipsis-trim-on-overflow helper, and
-`renderDetailCrystalHeader`/`renderMoveDetailHeader`/`renderSelfBuffMoveDetailHeader` are the
-shared header blocks each guardian panel's detail pane opens with -- a crystal render plus name
-for the three crystal-browsing panels, a looping battle-effect animation plus name for the
-move-browsing ones, the same animation centered on the player's own crystal for a self-buff move
-(Kondo's three, whether browsed in his own panel or leveled in Feynman's; Qumatex's own detail
-pane stays a separate render since it
-additionally masks an undiscovered entry and appends a physics blurb). Both move headers take the
+`renderDetailCrystalHeader`/`renderMoveDetailHeader`/`renderSelfBuffMoveDetailHeader`/
+`renderCloudDetailHeader`/`renderPassiveDetailHeader` are the shared header blocks each guardian
+panel's detail pane opens with -- a crystal render plus name for the three crystal-browsing
+panels, a looping battle-effect animation plus name for the move-browsing ones, the same
+animation centered on the player's own crystal for a self-buff move being cast (one of Kondo's
+five, leveled in Feynman's pane or browsed at the Lab's Moves station), the player's crystal
+wearing a cloud's persistent aura in Kondo's own panel, and wearing a passive's ground halo in
+Franklin's panel and the Lab's Abilities station (Qumatex's own detail pane stays a separate
+render since it additionally masks an undiscovered entry and appends a physics blurb). Both move headers take the
 player's real Feynman `MoveLevel` (`getMoveLevel`) so a leveled move previews the same escalating
 multi-trigger cascade a real cast plays. `renderListColumnFooter` puts the panel's own escape button ("Farewell", or "Close" in the Lab)
 in the **left column beneath its rows** rather than in a full-width row under both columns --
@@ -3629,7 +3666,7 @@ entry patches a raw parsed save forward by one schema version (`MIGRATIONS[i]`: 
 only bump needed); `persistFromRegistry()` stamps that current version onto every save it
 writes. A save stamped below `SCHEMA_BASELINE`, or carrying no stamp at all, is clamped up to
 the baseline and replays every migration from there. The one entry in the array today renames
-Kondo's three move ids across `unlockedMoves`/`kondoActiveMove`/`moveLevels`, keeping the
+three of Kondo's move ids (his three screening clouds) across `unlockedMoves`/`kondoActiveMove`/`moveLevels`, keeping the
 moves a player bought, which one they had active and the tiers they had put into them. A migration is
 appended, never edited in place, once shipped -- a save could be sitting at any past version.
 This is separate from `loadSave()`'s other safety nets (filtering `unlockedMoves` to ids

@@ -150,6 +150,11 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // looking at is not part of a playthrough.
   movesPage = 0;
   movesSelectedId: string | null = null;
+  // The same pair for the Abilities station's list+detail panel
+  // (scenes/panels/hubStations.ts's showAbilitiesPanel): the previewed
+  // passive's own id, panel state rather than save state.
+  abilitiesPage = 0;
+  abilitiesSelectedId: string | null = null;
   // The same pair for the Story station's own list+detail panel
   // (scenes/panels/hubStations.ts's showStoryLog). `storySelectedIndex` is an
   // index into data/storyLog.ts's STORY_LOG, which lists the whole arc at
@@ -1454,6 +1459,8 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.storySelectedIndex = 0;
     this.movesPage = 0;
     this.movesSelectedId = null;
+    this.abilitiesPage = 0;
+    this.abilitiesSelectedId = null;
     this.settingsCategory = DEFAULT_SETTINGS_CATEGORY;
     this.dresselhausPreview = null;
     this.andersonHostPreview = null;

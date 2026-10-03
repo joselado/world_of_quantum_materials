@@ -248,9 +248,11 @@ export function shopCost(move: Move): number {
 // Index 0 is the unleveled base case (1x power, no streak to clear); indices
 // 1-3 are Double/Triple/Infinite -- a flat 1.5x/2x/3x multiplier, read by
 // data/materials.ts's effectiveMovePower for an ordinary attack move and,
-// separately, by BattleScene's kondoMitigationFraction for one of Kondo's
-// three self-buffs, whose own `power` is never read as damage in the first
-// place -- there it scales that buff's own mitigation strength instead.
+// separately, by restoringHealFraction/anomalousPull below for two of
+// Kondo's self-buffs, whose own `power` is never read as damage in the first
+// place -- there it scales that cloud's own effect instead. Kondo's three
+// screening clouds deepen along their own table (SCREEN_REDUCTION_BY_LEVEL
+// below, which says why they can't use this one).
 export const MOVE_LEVEL_MULTIPLIERS: readonly number[] = [1, 1.5, 2, 3];
 
 // How many of Feynman's own quiz questions the player must answer correctly
@@ -291,9 +293,10 @@ export const FRACTIONAL_GUARD_DAMAGE_MULT = 0.85;
 // fraction of the crit that triggered it.
 export const ANYON_ECHO_FRACTION = 0.3;
 // Satellite Reflection also doubles its holder's own crit rate
-// (BASE_CRIT_CHANCE), which is the one thing in the game that moves that
-// rate at all -- the passive is what turns a crit from something that just
-// happens into something a player can build for.
+// (BASE_CRIT_CHANCE) for the whole battle -- the passive is what turns a crit
+// from something that just happens into something a player can build for.
+// The only other thing that moves the rate is Kondo's Anomalous Cloud, for
+// as long as it is up (anomalousPull).
 export const ANYON_ECHO_CRIT_MULTIPLIER = 2;
 // Amorphous Halo (id edgeCurrent): softened quasiparticle-mismatch
 // multiplier for whichever side has it active as the defender (normally
@@ -306,8 +309,10 @@ export const EDGE_CURRENT_MISMATCH_MULT = 1.5;
 export const LAST_SCATTERING_MIN_HP = 1;
 // Full Reflection (id fullReflection): the chance that an incoming hit
 // bounces back onto the attacker for its full damage number, with its holder
-// taking nothing (BattleScene.resolveHit's reflected branch).
-export const FULL_REFLECTION_CHANCE = 0.1;
+// taking nothing (BattleScene.resolveHit's reflected branch). Three hits in
+// ten: strong enough to be a whole loadout on its own, which is why it takes
+// every slot the crystal can have (data/passives.ts).
+export const FULL_REFLECTION_CHANCE = 0.3;
 
 // --- Hybrid Aura (DESIGN.md §5, every hybrid-recipe crystal) ----------------
 
@@ -331,10 +336,13 @@ export const MISMATCH_MULTIPLIER = 2;
 
 // --- Kondo's self-buffs (DESIGN.md §5, World 8) -----------------------------
 
-// How many turns one of Kondo's three screening clouds (BattleScene's
-// StatusKind) lasts once cast, counted down in BattleScene.applyOrTickBuff.
+// How many rounds one of Kondo's five clouds (BattleScene's StatusKind)
+// lasts after the one it is cast in, counted down in BattleScene.tickBuff on
+// its caster's last slot of each round: a cloud is active from the slot it
+// is cast on until that slot STATUS_DURATION rounds later, which always
+// spans exactly this many of the opponent's rounds.
 export const STATUS_DURATION = 3;
-// All three of Kondo's buffs mitigate the same way: an incoming hit whose
+// All three of Kondo's screening buffs mitigate the same way: an incoming hit whose
 // quasiparticle carries the quantum number that buff screens
 // (data/materials.ts's SCREENING_CHANNELS) lands for half damage, and
 // every other hit lands untouched. Feynman's leveling (§5, World 7) deepens
@@ -346,6 +354,34 @@ export const STATUS_DURATION = 3;
 // power: a half scaled by the 3x top tier passes 1 outright, so a single cap
 // would swallow the middle two tiers and make them worth nothing.
 export const SCREEN_REDUCTION_BY_LEVEL = [0.5, 0.62, 0.68, 0.75];
+
+// Restoring Cloud: the fraction of its caster's max HP it mends on the slot
+// it is cast on and again on each of its STATUS_DURATION turns, scaled by
+// the caster's Feynman level through MOVE_LEVEL_MULTIPLIERS the way an
+// attack's power is -- 5% / 7.5% / 10% / 15% a heal, four heals a cast. A
+// plain multiplier works here where it cannot for screening, since even the
+// top tier stays far from anything that needs a cap.
+export const RESTORING_HEAL_FRACTION = 0.05;
+export function restoringHealFraction(level: number): number {
+  return RESTORING_HEAL_FRACTION * MOVE_LEVEL_MULTIPLIERS[level];
+}
+
+// Anomalous Cloud: how far it pulls each of its caster's chance rolls from
+// where it would land toward its best outcome (pullToward below) -- the
+// caster's crit chance, its damage-variance roll, and Franklin's Full
+// Reflection on hits it takes. Feynman's multipliers scaled so the top tier
+// is exactly 1, i.e. 1/3, 1/2, 2/3, 1: at "Infinite" every one of those
+// rolls lands its best outcome outright -- every hit crits at the top of
+// the variance band, and every hit taken under Full Reflection goes back.
+export function anomalousPull(level: number): number {
+  return MOVE_LEVEL_MULTIPLIERS[level] / MOVE_LEVEL_MULTIPLIERS[MOVE_LEVEL_MULTIPLIERS.length - 1];
+}
+
+// Moves `value` the fraction `pull` of the way to `best` -- 0 leaves it
+// alone, 1 lands on `best`. For a probability, `best` is 1.
+export function pullToward(value: number, best: number, pull: number): number {
+  return value + (best - value) * pull;
+}
 
 // --- Core damage resolution (BattleScene.resolveHit) ------------------------
 
@@ -400,10 +436,11 @@ export function lifetimeFactor(defenderCorrelation: number): number {
 // Crit ("coherent hit") chance: a flat rate every attacker shares, not
 // something any stat raises. Each of the three stats drives exactly one
 // lever (energyFactor/lifetimeFactor/MAX_MULTI_HIT), so a crit is the
-// battle's own texture rather than a fourth thing to build toward -- the one
-// way to move it is Franklin's Satellite Reflection (data/passives.ts's
+// battle's own texture rather than a fourth thing to build toward -- the two
+// ways to move it are Franklin's Satellite Reflection (data/passives.ts's
 // anyonEcho), which doubles its holder's own rate via
-// ANYON_ECHO_CRIT_MULTIPLIER below.
+// ANYON_ECHO_CRIT_MULTIPLIER above, and Kondo's Anomalous Cloud, which pulls
+// it toward certainty while it is up (anomalousPull).
 export const BASE_CRIT_CHANCE = 0.2;
 // The crit bonus itself, applied to a hit that rolls one.
 export const CRIT_DAMAGE_MULTIPLIER = 1.5;
@@ -419,6 +456,10 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+// The per-hit damage-variance band resolveHitDamage rolls inside, +/-15%.
+const DAMAGE_VARIANCE_MIN = 0.85;
+const DAMAGE_VARIANCE_MAX = 1.15;
+
 // Mirrors Phaser.Math.FloatBetween(min, max) (`min + rng() * (max - min)`) --
 // reimplemented here rather than imported so this module stays Phaser-free.
 function floatBetween(min: number, max: number, rng: () => number): number {
@@ -432,11 +473,11 @@ function floatBetween(min: number, max: number, rng: () => number): number {
 // is somewhat tougher/weaker than its world's average" (real sample-to-
 // sample variation between specimens of the same compound), one coherent
 // trait rather than an arbitrary per-stat RNG bolt-on. Deliberately reuses
-// resolveHitDamage's own per-hit damage-variance range (`floatBetween(0.85,
-// 1.15, ...)`) rather than a separate range, for internal consistency.
+// resolveHitDamage's own per-hit damage-variance band (DAMAGE_VARIANCE_MIN/
+// MAX) rather than a separate range, for internal consistency.
 // Rivals never call this -- see `rivalHpForWorld`'s own comment.
 export function rollEncounterFactor(rng: () => number = Math.random): number {
-  return floatBetween(0.85, 1.15, rng);
+  return floatBetween(DAMAGE_VARIANCE_MIN, DAMAGE_VARIANCE_MAX, rng);
 }
 
 export interface ResolveHitParams {
@@ -460,7 +501,7 @@ export interface ResolveHitParams {
   // Landau's Analytic moves' answer-gated 2x/0.5x, or Skłodowska-Curie's
   // Ultimate moves' all-or-nothing 1x/0x -- 1 for every ordinary move.
   bonusMultiplier: number;
-  // Whichever of Kondo's three screening buffs the defender is holding, if
+  // Whichever of Kondo's three screening clouds the defender is holding, if
   // this hit's quasiparticle is one that buff screens
   // (BattleScene.screeningMultiplier) -- 1 otherwise, including when the
   // defender holds a buff that screens some other quantum number.
@@ -478,6 +519,12 @@ export interface ResolveHitParams {
   // inactive. Optional: a call site with no passive in play (the balance
   // simulator's own frozen-RNG path) can leave it off entirely.
   critChanceMult?: number;
+  // Kondo's Anomalous Cloud on the *attacker's* side (anomalousPull, 0 when
+  // it isn't up): pulls both of this hit's rolls toward their best outcome,
+  // the crit chance toward 1 and the variance roll toward the top of its
+  // band. It reshapes the rolls without adding any of its own, so the RNG
+  // call order below is the same with or without it.
+  luck?: number;
   // Injectable RNGs (default Math.random) so a caller (the balance
   // simulator, a future test) can drive deterministic or repeated rolls
   // instead of one live Math.random() sample per hit. Two separate RNGs,
@@ -498,13 +545,19 @@ export interface ResolveHitOutcome {
 // (energyFactor), the quasiparticle-mismatch multiplier, every other
 // multiplicative term (quiz/Analytic/Ultimate bonus, Kondo screening,
 // Franklin Diffraction Shadow, either side's Hybrid Aura), the crit bonus,
-// and +/-15% damage variance,
+// and +/-15% damage variance (both rolls pulled by an attacker's Anomalous
+// Cloud, `luck`),
 // all multiplied together, divided by the defender's Lifetime lever
 // (lifetimeFactor), and rounded once at the end.
 export function resolveHitDamage(params: ResolveHitParams): ResolveHitOutcome {
-  const chance = clamp(BASE_CRIT_CHANCE * (params.critChanceMult ?? 1), 0, 1);
+  const luck = params.luck ?? 0;
+  const chance = pullToward(clamp(BASE_CRIT_CHANCE * (params.critChanceMult ?? 1), 0, 1), 1, luck);
   const crit = (params.critRng ?? Math.random)() < chance;
-  const variance = floatBetween(0.85, 1.15, params.varianceRng ?? Math.random);
+  const variance = pullToward(
+    floatBetween(DAMAGE_VARIANCE_MIN, DAMAGE_VARIANCE_MAX, params.varianceRng ?? Math.random),
+    DAMAGE_VARIANCE_MAX,
+    luck
+  );
   const mismatchMult = params.mismatch ? params.mismatchMultiplier : 1;
   const damage = Math.round(
     (params.power *

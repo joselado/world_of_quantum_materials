@@ -91,15 +91,15 @@ export function showFeynmanPanel(scene: GuardianPanelHost) {
 // whatever level it already had, since the level lives on the move rather
 // than on the form.
 //
-// Kondo's three screening moves join that list on their own terms. They are
+// Kondo's five self-buff moves join that list on their own terms. They are
 // self-buffs rather than attacks, so `MOVE_COMPATIBILITY` says nothing about
 // them (their 'screening' class is on no type's list) and no form can fail to
-// host one -- an unlocked screening move is always here. Levels are real on
-// them: BattleScene.kondoMitigationFraction reads the tier to decide how hard
-// the cloud screens. The single-active-move rule is deliberately *not* applied
-// either (so this is not simply `getBattleMoves`): which one is screened in
-// right now is a battle-loadout question, and all three are equally real to
-// level. Rows carry the move's tuned name without
+// host one -- an unlocked Kondo move is always here. Levels are real on
+// them: BattleScene.cloudLevel reads the tier to decide how hard the cloud
+// screens, how much Restoring Cloud mends and how far Anomalous Cloud pulls.
+// The single-active-move rule is deliberately *not* applied either (so this
+// is not simply `getBattleMoves`): which one is held right now is a
+// battle-loadout question, and all five are equally real to level. Rows carry the move's tuned name without
 // its level prefix (tunedMoveDisplayName, not moveDisplayName): the prefix
 // is the same word on every row of a well-leveled save, and at the largest
 // text-size preset it alone fills the 200px column, trimming every row to
@@ -179,7 +179,7 @@ function renderMoveLevelList(
 
   let rightY = columnsTop;
   // Feynman's list carries every move the player owns, so the pane opens the
-  // way that move's own guardian's pane opens. One of Kondo's screenings is
+  // way that move's own guardian's pane opens. One of Kondo's clouds is
   // cast on the player's own crystal rather than thrown at a defender, so it
   // needs the crystal rendered underneath its ring
   // (renderSelfBuffMoveDetailHeader, the same opener Kondo's own panel uses).
@@ -255,7 +255,7 @@ function renderMoveLevelList(
 // offers every level from the move's uncorrected base up to its unlocked
 // ceiling, and picking one is what `getMoveLevel` reads everywhere
 // afterward: the move's name, its damage, the cascade its effect animates,
-// and (for one of Kondo's) how hard its cloud screens. Renders nothing at
+// and (for one of Kondo's) how strong its cloud is. Renders nothing at
 // all while a move is still at level 0, since there is no choice to make
 // yet, so the pane keeps the height it has always had until the player's
 // first tier lands. The carried tier reads as a dimmed no-op button, the

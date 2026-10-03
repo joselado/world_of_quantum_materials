@@ -41,8 +41,9 @@ import {
   ULTIMATE_MOVE_IDS,
   KONDO_MOVE_IDS,
   SCREENING_CHANNELS,
-  SCREENING_MOVE_BY_CHANNEL,
-  SCREENING_CHANNEL_BY_MOVE,
+  KONDO_MOVE_BY_CLOUD,
+  KONDO_CLOUD_BY_MOVE,
+  isScreeningChannel,
   typesHosting,
   allCrystals,
   compatibleMoves,
@@ -63,6 +64,9 @@ import {
   FULL_REFLECTION_CHANCE,
   STATUS_DURATION,
   SCREEN_REDUCTION_BY_LEVEL,
+  restoringHealFraction,
+  anomalousPull,
+  pullToward,
   wildHpForWorld,
   rivalHpForWorld,
   finaleStageHp,
@@ -71,7 +75,7 @@ import {
   DIFFICULTY_MULTIPLIERS,
   superpositionEnemyStats,
 } from '../data/balance';
-import type { ScreeningChannel } from '../data/materials';
+import type { KondoCloud, ScreeningChannel } from '../data/materials';
 import { DEFAULT_DIFFICULTY_TIER, DEFAULT_TOUCH_CONTROLS, touchControlsActive, storyLength, storyScreensEnabled } from '../data/settings';
 import { FINALE_STAGES, finaleStageFor, finaleVictoryLineFor, finaleDefeatLineFor } from '../data/story';
 import type { DifficultyTier, TouchControlsMode } from '../data/settings';
@@ -298,21 +302,25 @@ const ANALYTIC_WRONG_MULTIPLIER = 0.5;
 // a player reaching for SPACE never feels the screen ignore them.
 const VICTORY_DISMISS_GRACE_MS = 400;
 
-// Kondo's three self-buff moves (§5, World 8) each deterministically raise
-// one 3-turn screening cloud on the *caster's own* side, replacing whatever
-// cloud (if any) was already there rather than stacking -- exactly one
-// active buff per side at a time, matching the "one type-interaction rule,
-// on purpose" simplicity DESIGN.md §4 already commits to elsewhere. Which
-// cloud is up decides *which attacks it damps*: a cloud only screens a
-// quasiparticle carrying the quantum number it is made of (screeningMultiplier
-// below, against data/materials.ts's SCREENING_CHANNELS), and every other
-// attack goes straight through it. Battle-ephemeral only (never persisted --
+// Kondo's five self-buff moves (§5, World 8) each deterministically raise
+// one cloud on the *caster's own* side, active from the slot it is cast on
+// until its caster's last slot STATUS_DURATION rounds later, replacing
+// whatever cloud (if any) was
+// already there rather than stacking -- exactly one active buff per side at
+// a time, matching the "one type-interaction rule, on purpose" simplicity
+// DESIGN.md §4 already commits to elsewhere. A screening cloud decides
+// *which attacks it damps*: it only screens a quasiparticle carrying the
+// quantum number it is made of (screeningMultiplier below, against
+// data/materials.ts's SCREENING_CHANNELS), and every other attack goes
+// straight through it. Restoring Cloud mends its caster instead (restore),
+// and Anomalous Cloud pulls its caster's chance rolls toward their best
+// outcome (anomalousPullFor). Battle-ephemeral only (never persisted --
 // data/save.ts's SaveData has no field for this), reset fresh at the start
-// of every battle. There is no randomness anywhere in this: the player picks
-// which quantum number they are screened against by picking the move, and,
-// since only one of the three can be active in battle at a time, by which
-// one they set active with OverworldScene.showKondoPanel.
-type StatusKind = ScreeningChannel;
+// of every battle. Raising a cloud involves no randomness: the player picks
+// which cloud by picking the move, and, since only one of the five can be
+// active in battle at a time, by which one they set active with
+// OverworldScene.showKondoPanel.
+type StatusKind = KondoCloud;
 
 interface ActiveStatus {
   kind: StatusKind;
@@ -344,8 +352,21 @@ const STATUS_INFO: Record<
     applyText: (name) => `${name} raises a symmetry cloud!`,
     expireText: (name) => `${name}'s symmetry cloud disperses.`,
   },
+  restoring: {
+    label: 'Restoring Cloud',
+    applyText: (name) => `${name} raises a restoring cloud!`,
+    expireText: (name) => `${name}'s restoring cloud fades.`,
+  },
+  anomalous: {
+    label: 'Anomalous Cloud',
+    applyText: (name) => `${name} raises an anomalous cloud!`,
+    expireText: (name) => `${name}'s anomalous cloud settles.`,
+  },
 };
-// Single status-pill color for all three (Kondo's own rust-orange, matching
+// Restoring Cloud's own clause, appended after the cast's or the turn's
+// line the same way the apply/expire clauses above are, and as terse.
+const restoreText = (name: string, hp: number) => `${name} recovers ${hp} HP.`;
+// Single status-pill color for all five (Kondo's own rust-orange, matching
 // WORLD_GUARDIANS[8].strokeColor/art/attackEffects.ts's 'screening' entry) --
 // the label text itself already names which buff is active.
 
@@ -3319,7 +3340,7 @@ export class BattleScene extends Phaser.Scene {
   // (§5) -- `runNextSlot` passes true only on that side's *last* slot of the
   // round, so a side acting more than once this round (the velocity-ratio
   // multi-attack rule, DESIGN.md §4) still only ticks its own cloud once.
-  // Raising a cloud is not gated by it: one of Kondo's three moves (§5) is a
+  // Raising a cloud is not gated by it: each of Kondo's moves (§5) is a
   // self-buff, not an attack, routed to `resolveSelfBuff` below before any of
   // the attack-only terms (mismatch, crit, damage) are computed at all, and
   // it takes hold on whichever slot it is cast on.
@@ -3393,6 +3414,11 @@ export class BattleScene extends Phaser.Scene {
     // hybrid hitting a hybrid resolves both.
     const hybridAuraAttackMult = this.activePassives(isPlayer).has('hybridAura') ? HYBRID_AURA_ATTACK_MULT : 1;
     const hybridAuraGuardMult = this.activePassives(defenderIsPlayer).has('hybridAura') ? HYBRID_AURA_DAMAGE_MULT : 1;
+    // Kondo's Anomalous Cloud (§5) on the attacker's side pulls this hit's
+    // crit roll and damage-variance roll toward their best outcome -- keyed
+    // off the attacker like critChanceMult, since both are the attacker's
+    // own rolls. The defender's cloud never touches them.
+    const luck = this.anomalousPullFor(isPlayer);
     // The Energy/Lifetime-lever/final-product math lives in
     // data/balance.ts's resolveHitDamage (Phaser-free, shared with the
     // balance simulator script) -- this just assembles this hit's own
@@ -3410,6 +3436,7 @@ export class BattleScene extends Phaser.Scene {
       critChanceMult,
       hybridAuraAttackMult,
       hybridAuraGuardMult,
+      luck,
     });
     const from = isPlayer ? this.playerAnchor : this.opponentAnchor;
     const to = isPlayer ? this.opponentAnchor : this.playerAnchor;
@@ -3430,9 +3457,14 @@ export class BattleScene extends Phaser.Scene {
     // total external reflection, the beam never entering the crystal. Rolled
     // here, before the animation starts, so the impact beat below already
     // knows which crystal it lands on. Never on a whiff (nothing reaches the
-    // defender to reflect) and never for a hit that rounds to zero.
+    // defender to reflect) and never for a hit that rounds to zero. The roll
+    // is the defender's own, so an Anomalous Cloud on the defender's side
+    // (§5) pulls its chance toward certainty.
     const reflected =
-      !whiff && dmg > 0 && this.activePassives(defenderIsPlayer).has('fullReflection') && Math.random() < FULL_REFLECTION_CHANCE;
+      !whiff &&
+      dmg > 0 &&
+      this.activePassives(defenderIsPlayer).has('fullReflection') &&
+      Math.random() < pullToward(FULL_REFLECTION_CHANCE, 1, this.anomalousPullFor(defenderIsPlayer));
     // The side this hit's damage actually lands on.
     const hitPlayer = reflected ? isPlayer : defenderIsPlayer;
 
@@ -3687,26 +3719,59 @@ export class BattleScene extends Phaser.Scene {
   // nothing whatsoever against an Anyon Braid. The class read here is the
   // hit's *effective* one (getTunedMoveClass, resolved by the caller), so a
   // tuned Analytic/Ultimate move is screened as the quasiparticle the player
-  // assigned it rather than as its default.
+  // assigned it rather than as its default. Restoring and Anomalous Cloud
+  // screen nothing, so a side holding one of those takes every hit in full.
   private screeningMultiplier(isPlayer: boolean, moveClass: MoveClass): number {
     const status = this.getStatus(isPlayer);
-    if (!status || !SCREENING_CHANNELS[moveClass].includes(status.kind)) return 1;
+    if (!status || !isScreeningChannel(status.kind) || !SCREENING_CHANNELS[moveClass].includes(status.kind)) return 1;
     return 1 - this.screenReduction(isPlayer, status.kind);
   }
 
-  // The screened fraction itself, deepened by the *caster's own* level of
-  // the buff move that raised this cloud (Feynman's move-leveling, §5) --
-  // gated on `isPlayer` the same way `effectiveMovePower` is: `moveLevels`
-  // is the player's own save state, and no wild ever casts a Kondo move in
-  // the first place (see `KONDO_MOVE_IDS`' own comment in
-  // data/materials.ts), so an opponent's copy of the same cloud always
-  // screens at the unleveled base half.
-  private screenReduction(isPlayer: boolean, channel: ScreeningChannel): number {
-    const level = isPlayer ? getMoveLevel(this.game.registry, SCREENING_MOVE_BY_CHANNEL[channel]) : 0;
-    return SCREEN_REDUCTION_BY_LEVEL[level];
+  // The *caster's own* Feynman level (§5) of the Kondo move that raises
+  // `cloud` -- what every cloud's strength scales by. Gated on `isPlayer` the
+  // same way `effectiveMovePower` is: `moveLevels` is the player's own save
+  // state, and no wild ever casts a Kondo move in the first place (see
+  // `KONDO_MOVE_IDS`' own comment in data/materials.ts), so an opponent's
+  // copy of the same cloud always acts at the unleveled base.
+  private cloudLevel(isPlayer: boolean, cloud: KondoCloud): number {
+    return isPlayer ? getMoveLevel(this.game.registry, KONDO_MOVE_BY_CLOUD[cloud]) : 0;
   }
 
-  // Resolves one of Kondo's three self-buff moves (§5, KONDO_MOVE_IDS) --
+  // The screened fraction itself, deepened by the caster's level.
+  private screenReduction(isPlayer: boolean, channel: ScreeningChannel): number {
+    return SCREEN_REDUCTION_BY_LEVEL[this.cloudLevel(isPlayer, channel)];
+  }
+
+  // How far this side's Anomalous Cloud (§5) pulls each of its own chance
+  // rolls toward the best outcome -- 0 when that side holds no such cloud.
+  // Read by resolveHit for the attacker's crit and variance rolls and for the
+  // defender's Full Reflection roll.
+  private anomalousPullFor(isPlayer: boolean): number {
+    return this.getStatus(isPlayer)?.kind === 'anomalous' ? anomalousPull(this.cloudLevel(isPlayer, 'anomalous')) : 0;
+  }
+
+  // Restoring Cloud's heal (§5): mends restoringHealFraction of this side's
+  // max HP, deepened by the caster's level, never past max, through the same
+  // registry-write/persist rule applyDamage uses. Returns the log clause to
+  // append, empty when the side was already at full and nothing was mended.
+  private restore(isPlayer: boolean): string {
+    const maxHp = isPlayer ? this.playerMaxHp : this.opponentMaxHp;
+    const before = isPlayer ? this.playerHp : this.opponentHp;
+    const after = Math.min(maxHp, before + Math.round(maxHp * restoringHealFraction(this.cloudLevel(isPlayer, 'restoring'))));
+    if (after <= before) return '';
+    if (isPlayer) {
+      this.playerHp = after;
+      this.game.registry.set('playerHp', this.playerHp);
+      persistFromRegistry(this.game.registry);
+    } else {
+      this.opponentHp = after;
+    }
+    this.updateBars();
+    const name = isPlayer ? this.playerMaterial.name : this.opponentView().name;
+    return ' ' + restoreText(name, after - before);
+  }
+
+  // Resolves one of Kondo's five self-buff moves (§5, KONDO_MOVE_IDS) --
   // routed here from resolveHit's own early branch, before any attack-only
   // term (mismatch, crit, damage) is ever computed, since a self-buff never
   // hits the opponent at all. Plays the same windup+ring beat an ordinary
@@ -3719,10 +3784,10 @@ export class BattleScene extends Phaser.Scene {
   // what it leaves behind is the persistent aura castBuff's
   // setStatus raises around the caster's crystal (syncScreeningAura),
   // fading in under the ring and staying for the cloud's whole duration.
-  // Never changes either side's HP at
-  // all, so there is no win/lose check to make here the way resolveHit's own
-  // tail has to. Kondo's three moves are as leveled-by-Feynman as any attack
-  // move (screenReduction already deepens their screening by the caster's
+  // Never lowers either side's HP (Restoring Cloud's cast can only raise the
+  // caster's), so there is no win/lose check to make here the way
+  // resolveHit's own tail has to. Kondo's five moves are as leveled-by-Feynman
+  // as any attack move (cloudLevel deepens each cloud by the caster's
   // level) -- `level` here
   // gets the same escalating-repeat ring pulse resolveHit's own attack path
   // gets, gated `isPlayer`-only the same way (no wild ever casts a Kondo
@@ -3762,22 +3827,26 @@ export class BattleScene extends Phaser.Scene {
     this.setLogText(`${who} used ${displayName}!${buffText}`);
   }
 
-  // Raises the cloud one of Kondo's three moves screens with
-  // (SCREENING_CHANNEL_BY_MOVE), on whichever slot the caster spent on it. It
-  // replaces whatever cloud that side already had outright -- one cloud per
-  // side, never stacked, so screening a second quantum number always means
-  // giving up the first. The round is marked as having seen a cast, which is
-  // what keeps `tickBuff` from spending a turn of a cloud raised in the same
-  // round. Returns the log clause to append (same "stack a clause onto the
+  // Raises the cloud one of Kondo's five moves raises (KONDO_CLOUD_BY_MOVE),
+  // on whichever slot the caster spent on it, so it acts from that slot on:
+  // a screening cloud screens the hits still to come this round, an
+  // Anomalous Cloud pulls the rolls still to come, and a Restoring Cloud
+  // mends its caster right here, on the cast itself. It replaces whatever
+  // cloud that side already had outright -- one cloud per side, never
+  // stacked, so raising a second cloud always means giving up the first.
+  // The round is marked as having seen a cast, which is what keeps
+  // `tickBuff` from spending a turn of a cloud raised in the same round.
+  // Returns the log clause to append (same "stack a clause onto the
   // existing line" pattern as mismatchText/critText use elsewhere).
   private castBuff(move: Move, isPlayer: boolean): string {
     const casterName = isPlayer ? this.playerMaterial.name : this.opponentView().name;
-    const channel = SCREENING_CHANNEL_BY_MOVE[move.id];
-    if (!channel) return '';
-    this.setStatus(isPlayer, { kind: channel, turnsLeft: STATUS_DURATION });
+    const cloud = KONDO_CLOUD_BY_MOVE[move.id];
+    if (!cloud) return '';
+    this.setStatus(isPlayer, { kind: cloud, turnsLeft: STATUS_DURATION });
     if (isPlayer) this.buffCastThisRound.player = true;
     else this.buffCastThisRound.enemy = true;
-    return ' ' + STATUS_INFO[channel].applyText(casterName);
+    const healText = cloud === 'restoring' ? this.restore(isPlayer) : '';
+    return ' ' + STATUS_INFO[cloud].applyText(casterName) + healText;
   }
 
   // Spends one turn of whatever cloud this side is carrying, and clears and
@@ -3787,20 +3856,23 @@ export class BattleScene extends Phaser.Scene {
   // on a round the same side raised a cloud in, so a cloud is never short a
   // turn for having been cast in a round its caster also attacked in. Either
   // way a cloud lasts exactly STATUS_DURATION rounds past the one it was cast
-  // in. Returns the log clause to append, empty when there is nothing to
+  // in. A Restoring Cloud mends its caster on each turn it spends, the last
+  // one included, so with the cast's own heal a cast mends four times.
+  // Returns the log clause to append, empty when there is nothing to
   // report.
   private tickBuff(isPlayer: boolean): string {
     if (isPlayer ? this.buffCastThisRound.player : this.buffCastThisRound.enemy) return '';
     const status = this.getStatus(isPlayer);
     if (!status) return '';
     const casterName = isPlayer ? this.playerMaterial.name : this.opponentView().name;
+    const healText = status.kind === 'restoring' ? this.restore(isPlayer) : '';
     status.turnsLeft -= 1;
     if (status.turnsLeft <= 0) {
       this.setStatus(isPlayer, null);
-      return ' ' + STATUS_INFO[status.kind].expireText(casterName);
+      return healText + ' ' + STATUS_INFO[status.kind].expireText(casterName);
     }
     this.renderStatusLabel(isPlayer);
-    return '';
+    return healText;
   }
 
   // Updates (or clears) the small status pill under that side's HP bar --

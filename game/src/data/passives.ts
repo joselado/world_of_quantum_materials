@@ -5,8 +5,8 @@
 // while it has room: the crystal's passive slots (registry/save
 // `passiveSlotsByOwner`, none to start with, up to PASSIVE_MAX_SLOTS bought
 // one at a time from Franklin at PASSIVE_SLOT_COSTS), and every passive
-// takes up a fixed number of them (`Passive.slots` -- one for most, two for
-// Full Reflection, all three for Last Scattering). Which ones are active
+// takes up a fixed number of them (`Passive.slots` -- one for most, all
+// three for Last Scattering and Full Reflection). Which ones are active
 // lives in registry/save `activePassivesByOwner` (keyed by PassiveOwner, in
 // the order they were equipped), switched only from Franklin's own panel
 // (scenes/panels/franklin.ts). Unlike Kondo's moves, there's no per-turn
@@ -49,12 +49,14 @@ export const PASSIVE_OWNER_LABELS: Record<PassiveOwner, string> = {
 // thrice: the first slot is about one world-9 battle stake
 // (data/balance.ts's battleStakeForWorld, ~180 there) and is what makes any
 // passive active at all; the second is a real late-game saving; the third
-// -- the only way to hold Last Scattering, or Full Reflection beside
-// another lesson -- costs more than three of Skłodowska-Curie's per-class
-// Ultimate unlocks (data/materials.ts's ULTIMATE_CLASS_UNLOCK_COST), a
-// finale-scale goal rather than a world-9 shopping trip. The passives
-// themselves stay cheap (a 40-55 band, `cost` below): what a player pays for
-// is the room to run them, sized by how much each one does.
+// -- the only way to hold Last Scattering or Full Reflection -- costs more
+// than three of Skłodowska-Curie's per-class Ultimate unlocks
+// (data/materials.ts's ULTIMATE_CLASS_UNLOCK_COST), a finale-scale goal
+// rather than a world-9 shopping trip. A one-slot passive costs about what a
+// first slot does (a 200-225 band, `cost` below), so learning a lesson and
+// making room for it are purchases of the same size. A passive that takes
+// all three slots is priced at ten times that band (2500-2750), since each
+// one is a whole loadout by itself.
 export const PASSIVE_MAX_SLOTS = 3;
 export const PASSIVE_SLOT_COSTS: readonly number[] = [200, 800, 3200];
 
@@ -70,8 +72,8 @@ export interface Passive {
   cost: number;
   // How many of the crystal's passive slots this one takes up while active
   // (1..PASSIVE_MAX_SLOTS) -- the passive's weight in the loadout, sized by
-  // how much of a fight it decides: a flat multiplier is one, a hit bounced
-  // back whole is two, a guaranteed survival is all three.
+  // how much of a fight it decides: a flat multiplier is one; a guaranteed
+  // survival and three hits in ten bounced back whole are all three.
   slots: number;
 }
 
@@ -92,7 +94,7 @@ export const PASSIVES: Record<string, Passive> = {
     name: 'Diffraction Shadow',
     owner: 'franklin',
     description: 'A defect-riddled lattice scatters and attenuates an incoming blow, the way porous carbon attenuates an X-ray beam.',
-    cost: 40,
+    cost: 200,
     slots: 1,
   },
   anyonEcho: {
@@ -100,7 +102,7 @@ export const PASSIVES: Record<string, Passive> = {
     name: 'Satellite Reflection',
     owner: 'franklin',
     description: 'Coherent hits come twice as often, and each one throws off a secondary diffraction peak: a bonus follow-up damage tick.',
-    cost: 45,
+    cost: 225,
     slots: 1,
   },
   edgeCurrent: {
@@ -108,7 +110,7 @@ export const PASSIVES: Record<string, Passive> = {
     name: 'Amorphous Halo',
     owner: 'franklin',
     description: 'A diffuse, defect-broadened halo softens the quasiparticle-mismatch double damage to a smaller multiplier.',
-    cost: 45,
+    cost: 225,
     slots: 1,
   },
   // Beer-Lambert attenuation: however thick and defect-riddled the sample,
@@ -121,18 +123,20 @@ export const PASSIVES: Record<string, Passive> = {
     name: 'Last Scattering',
     owner: 'franklin',
     description: 'An attenuated beam never drops to nothing: a blow that would finish you leaves one point of life, as long as you had more than one.',
-    cost: 55,
+    cost: 2750,
     slots: 3,
   },
   // Total external reflection: below the critical angle a grazing X-ray beam
   // reflects entirely off the surface and never enters the crystal at all.
+  // Takes every slot too: bouncing three hits in ten back whole
+  // (FULL_REFLECTION_CHANCE) decides a fight on its own.
   fullReflection: {
     id: 'fullReflection',
     name: 'Full Reflection',
     owner: 'franklin',
-    description: 'Below the critical angle a beam reflects entirely off the surface: one incoming attack in ten bounces back at the attacker, and you take nothing.',
-    cost: 50,
-    slots: 2,
+    description: 'Below the critical angle a beam reflects entirely off the surface: three incoming attacks in ten bounce back at the attacker, and you take nothing.',
+    cost: 2500,
+    slots: 3,
   },
 };
 

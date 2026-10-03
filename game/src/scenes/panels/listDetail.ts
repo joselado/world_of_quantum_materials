@@ -5,8 +5,10 @@ import type { DopantLook } from '../../art/crystals';
 import { CANVAS_H } from '../../art/perspective';
 import { startMoveEffectPreview, type PreviewClipRect } from '../../art/moveEffectPreview';
 import { drawFranklinPassiveHalo } from '../../art/passiveHalos';
+import { addScreeningAura } from '../../art/screeningAuras';
+import { PLAYER_CRYSTAL_SIZE, PLAYER_HEAD_RISE } from '../battle/hud';
 import { materialDisplayName, getPlayerDopantLook } from '../../data/materials';
-import type { MoveLevel } from '../../data/materials';
+import type { KondoCloud, MoveLevel } from '../../data/materials';
 import type { Material, MoveClass } from '../../data/types';
 import type { AttackShape } from '../../audio/sfx';
 import { fontPx, fontScale } from '../../ui/text';
@@ -221,6 +223,12 @@ export interface RenderListColumnParams<T> {
   // the case, since a page that fits right up to the footer would push it off
   // the canvas.
   reserveBelow?: number;
+  // An icon group drawn at a row's right edge -- Franklin's slot diamonds
+  // (art/slotIcons.ts) are the case. `width` is taken out of the label's own
+  // fit so the two never overlap, and `build` returns the group centered on
+  // the point it is given. Not interactive, so a click on it still lands on
+  // the row beneath.
+  badgeFor?: (item: T) => { width: number; build: (cx: number, cy: number) => Phaser.GameObjects.GameObject } | null;
 }
 
 export interface RenderListColumnResult {
@@ -246,8 +254,24 @@ export interface RenderListColumnResult {
 // stable id (a crystal's name) rather than a list/page index, so the
 // highlighted row survives a page flip.
 export function renderListColumn<T>(params: RenderListColumnParams<T>): RenderListColumnResult {
-  const { scene, container, x, y: columnsTop, width, items, idFor, labelFor, colorFor, selectedId, page, onPageChange, onSelect, emptyText, reserveBelow } =
-    params;
+  const {
+    scene,
+    container,
+    x,
+    y: columnsTop,
+    width,
+    items,
+    idFor,
+    labelFor,
+    colorFor,
+    selectedId,
+    page,
+    onPageChange,
+    onSelect,
+    emptyText,
+    reserveBelow,
+    badgeFor,
+  } = params;
 
   const sampleRow = scene.add.text(-1000, -1000, 'Sample', { fontSize: fontPx(scene, 12), padding: { x: 8, y: 4 } });
   const rowH = sampleRow.height + 4;
@@ -294,15 +318,17 @@ export function renderListColumn<T>(params: RenderListColumnParams<T>): RenderLi
       })
       .setOrigin(0, 0);
     rows.push({ id, text: rowText, baseColor });
+    const badge = badgeFor?.(item) ?? null;
     // Trim against the text's own natural (unfixed) width first --
     // setFixedSize below pins .width to the row's uniform box size, which
     // would make every row (even a short one) read as overflowing.
-    fitListLabel(rowText, label, width - 4);
+    fitListLabel(rowText, label, width - 4 - (badge ? badge.width + 6 : 0));
     rowText
       .setFixedSize(width, rowH - 4)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => onSelect(item));
     container.add(rowText);
+    if (badge) container.add(badge.build(x + width - 8 - badge.width / 2, rowY + (rowH - 4) / 2));
     rowY += rowH;
   }
   if (totalPages > 1) {
@@ -648,9 +674,11 @@ export function renderStatusAndConfirm(params: StatusAndConfirmParams): number {
   return ny;
 }
 
-// Self-buff variant of renderMoveDetailHeader above -- Kondo's three
-// self-buff moves (scenes/panels/kondo.ts) never travel from an attacker to
-// a target the way an ordinary move does: BattleScene.resolveSelfBuff plays
+// Self-buff variant of renderMoveDetailHeader above, for the panes that show
+// one of Kondo's five self-buff moves being *cast* (Feynman's move-leveling
+// pane, the Lab's Moves station; Kondo's own panel shows the cloud a cast
+// leaves instead, renderCloudDetailHeader below). A self-buff never travels
+// from an attacker to a target the way an ordinary move does: BattleScene.resolveSelfBuff plays
 // the real battle effect centered on the caster's own position, so the
 // centred ring the preview draws is the whole effect rather than one half of
 // it. What a self-buff pane needs
@@ -667,7 +695,7 @@ export function renderStatusAndConfirm(params: StatusAndConfirmParams): number {
 // self-buff previews the escalating multi-trigger cascade a real cast plays
 // rather than the flat unleveled loop. `displayName` is the preview's
 // `subject` here too, and it is what makes the switch between two of
-// Kondo's moves visible at all: all three play the one screening ring, so
+// Kondo's moves visible at all: all five play the one screening ring, so
 // only the caption tells the chain a different move was picked and the ring
 // should rise again from its first frame.
 export function renderSelfBuffMoveDetailHeader(
@@ -715,6 +743,65 @@ export function renderSelfBuffMoveDetailHeader(
   });
 
   let ny = y + stageH;
+
+  const nameScale = Math.min(fontScale(scene), DETAIL_NAME_CAP);
+  const nameText = scene.add
+    .text(centerX, ny, displayName, {
+      fontSize: `${Math.round(14 * nameScale)}px`,
+      color: '#ffffff',
+      fontStyle: 'bold',
+      align: 'center',
+      wordWrap: { width: rightColW },
+    })
+    .setOrigin(0.5, 0);
+  container.add(nameText);
+  return ny + nameText.height + 6;
+}
+
+// Cloud variant of renderSelfBuffMoveDetailHeader above, for Kondo's own
+// panel (scenes/panels/kondo.ts): what tells his five moves apart is not the
+// cast, which is the one screening ring for all five, but the cloud the cast
+// leaves standing around the caster for its whole duration. So this renders
+// the player's own crystal on its shadow inside the same recessed stage with
+// that cloud's persistent battle aura (art/screeningAuras.ts's
+// addScreeningAura, the very call BattleScene.syncScreeningAura makes) wrapped
+// around it, and plays no cast at all -- the same "show what stays" choice
+// renderPassiveDetailHeader below makes for a Franklin passive. The aura keeps
+// battle's proportion to its crystal (PLAYER_HEAD_RISE + 5 around a
+// PLAYER_CRYSTAL_SIZE body), capped so it stays inside the stage, and the
+// crystal stands at the stage's middle so the ring has room on both sides.
+export function renderCloudDetailHeader(
+  scene: Phaser.Scene,
+  container: Phaser.GameObjects.Container,
+  material: Material,
+  displayName: string,
+  cloud: KondoCloud,
+  centerX: number,
+  y: number,
+  rightColW: number
+): number {
+  const stageH = DETAIL_STAGE_H;
+  const crystalSize = DETAIL_CRYSTAL_SIZE;
+  const crystalCenterY = y + stageH / 2;
+  const shadowY = crystalCenterY + crystalSize * 0.85;
+  const shadowRx = crystalSize * 1.18;
+  const shadowRy = crystalSize * 0.27;
+  const auraR = Math.min(stageH / 2 - 2, (crystalSize * (PLAYER_HEAD_RISE + 5)) / PLAYER_CRYSTAL_SIZE);
+
+  drawPreviewStage(scene, container, centerX, y, rightColW, stageH);
+
+  container.add(scene.add.ellipse(centerX, shadowY, shadowRx * 2, shadowRy * 2, 0x000000, 0.3));
+
+  const crystal = makeCrystal(scene, crystalSize, material.color, material.variant, {
+    seed: material.name,
+    hybrid: material.hybridParents,
+    dopant: getPlayerDopantLook(scene.game.registry),
+  });
+  crystal.setPosition(centerX, crystalCenterY);
+  container.add(crystal);
+  addScreeningAura(scene, crystal, cloud, auraR);
+
+  const ny = y + stageH;
 
   const nameScale = Math.min(fontScale(scene), DETAIL_NAME_CAP);
   const nameText = scene.add

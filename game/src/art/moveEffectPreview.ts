@@ -149,7 +149,7 @@ export interface MoveEffectPreviewParams {
   level?: MoveLevel;
   // What the pane says it is demonstrating -- the move's own display name,
   // as the caption under the stage reads it. Two moves can share a class
-  // and so a look (Kondo's three self-buffs all play the one screening
+  // and so a look (Kondo's five self-buffs all play the one screening
   // ring), and the caption is what still tells them apart: a chain handed a
   // different subject restarts even when nothing it would draw has changed,
   // since the player picked a different move and expects to see that move

@@ -4,6 +4,7 @@ import { guardianQuoteFor } from '../../data/guardianQuotes';
 import { storyLength } from '../../data/settings';
 import { makeFranklinAvatar } from '../../art/franklin';
 import { killTweensDeep } from '../../art/crystals';
+import { makeSlotPips, slotMeterStates, slotPipRadius, slotPipsWidth } from '../../art/slotIcons';
 import { CANVAS_W } from '../../art/perspective';
 import { fontScale } from '../../ui/text';
 import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
@@ -37,9 +38,12 @@ import {
 // turn. Every passive can be bought independently, but running one takes
 // room: the crystal starts with no passive slot, Franklin sells up to
 // PASSIVE_MAX_SLOTS of them one at a time (PASSIVE_SLOT_COSTS, the button
-// under the list -- renderSlotButton below, deliberately not a row among
+// under the list -- renderSlotRow below, deliberately not a row among
 // the abilities), and each passive takes up `Passive.slots` of them while
-// active. Which ones are active lives in registry/save
+// active. Both read as icons (art/slotIcons.ts): every row carries one
+// filled diamond per slot that passive takes, and the slot button carries
+// the crystal's whole ladder beside it -- used slots filled, owned free ones
+// open, unbought ones locked. Which ones are active lives in registry/save
 // activePassivesByOwner, oldest-equipped first; making a passive active
 // with too little room free sets the oldest-equipped ones aside until it
 // fits, and the detail pane's status line names them before the click.
@@ -121,6 +125,7 @@ export function showFranklinPanel(scene: GuardianPanelHost) {
   const sample = scene.addDialogueButtonAt(container, -1000, -1000, 'Sample', () => {}, columns.leftColW, slotButtonPx);
   const slotButtonH = sample.height;
   sample.destroy();
+  const pipR = slotPipRadius(fontScale(scene));
 
   let preview = FRANKLIN_PASSIVE_IDS.includes(scene.franklinPreview ?? '') ? (scene.franklinPreview as string) : FRANKLIN_PASSIVE_IDS[0];
 
@@ -147,30 +152,48 @@ export function showFranklinPanel(scene: GuardianPanelHost) {
       renderDetail();
     },
     reserveBelow: slotButtonH + 6,
+    badgeFor: (id) => {
+      const n = PASSIVES[id].slots;
+      return {
+        width: slotPipsWidth(n, pipR),
+        build: (cx, cy) => makeSlotPips(scene, Array(n).fill('filled'), pipR).setPosition(cx, cy),
+      };
+    },
   });
   scene.franklinPage = listResult.page;
 
   const detailBlock = scene.add.container(0, 0);
   container.add(detailBlock);
 
-  // The next rung of the slot ladder -- "Buy slot N (<cost>)" -- or, with
-  // every slot bought, a dimmed "3 slots owned" tag (the same dimmed-current
-  // convention every guardian panel's "(active)" tag uses). Rendered into
-  // chromeBlock with the footer, since both sit under the list and are laid
-  // out together.
-  const renderSlotButton = (slots: number, tokens: number, atY: number): number => {
+  // The crystal's slot ladder and the next rung of it, on one row: one
+  // diamond per slot the crystal could ever own (`used` filled, the rest of
+  // the owned ones open, the unbought ones locked), then "Buy slot N
+  // (<cost>)" -- or, with every slot bought, a dimmed "All slots owned" tag
+  // (the same dimmed-current convention every guardian panel's "(active)"
+  // tag uses). Sharing the button's row is what keeps the ladder from costing
+  // the list a row at the largest text-size preset; where the full label and
+  // the diamonds would not fit the column side by side, the label drops to
+  // its short form. Rendered into chromeBlock with the footer, since both sit
+  // under the list and are laid out together.
+  const renderSlotRow = (used: number, slots: number, tokens: number, atY: number): number => {
     const full = slots >= PASSIVE_MAX_SLOTS;
     const cost = full ? 0 : PASSIVE_SLOT_COSTS[slots];
-    const btn = scene.addDialogueButtonAt(
-      chromeBlock,
-      columns.leftX + columns.leftColW / 2,
-      atY,
-      full ? `${PASSIVE_MAX_SLOTS} slots owned` : `Buy slot ${slots + 1} (${cost})`,
-      () => {
-        if (!full) buySlot(scene);
-      },
-      columns.leftColW,
-      slotButtonPx
+    const pipsW = slotPipsWidth(PASSIVE_MAX_SLOTS, pipR);
+    const gap = 8;
+    const room = columns.leftColW - pipsW - gap;
+    const onClick = () => {
+      if (!full) buySlot(scene);
+    };
+    const labels = full ? ['All slots owned', 'All owned'] : [`Buy slot ${slots + 1} (${cost})`, `Buy (${cost})`];
+    let btn = scene.addDialogueButtonAt(chromeBlock, 0, atY, labels[0], onClick, columns.leftColW, slotButtonPx);
+    if (btn.width > room) {
+      btn.destroy();
+      btn = scene.addDialogueButtonAt(chromeBlock, 0, atY, labels[1], onClick, columns.leftColW, slotButtonPx);
+    }
+    const left = columns.leftX + columns.leftColW / 2 - (pipsW + gap + btn.width) / 2;
+    btn.setX(left + pipsW + gap + btn.width / 2);
+    chromeBlock.add(
+      makeSlotPips(scene, slotMeterStates(used, slots, PASSIVE_MAX_SLOTS), pipR).setPosition(left + pipsW / 2, atY + btn.height / 2)
     );
     if (full || tokens < cost) btn.setAlpha(0.5);
     return atY + btn.height;
@@ -248,7 +271,7 @@ export function showFranklinPanel(scene: GuardianPanelHost) {
       },
     });
 
-    const slotBottom = renderSlotButton(slots, tokens, listResult.bottom + 6);
+    const slotBottom = renderSlotRow(passiveSlotsUsed(active), slots, tokens, listResult.bottom + 6);
     const leftBottom = renderListColumnFooter(scene, chromeBlock, columns, slotBottom + 4, 'Farewell', () => scene.closeDialogue());
     const columnsBottom = Math.max(leftBottom, rightY);
     insertColumnDivider(scene, chromeBlock, columns.dividerX, columnsTop, columnsBottom);
