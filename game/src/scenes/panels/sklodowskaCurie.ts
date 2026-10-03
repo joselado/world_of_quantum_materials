@@ -39,8 +39,8 @@ import {
 // behind actually reaching World 10 rather than inheriting "met" status from
 // an old save's World-6 Curie visit) and sells her two quiz-gated Ultimate
 // moves (data/materials.ts's ULTIMATE_MOVE_IDS, a meteor move and a nova
-// move). Her pricing model is deliberately NOT the standard `shopCost`
-// flow Landau's shop uses -- there is no separate "buy the move" step;
+// move). Her pricing model is deliberately NOT the one-price-per-move flow
+// Landau's shop uses -- there is no separate "buy the move" step;
 // instead each quasiparticle class costs `ULTIMATE_CLASS_UNLOCK_COST`
 // qumatessence to unlock per move, the first time it's picked for that move,
 // after which retuning back to an already-unlocked class is free forever

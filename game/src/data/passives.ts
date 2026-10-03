@@ -66,7 +66,7 @@ export interface Passive {
   owner: PassiveOwner;
   description: string;
   // Priced flat per passive rather than derived from a Move's `power` the
-  // way OverworldScene's shopCost() works -- a passive isn't a
+  // way data/balance.ts's shopCost() works -- a passive isn't a
   // quasiparticle with a power rating, so reusing shopCost would mean
   // inventing a fake power number just to feed it back in.
   cost: number;

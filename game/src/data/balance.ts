@@ -233,15 +233,36 @@ export function finaleStageHp(stage: 1 | 2 | 3, world: number): number {
   return stage === 2 ? wildHpForWorld(world) : rivalHpForWorld(world);
 }
 
-// Qumatessence price for a shop move, scaled off its own power -- the
-// stronger the quasiparticle, the more it costs, the same "priced to keep
-// buying meaningful" shape as statUpgradeCost. Shared by every guardian who
-// sells moves for qumatessence (Noether, Landau, Kondo) --
-// Skłodowska-Curie's Ultimate moves are the one exception, priced via
-// ULTIMATE_CLASS_UNLOCK_COST instead (data/materials.ts).
+// Qumatessence price for one of Noether's ordinary attack moves, scaled off
+// its own power -- the stronger the quasiparticle, the more it costs. An
+// ordinary move's power is the whole of what it does, so power is the right
+// thing to price it by. The moves whose worth is not their raw power are
+// priced flat instead: Landau's and Kondo's just below, Skłodowska-Curie's
+// Ultimates via ULTIMATE_CLASS_UNLOCK_COST (data/materials.ts).
 export function shopCost(move: Move): number {
   return move.power * 5;
 }
+
+// Qumatessence price for one of Landau's two Analytic moves (DESIGN.md §5,
+// World 4). An Analytic move's `power` is what it carries before its
+// question is asked; a right answer doubles it, so what is being sold is a
+// power-20 hit, and one that can carry any quasiparticle its holder's form
+// hosts. Priced as that hit at shopCost's own rate (20 x 5) rather than off
+// the raw `power`, which would put it level with the power-10 ordinary moves
+// it out-hits at every quiz accuracy: a question has two options, so even a
+// coin flip averages 1.25x. It is also one World 4 wild win
+// (battleStakeForWorld), the world Landau stands in.
+export const ANALYTIC_MOVE_COST = 100;
+
+// Qumatessence price for one of Kondo's five clouds (DESIGN.md §5, World 8).
+// A cloud deals no damage, so it has no power to be priced from -- its
+// `power` only sets what a Feynman attempt on it costs (feynmanLevelCost) --
+// and it is priced flat, the way Franklin's passives are. Just under one
+// World 8 wild win, and below Franklin's 200-225 one-slot passives
+// (data/passives.ts): a cloud takes a turn to raise and lasts three, where a
+// passive is on for the whole fight. All five share the price, since only
+// one is held at a time and which is worth holding depends on the opponent.
+export const KONDO_CLOUD_COST = 150;
 
 // --- Feynman's move-leveling (DESIGN.md §5, World 7) ------------------------
 
@@ -264,8 +285,10 @@ export const MOVE_LEVEL_STREAKS: readonly number[] = [0, 2, 4, 8];
 // Qumatessence cost to attempt leveling a move up to `level` (1, 2, or 3) --
 // follows the same "priced off the move's own raw power" shape shopCost
 // uses for an ordinary purchase (power x5), scaled again by the tier being
-// attempted so a deeper tier costs proportionally more. Paid whether the
-// attempt lands or not -- there is no refund on a miss.
+// attempted so a deeper tier costs proportionally more. Every move is priced
+// this way here, whatever it cost to learn: an Analytic move by the power it
+// carries before its question, a Kondo cloud by its nominal `power`. Paid
+// whether the attempt lands or not -- there is no refund on a miss.
 export function feynmanLevelCost(move: Move, level: 1 | 2 | 3): number {
   return move.power * 5 * level;
 }

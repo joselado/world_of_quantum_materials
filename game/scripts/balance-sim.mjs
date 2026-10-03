@@ -258,7 +258,7 @@
 //   exactly the one slot Diffraction Shadow needs (franklinCost/buyFranklin
 //   above) and never a second or third, and never models the two
 //   situational passives (Last Scattering's 1-HP floor, Full Reflection's
-//   10% bounce-back): every build that buys Franklin passives keeps
+//   three-in-ten bounce-back): every build that buys Franklin passives keeps
 //   Diffraction Shadow (flat incoming-damage reduction) active rather than
 //   switching per fight -- the simplest defensive baseline, and a deliberate
 //   undercount of Ph.D.'s real ceiling (a human could buy more slots and
@@ -539,6 +539,8 @@ const {
   enemyStatsForWorld,
   statUpgradeCost,
   shopCost,
+  ANALYTIC_MOVE_COST,
+  KONDO_CLOUD_COST,
   MOVE_LEVEL_MULTIPLIERS,
   MOVE_LEVEL_STREAKS,
   feynmanLevelCost,
@@ -1223,9 +1225,9 @@ const BUILDS = [
         }
         if (world >= 4) {
           const landauMove = ANALYTIC_MOVE_IDS.find((id) => !state.ownedMoves.has(id));
-          if (landauMove && state.qumatessence >= shopCost(MOVES[landauMove])) {
-            state.qumatessence -= shopCost(MOVES[landauMove]);
-            state.spentTotal += shopCost(MOVES[landauMove]);
+          if (landauMove && state.qumatessence >= ANALYTIC_MOVE_COST) {
+            state.qumatessence -= ANALYTIC_MOVE_COST;
+            state.spentTotal += ANALYTIC_MOVE_COST;
             state.ownedMoves.add(landauMove);
             state.tunedClass.set(landauMove, bestMismatchClass(state.playerType, getWildPool(world)));
             continue;
@@ -1263,7 +1265,7 @@ const BUILDS = [
         if (!state.ownedMoves.has('tunnelStrike')) wantCosts.push(shopCost(MOVES.tunnelStrike));
         if (world >= 4) {
           const landauMove = ANALYTIC_MOVE_IDS.find((id) => !state.ownedMoves.has(id));
-          if (landauMove) wantCosts.push(shopCost(MOVES[landauMove]));
+          if (landauMove) wantCosts.push(ANALYTIC_MOVE_COST);
         }
         if (statsBoughtThisWorld < 2) {
           const statKey = STAT_ROTATION[state.statRotation % 3];
@@ -1294,17 +1296,17 @@ const BUILDS = [
         }
         if (world >= 4) {
           const landauMove = ANALYTIC_MOVE_IDS.find((id) => !state.ownedMoves.has(id));
-          if (landauMove && state.qumatessence >= shopCost(MOVES[landauMove])) {
-            state.qumatessence -= shopCost(MOVES[landauMove]);
-            state.spentTotal += shopCost(MOVES[landauMove]);
+          if (landauMove && state.qumatessence >= ANALYTIC_MOVE_COST) {
+            state.qumatessence -= ANALYTIC_MOVE_COST;
+            state.spentTotal += ANALYTIC_MOVE_COST;
             state.ownedMoves.add(landauMove);
             state.tunedClass.set(landauMove, bestMismatchClass(state.playerType, getWildPool(world)));
             continue;
           }
         }
-        if (world >= 8 && !state.kondoOwned && state.qumatessence >= shopCost(MOVES.spinScreening)) {
-          state.qumatessence -= shopCost(MOVES.spinScreening);
-          state.spentTotal += shopCost(MOVES.spinScreening);
+        if (world >= 8 && !state.kondoOwned && state.qumatessence >= KONDO_CLOUD_COST) {
+          state.qumatessence -= KONDO_CLOUD_COST;
+          state.spentTotal += KONDO_CLOUD_COST;
           state.kondoOwned = true;
           state.kondoActive = true;
           continue;
@@ -1352,9 +1354,9 @@ const BUILDS = [
         if (!state.ownedMoves.has('tunnelStrike')) wantCosts.push(shopCost(MOVES.tunnelStrike));
         if (world >= 4) {
           const landauMove = ANALYTIC_MOVE_IDS.find((id) => !state.ownedMoves.has(id));
-          if (landauMove) wantCosts.push(shopCost(MOVES[landauMove]));
+          if (landauMove) wantCosts.push(ANALYTIC_MOVE_COST);
         }
-        if (world >= 8 && !state.kondoOwned) wantCosts.push(shopCost(MOVES.spinScreening));
+        if (world >= 8 && !state.kondoOwned) wantCosts.push(KONDO_CLOUD_COST);
         if (world >= 9) {
           const nextPassive = Object.keys(PASSIVES).find((id) => !state.franklinOwned.has(id));
           if (nextPassive) wantCosts.push(franklinCost(state, nextPassive));

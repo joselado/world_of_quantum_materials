@@ -2,8 +2,8 @@ import { shade, darken, blend, hueShift } from '../art/colors';
 import type { DopantLook } from '../art/crystals';
 import type { Material, Move, MoveClass, MaterialType, CrystalVariant, Stats } from './types';
 // Every pure stat/economy formula (BASE_STAT, enemyStatsForWorld,
-// statUpgradeCost, shopCost, Feynman's move-leveling multipliers/cost) lives
-// in balance.ts, kept Phaser-free so game/scripts/balance-sim.mjs can load it
+// statUpgradeCost, shopCost, Landau's and Kondo's flat move prices, Feynman's
+// move-leveling multipliers/cost) lives in balance.ts, kept Phaser-free so game/scripts/balance-sim.mjs can load it
 // directly -- imported here for this file's own internal use, then
 // re-exported below so every existing `import { shopCost, ... } from
 // '../data/materials'` call site keeps working unchanged.
@@ -14,11 +14,25 @@ import {
   enemyStatsForWorld,
   statUpgradeCost,
   shopCost,
+  ANALYTIC_MOVE_COST,
+  KONDO_CLOUD_COST,
   MOVE_LEVEL_MULTIPLIERS,
   MOVE_LEVEL_STREAKS,
   feynmanLevelCost,
 } from './balance';
-export { BASE_STAT, MAX_STAT, DEFAULT_STATS, enemyStatsForWorld, statUpgradeCost, shopCost, MOVE_LEVEL_MULTIPLIERS, MOVE_LEVEL_STREAKS, feynmanLevelCost };
+export {
+  BASE_STAT,
+  MAX_STAT,
+  DEFAULT_STATS,
+  enemyStatsForWorld,
+  statUpgradeCost,
+  shopCost,
+  ANALYTIC_MOVE_COST,
+  KONDO_CLOUD_COST,
+  MOVE_LEVEL_MULTIPLIERS,
+  MOVE_LEVEL_STREAKS,
+  feynmanLevelCost,
+};
 
 // Every ordinary attack is named after the quasiparticle/excitation that
 // actually carries it, not an abstract "class" label -- Phonon Beam is a
@@ -132,7 +146,9 @@ export const MOVES: Record<string, Move> = {
   // Landau's quiz-gated Analytic moves (§5, World 4, ANALYTIC_MOVE_IDS
   // below) -- power sits below the other exotic-tier moves since their real
   // payoff is the answer-gated 2x/0.5x multiplier BattleScene applies, not
-  // raw power. Never listed in any material's `moves` array (wild/rival
+  // raw power, which is also why Landau sells them at a flat price
+  // (data/balance.ts's ANALYTIC_MOVE_COST) rather than off this number. Never
+  // listed in any material's `moves` array (wild/rival
   // movesets) -- only the player can ever be asked one of these questions,
   // and an opponent using one would bypass the quiz gate entirely (it lives
   // in the player-only move-menu click handler, not the damage formula).
@@ -166,8 +182,9 @@ export const MOVES: Record<string, Move> = {
   // one raises a cloud on the caster's own side (BattleScene's
   // resolveSelfBuff) instead of dealing damage, active from the slot it is
   // cast on until its caster's last slot STATUS_DURATION rounds later, so
-  // `power` here is never read as damage -- it only feeds
-  // shopCost, the same pricing role it plays for every other move. Never
+  // `power` here is never read as damage -- it only sets what a Feynman
+  // attempt on the cloud costs (feynmanLevelCost); the cloud's own price is
+  // flat (data/balance.ts's KONDO_CLOUD_COST). Never
   // listed in any wild/rival material's `moves` array -- only the player
   // can currently learn them, and only one of the five is ever active in
   // battle at a time (registry/save `kondoActiveMove`, switched only by
@@ -307,31 +324,37 @@ export const ULTIMATE_CLASS_UNLOCK_COST = 1000;
 // since every option is its own separate purchase). The same
 // pay-once-then-free-forever shape Franklin's flat per-passive
 // `cost` and Skłodowska-Curie's `ULTIMATE_CLASS_UNLOCK_COST` already use,
-// just keyed per candidate rather than per passive/class. Priced well
-// below Franklin's 40-50 whole-passive band and Noether's/
-// Landau's/Kondo's ~35-55 `shopCost` moves, since a single option here is
-// a narrower purchase than a whole passive or move. Unlocking every option
-// of an ability (e.g. every world Bloch can reach) therefore costs
+// just keyed per candidate rather than per passive/class. Unlocking every
+// option of an ability (e.g. every world Bloch can reach) therefore costs
 // meaningfully more in total than one flat per-ability price would, by
 // design: the player pays per destination/crystal/host/result rather than
-// once for unlimited access. Same relative ordering as
-// before: Bloch (world 2) is pure convenience -- it grants no new battle
-// power, only skips walking to one already-reachable world -- so it's
-// priced lowest; Dresselhaus (world 3) commits to becoming one specific
-// crystal (its own look/type/moveset -- HP stays driven by the current
-// world regardless of form), a bigger capability swing per option than
-// pure travel; Anderson (world 6) permanently opens one
-// specific dopant's move channel and sits later in the world progression,
-// so it costs more still; Majorana (world 5) is priced highest of the
-// four -- above even Noether's/Landau's/Kondo's ordinary `shopCost` top
-// end (~55) -- despite sitting earlier than Anderson, since unlocking one
-// specific hybrid result is comparable in value to learning a whole new
-// move, and fusing at all only reaches HYBRID_RECIPES' curated results, an
-// additional content category rather than a reshaping of an existing one.
+// once for unlimited access.
+//
+// Bloch's, Dresselhaus's and Anderson's options sit at or below the bottom
+// of Noether's 35-55 `shopCost` band, since a single option of theirs is a
+// narrower purchase than a whole move. Bloch (world 2) is pure convenience
+// -- it grants no new battle power, only skips walking to one
+// already-reachable world -- so it's priced lowest; Dresselhaus (world 3)
+// commits to becoming one specific crystal (its own look/type/moveset -- HP
+// stays driven by the current world regardless of form), a bigger capability
+// swing per option than pure travel; Anderson (world 6) permanently opens
+// one specific dopant's move channel and sits later in the world
+// progression, so it costs more still.
+//
+// Majorana (world 5) is on another scale, because a fused form is more than
+// a change of type: every hybrid carries Hybrid Aura (data/passives.ts's
+// BUILT_IN_PASSIVES -- its hits x1.3, the hits it takes x0.7, always on, no
+// slot). One hybrid result is therefore priced as the always-on passive it
+// comes with rather than as an option: level with what Franklin's
+// Diffraction Shadow costs to run (its 200 plus the 200 first slot,
+// data/passives.ts), a single flat multiplier sold four worlds later. At
+// World 5 that is a little over three wild wins (data/balance.ts's
+// battleStakeForWorld), so the first fusion is something to save up for
+// rather than a purchase made in passing.
 export const BLOCH_DESTINATION_COST = 15;
 export const DRESSELHAUS_TRANSMUTE_COST = 25;
 export const ANDERSON_DOPE_COST = 35;
-export const MAJORANA_FUSE_COST = 60;
+export const MAJORANA_FUSE_COST = 400;
 
 // The full roster of ordinary quasiparticle classes a tunable move's
 // picker can ever offer (scenes/panels/tunableMoveShop.ts's
@@ -505,7 +528,7 @@ export const ORDINARY_MOVE_IDS = Object.keys(MOVES).filter(
 );
 
 // Every move Noether can eventually *teach*, priced by raw power
-// (`OverworldScene.shopCost`) -- the ordinary attacks above minus the
+// (data/balance.ts's `shopCost`) -- the ordinary attacks above minus the
 // player's starting Phonon Beam, which is the same kind of move and only
 // sits outside this list because every crystal already has it. What actually
 // shows up for sale in her shop (and what actually

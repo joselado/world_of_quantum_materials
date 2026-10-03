@@ -751,8 +751,8 @@ below only Anyon Braid/Majorana Split among the ordinary attack moves — since 
 Screening, Symmetry Cloud, Restoring Cloud, Anomalous Cloud, §5) carry the same low `power`
 value, on par with Electron Pulse,
 but it's never read as damage at all — they're self-buffs, not attacks, so `power` only
-feeds their qumatessence price (§5's shop-cost formula), the same role it plays for every
-other move. Skłodowska-Curie's two Ultimate moves (power 100, ten
+sets what a Feynman attempt on one costs (§5's `feynmanLevelCost`); a cloud's own price is
+flat (§5's `KONDO_CLOUD_COST`). Skłodowska-Curie's two Ultimate moves (power 100, ten
 times an Analytic move's power — above even Anyon Braid/Majorana Split, the ordinary
 roster's own most exotic tier) are the exception to "power isn't the point": the
 3-questions-all-correct gate is steep enough that raw power *is* the payoff once it's
@@ -1169,7 +1169,14 @@ state can mark her met before the player has actually reached her.
   since Landau's own physics (Landau quantization -- a perpendicular field collapsing a
   continuous band into flat, equally spaced levels) is world 4's topic itself. Using one asks a physics-equation question first (`data/quiz.ts`'s
   `ANALYTIC_QUESTIONS`, `BattleScene.showAnalyticQuestion`): answer right and the hit
-  lands at 2x, answer wrong and it lands at 0.5x. Each question is tagged with the
+  lands at 2x, answer wrong and it lands at 0.5x. Each move costs `ANALYTIC_MOVE_COST`
+  (100) qumatessence to learn (`data/balance.ts`), a flat price rather than Noether's
+  power × 5: a right answer doubles the move's power 10, so what is sold is a power-20 hit
+  that can carry any quasiparticle the player's form hosts, and it is priced as that hit at
+  Noether's own rate. Off its raw power it would cost the same as the power-10 ordinary
+  moves it out-hits at every quiz accuracy (a question has two options, so even a coin
+  flip averages 1.25x). The price is also one World 4 wild win (`battleStakeForWorld`).
+  Each question is tagged with the
   world number(s) whose course topic it belongs to, and `getAnalyticQuestion(visitedWorlds)`
   draws only from questions tagged with a world the player has already visited (falling
   back to the full unfiltered pool if that intersection is ever empty) -- an early
@@ -1269,7 +1276,7 @@ state can mark her met before the player has actually reached her.
   the game, unfiltered (unlike Dresselhaus above) -- a hybrid's own defeated-material entry,
   if any, simply won't match any `HYBRID_RECIPES` pairing as a further parent, so no extra
   filtering is needed here. Each individual hybrid *result* is its own one-time
-  `MAJORANA_FUSE_COST` (60) qumatessence unlock (registry/save
+  `MAJORANA_FUSE_COST` (400) qumatessence unlock (registry/save
   `majoranaUnlockedResults`, a list of result names already paid for) -- keyed by the
   fused result's own name rather than by parent pair, since no two different pairs in
   `HYBRID_RECIPES` currently produce the same result, so "have I paid to become this
@@ -1277,13 +1284,15 @@ state can mark her met before the player has actually reached her.
   shows up (and is only charged) once a specific hybrid result is actually confirmed;
   browsing every reachable hybrid in the panel's table costs nothing, the same
   "browsing is free, only committing costs" shape Anderson's host pick uses below.
-  Priced highest of the four
-  repeatable-action guardians (Bloch/Dresselhaus/Anderson/Majorana) -- above even
-  Noether's/Landau's/Kondo's ordinary `shopCost` top end (~55) -- since unlocking one
-  specific hybrid result is comparable in value to learning a whole new move, and
-  reaches only `HYBRID_RECIPES`' curated results, an additional content category rather
-  than a reshaping of an existing one, even though Majorana sits earlier in the world
-  progression than Anderson below. Superposition Mode bypasses this per-result cost
+  Priced on another scale from the other three repeatable-action guardians
+  (Bloch/Dresselhaus/Anderson), because a fused form is more than a change of type: it
+  carries Hybrid Aura (§4), an always-on ×1.3 dealt / ×0.7 taken that takes no slot. One
+  hybrid result is therefore priced as the passive it comes with rather than as an
+  option -- level with what Franklin's Diffraction Shadow costs to run (its 200 plus the
+  200 first slot, below), a single flat multiplier sold four worlds later. At World 5
+  that is a little over three wild wins (`battleStakeForWorld`), so the first fusion is
+  something to save up for rather than a purchase made in passing. Superposition Mode
+  bypasses this per-result cost
   entirely the same way Bloch's/Dresselhaus's do. Majorana and Dresselhaus above also
   share one further Superposition-only behavior: the mode's blanket unlock grant (§7)
   seeds the player's own starting `playerForm` if the player hasn't transmuted/fused
@@ -1437,7 +1446,12 @@ state can mark her met before the player has actually reached her.
   number: a screening cloud from 50% unleveled up to 75% at Infinite tier, capped so even a
   maxed-out cloud leaves real damage coming through; Restoring Cloud from 5% of max HP a heal
   up to 15%; Anomalous Cloud from a third of the way to each roll's best outcome up to all of
-  it. The player can buy all five
+  it. Each cloud costs `KONDO_CLOUD_COST` (150) qumatessence to learn (`data/balance.ts`),
+  one flat price for all five: a cloud deals no damage, so there is no power to price it
+  from, and which of the five is worth holding depends on the opponent rather than on the
+  cloud. That is just under one World 8 wild win (`battleStakeForWorld`) and below
+  Franklin's 200-225 one-slot passives (below), since a cloud takes a turn to raise and
+  lasts three where a passive is on for the whole fight. The player can buy all five
   independently, but only one is ever usable in battle at a time -- registry/save
   `kondoActiveMove`, switched only by returning to Kondo's own panel (a bought-but-inactive
   move stays in `unlockedMoves`, it just fails `getBattleMoves`' own extra check), since

@@ -1732,14 +1732,14 @@ station motifs are deliberately not tunnels with a visible far end.
   Feynman's own Double/Triple/Infinite level prefix, so once a pick is committed the preview
   title and the real battle-menu name read identically. Below that: a status line -- for a
   still-unbought move, "Costs `<cost>` qumatessence to learn, carried by `<quasiparticle>`."
-  (reusing `shopCost`); for an already-bought one, "Already tuned to `<quasiparticle>`." on the
+  (`ANALYTIC_MOVE_COST`); for an already-bought one, "Already tuned to `<quasiparticle>`." on the
   tuned row, otherwise "Tuned to `<quasiparticle>`. Retuning is free." (or, if the player has
   since transmuted into a form that can no longer host the saved assignment, "Tuned to
   `<quasiparticle>`, reverted to Phonon (this form can't host it)." -- the fallback reads the
   bare quasiparticle noun, `quasiparticleLabel`, not the move's own shape word; there is no
   untuned state, a move never tuned carries phonon and says so), naming the previewed
   quasiparticle and what it costs -- and the one button that spends anything: `Learn <quasiparticle> <shape>` on a
-  still-unbought move, naming the previewed class it will be bought tuned to (`buyLandauMove`, checking/spending `shopCost`, adding the move to `unlockedMoves`, and
+  still-unbought move, naming the previewed class it will be bought tuned to (`buyLandauMove`, checking/spending `ANALYTIC_MOVE_COST`, adding the move to `unlockedMoves`, and
   recording the class, all three at once, with no separate "buy" step before picking a class), or
   `Tune to <quasiparticle>` on an already-bought one, free among any hostable class with no
   per-class cost (`retuneLandauMove`). A move already tuned to the previewed class offers no
@@ -1949,7 +1949,7 @@ station motifs are deliberately not tunnels with a visible far end.
   with a passive's halo. Below that:
   the move's own one-line `description` (`data/materials.ts`'s `Move.description`, only Kondo's
   five moves carry one), then a cost/status line and a confirm button -- "Learn `<name>`"
-  for a still-unbought move (dimmed if unaffordable, priced by `shopCost`),
+  for a still-unbought move (dimmed if unaffordable, priced at `KONDO_CLOUD_COST`),
   "Make `<name>` active" for an already-bought but inactive move, or a dimmed "`<name>` (active)"
   tag (no-op click) for whichever one is currently active (registry/save `kondoActiveMove`) --
   the confirm button is the one action that actually checks/spends the cost. Buying the first

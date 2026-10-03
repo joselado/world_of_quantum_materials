@@ -7,7 +7,7 @@ import { killTweensDeep } from '../../art/crystals';
 import { CANVAS_W } from '../../art/perspective';
 import { fontScale } from '../../ui/text';
 import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
-import { MOVES, KONDO_MOVE_IDS, KONDO_CLOUD_BY_MOVE, shopCost, moveDisplayName } from '../../data/materials';
+import { MOVES, KONDO_MOVE_IDS, KONDO_CLOUD_BY_MOVE, KONDO_CLOUD_COST, moveDisplayName } from '../../data/materials';
 import { persistFromRegistry } from '../../data/save';
 import {
   LIST_DETAIL_PANEL_W,
@@ -156,7 +156,7 @@ export function showKondoPanel(scene: GuardianPanelHost) {
     const isLearned = unlocked.includes(id);
     const active = (scene.game.registry.get('kondoActiveMove') as string | null) ?? null;
     const isActive = id === active;
-    const cost = shopCost(move);
+    const cost = KONDO_CLOUD_COST;
     const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
     const affordable = isLearned || tokens >= cost;
 

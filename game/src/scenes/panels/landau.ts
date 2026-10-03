@@ -7,7 +7,7 @@ import { makeLandauAvatar } from '../../art/landau';
 import { ANALYTIC_SHAPES } from '../../art/attackEffects';
 import { CANVAS_W } from '../../art/perspective';
 import { PANEL_BG } from '../../ui/theme';
-import { ANALYTIC_MOVE_IDS, shopCost, moveDisplayName, moveShapeName, getTunedMoveClass, tunedClassOf, getMoveLevel, quasiparticleLabel, MOVES } from '../../data/materials';
+import { ANALYTIC_MOVE_IDS, ANALYTIC_MOVE_COST, moveDisplayName, moveShapeName, getTunedMoveClass, tunedClassOf, getMoveLevel, quasiparticleLabel } from '../../data/materials';
 import type { MoveClass } from '../../data/types';
 import { hostableClasses } from './tunableMoveShop';
 import {
@@ -212,7 +212,7 @@ function renderAnalyticColumn(
 
   const unlocked = scene.getUnlockedMoves();
   const isLearned = unlocked.includes(id);
-  const cost = shopCost(MOVES[id]);
+  const cost = ANALYTIC_MOVE_COST;
   const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
   // Never undefined: a move whose picker was never opened is carrying phonon,
   // which is what the fight has always played it as (data/materials.ts's

@@ -676,7 +676,9 @@ game/src/
                                   DEFAULT_STATS, STAT_LABELS (the player-facing name of each
                                   Stats field -- see "Stats and battle resolution" below),
                                   enemyStatsForWorld(), statUpgradeCost(),
-                                  shopCost(), MOVE_LEVEL_MULTIPLIERS, MOVE_LEVEL_STREAKS,
+                                  shopCost(), ANALYTIC_MOVE_COST/KONDO_CLOUD_COST (Landau's
+                                  and Kondo's flat move prices, §5),
+                                  MOVE_LEVEL_MULTIPLIERS, MOVE_LEVEL_STREAKS,
                                   feynmanLevelCost(), battleStakeForWorld(),
                                   FRACTIONAL_GUARD_DAMAGE_MULT/ANYON_ECHO_FRACTION/
                                   ANYON_ECHO_CRIT_MULTIPLIER/
@@ -2936,7 +2938,7 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   `combinableHybridResults` from scratch; `createHybrid` doesn't persist anything beyond calling
   `becomeHybrid`, which just runs `applyPlayerForm` (the player's *current* form, hybrid or not,
   already survives a reload on its own via `playerForm`). Each individual result is its own
-  one-time `MAJORANA_FUSE_COST` (60) qumatessence unlock (registry/save
+  one-time `MAJORANA_FUSE_COST` (400) qumatessence unlock (registry/save
   `majoranaUnlockedResults`, a list of result names), charged and recorded inside `createHybrid`
   -- called only from the confirm button, the point the result is first previewed being already a
   free browse -- see the Superposition Mode bullets above and DESIGN.md §5 for the pricing
@@ -2992,7 +2994,7 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   entry (every ordinary Attacks-section class, i.e. everything except Kondo's `'screening'`)
   filtered through `canHost(playerMaterial.type, cls)`, listed as rows under the open move and
   labeled via `quasiparticleLabel`. A row click only sets `landauMovePreview`'s companion
-  `landauClassPreview`; the pane's own button commits, either buying (checks/deducts `shopCost`,
+  `landauClassPreview`; the pane's own button commits, either buying (checks/deducts `ANALYTIC_MOVE_COST`,
   appends to `unlockedMoves`) and tuning in one action on a still-unbought move
   (`buyLandauMove`), or retuning free on an already-bought one
   (`retuneLandauMove`) -- either way it writes registry/save `moveClassTuning[moveId]` (a map
@@ -3048,8 +3050,9 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   against (a too-poor player is never left with nothing clickable and `dialogueActive` stuck
   true).
 - **Kondo's self-buff shop** (`scenes/panels/kondo.ts`'s `showKondoPanel`) sells
-  `data/materials.ts`'s `KONDO_MOVE_IDS` (three moves: `spinScreening`/`chargeScreening`/
-  `symmetryCloud`, each tied to one of `types.ts`'s `'screening'`-class `MOVES` entries,
+  `data/materials.ts`'s `KONDO_MOVE_IDS` (five moves: `spinScreening`/`chargeScreening`/
+  `symmetryCloud`/`restoringCloud`/`anomalousCloud`, each tied to one of `types.ts`'s
+  `'screening'`-class `MOVES` entries,
   deliberately excluded from `SHOP_MOVE_IDS`/`ANALYTIC_MOVE_IDS`/`ULTIMATE_MOVE_IDS`). List+detail
   browse-by-move shop like Noether's above (`scenes/panels/
   listDetail.ts`, "Candidate-crystal lists" above): the left column names all five
@@ -3073,7 +3076,7 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   call `resolveSelfBuff` makes for a real cast). Below that: the move's own `description`
   (`data/materials.ts`'s `Move.description`, only Kondo's five moves carry one), then a
   cost/status line and a confirm button -- "Learn `<name>`" for a
-  still-unbought move (dimmed if unaffordable), "Make `<name>` active" for an already-bought,
+  still-unbought move (dimmed if unaffordable, priced at `KONDO_CLOUD_COST`), "Make `<name>` active" for an already-bought,
   inactive move, or a dimmed "`<name>` (active)" tag (no-op click) for whichever one is currently
   active (registry/save `kondoActiveMove: string | null`) -- the one action that actually
   checks/spends the cost and, for a still-unbought move, appends it to `unlockedMoves`. Buying

@@ -102,6 +102,9 @@ every form hosts) for as long as you wear that form. Your pick is kept:
 transmute back into a form that can host it and the move carries it again,
 free and without retuning.
 
+- Learning an Analytic move: 100 qumatessence each
+- Retuning one you already own: free
+
 <img src="../screenshots/docs-guardians-landau-panel.png" width="300" alt="Landau's shop: his two Analytic moves, Phonon Lance opened over the quasiparticles it can be tuned to, its effect striking mid-play on the stage">
 
 ## Majorana's Fusion
@@ -116,7 +119,7 @@ list to preview its two component crystals, the fused result, and its own
 physics blurb before deciding.
 
 - Browsing any hybrid: always free
-- First time fusing into a given hybrid result: 60 qumatessence
+- First time fusing into a given hybrid result: 400 qumatessence
 - Every later fusion into that same result: free, however you reach it
 
 Every hybrid also carries the built-in Hybrid Aura passive (see
@@ -124,7 +127,7 @@ Every hybrid also carries the built-in Hybrid Aura passive (see
 taken, for as long as you wear the form, at no slot cost. It shows up in
 the Lab's Abilities station above whatever you have learned from Franklin.
 
-<img src="../screenshots/docs-guardians-majorana-panel.png" width="300" alt="Majorana's fusion panel: the hybrids currently reachable, one previewed as its two component crystals, the fused result and a 60-qumatessence cost">
+<img src="../screenshots/docs-guardians-majorana-panel.png" width="300" alt="Majorana's fusion panel: the hybrids currently reachable, one previewed as its two component crystals, the fused result and a 400-qumatessence cost">
 
 ## Anderson's Impurities
 
@@ -240,6 +243,9 @@ The other two screen nothing and work on you instead:
 Picking a move picks the cloud. Only one can be active at a time; switching
 means talking to Kondo again, so holding one cloud always means giving up the
 other four.
+
+- Learning a cloud: 150 qumatessence each
+- Switching between clouds you have learned: free
 
 <img src="../screenshots/docs-guardians-kondo-panel.png" width="300" alt="Kondo's self-buff shop: his cloud moves, with the one currently being held marked active">
 
