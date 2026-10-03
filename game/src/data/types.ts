@@ -205,7 +205,9 @@ export interface Move {
   // `description` field is shown under each of Franklin's own rows.
   // Optional -- only Kondo's five self-buff moves carry one, since every
   // other move's physics-flavored name plus its fixed power/class already
-  // says what it does.
+  // says what it does. It has a single version, shown at both Text Length
+  // settings, so it stays under data/settings.ts's BRIEF_MIN_WORDS words
+  // (content-lint's check 19).
   description?: string;
 }
 

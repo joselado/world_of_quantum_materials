@@ -197,15 +197,19 @@ reachable and declared in the order the game reveals it (a `{ kind: 'tip' }`
 topic has a trigger site, a `{ kind: 'guardian' }` topic names a real guardian
 and follows the ones unlocked in earlier worlds). Check 18 holds a compound
 that spawns in several world pools to one look and one moveset across all of them, and check 19
-holds every story screen's text (`WORLD_LORE`, `RIVAL_TAUNTS`, `STORY_BEATS`,
-`FINALE_BODY`) and every tutorial popup's body (`TUTORIAL_TIP_BRIEF`) to having a
-Brief sibling that is actually brief: at most 0.6 of its Detailed words per
-entry and at most 0.4 over the whole arc and over the popups, and holds the guardian
-panels' three prose tables (`STAT_LORE`, `WORLD_FLAVOR`, `GUARDIAN_QUOTES`, each with its
-`_BRIEF` sibling) to the same two ratios table by table, a guardian's line needing a Brief
-sibling only from `BRIEF_QUOTE_MIN_WORDS` words up. Reads `materials.ts`/
+holds every text the Settings station's Text Length row governs to one rule, table by table:
+the story screens (`WORLD_LORE`, `RIVAL_TAUNTS`, `STORY_BEATS`, the finale's five texts), the
+tutorial popups (`TUTORIAL_TIP_BRIEF`), the guardian panels' prose (`STAT_LORE`,
+`WORLD_FLAVOR`, `GUARDIAN_QUOTES`), the Qumatex blurbs (`MATERIAL_BLURBS`,
+`TYPE_FALLBACK_BLURBS`) and the Moves station's quasiparticle paragraphs (`MOVE_CLASS_LORE`),
+each against its `_BRIEF` sibling. A text of `BRIEF_MIN_WORDS` words or more
+(`data/settings.ts`) needs a Brief sibling and a shorter one must not carry one; each Brief is
+between 0.25 and 0.45 of its Detailed words; and each table as a whole is at most 0.4, so a
+long table cannot hide a short one that drifted. The same check keeps the single-version
+effect descriptions (`Move.description`, a passive's `description`) under `BRIEF_MIN_WORDS`
+words. Reads `materials.ts`/
 `types.ts`/`passives.ts`/`quiz.ts`/`tutorial.ts`/`worldLore.ts`/`story.ts`/`statLore.ts`/
-`worldFlavor.ts`/`guardianQuotes.ts`/`OverworldScene.ts` (for the
+`worldFlavor.ts`/`guardianQuotes.ts`/`materialdex.ts`/`moveLore.ts`/`settings.ts`/`OverworldScene.ts` (for the
 class-private `WORLD_GUARDIANS` table) the same AST-parsing way `gen-docs.mjs` does, for
 the same reason (`materials.ts` pulls in Phaser at module scope).
 

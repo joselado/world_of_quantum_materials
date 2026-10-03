@@ -38,8 +38,8 @@ export const WORLD_FLAVOR_BRIEF: Record<number, string> = {
   4: 'Only closed orbits one flux quantum apart are allowed: flat, degenerate Landau levels. The only current left runs along the edge.',
   5: 'Electrons pair into a condensate with one phase; in a topological superconductor a fermion splits into two Majorana zero modes, each its own antiparticle.',
   6: 'Past the Stoner threshold the ground state magnetizes; tip one spin and a magnon travels outward.',
-  7: 'A generic wavefunction needs exponentially many coefficients; an area-law ground state is captured by a matrix product state of small bond dimension.',
-  8: 'Frustrated spins fractionalize into spinons, spin without charge, instead of ordering. A local moment in a conduction sea is screened into a Kondo singlet.',
+  7: 'A generic wavefunction needs exponentially many coefficients; an area-law ground state fits a matrix product state of small bond dimension.',
+  8: 'Frustrated spins fractionalize into spinons, spin without charge, instead of ordering. A local moment in a conduction sea forms a Kondo singlet.',
   9: 'Every impurity rings the electron sea in Friedel oscillations that read off the Fermi surface; thick enough disorder Anderson-localizes the electrons.',
   10: 'Nothing here is fixed: terrain and rival adapt to whatever you are, and only a fast-trained variational ansatz keeps up.',
 };

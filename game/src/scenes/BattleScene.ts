@@ -81,7 +81,7 @@ import { FINALE_STAGES, finaleStageFor, finaleVictoryLineFor, finaleDefeatLineFo
 import type { DifficultyTier, TouchControlsMode } from '../data/settings';
 import { victoryLine, defeatLine } from '../data/greetings';
 import { PASSIVES, allActivePassiveIds, builtInPassiveIds, passiveName } from '../data/passives';
-import { materialBlurb } from '../data/materialdex';
+import { materialBlurbFor } from '../data/materialdex';
 import { getAnalyticQuestion, getUltimateQuestions } from '../data/quiz';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
@@ -4074,6 +4074,8 @@ export class BattleScene extends Phaser.Scene {
     // is what the finale's own defeat line says (FINALE_DEFEAT_LINE). A loss
     // to the first stage keeps the compound-keyed line and blurb every rival
     // loss shows, for whichever real compound the Adapted was wearing.
+    // The blurb follows the Settings station's Text Length row
+    // (data/materialdex.ts's materialBlurbFor), as the finale's two lines do.
     const finaleWon = won && this.finaleStage === 3;
     const finaleLost = !won && this.finaleStage >= 2;
     const flavor = finaleWon
@@ -4083,7 +4085,7 @@ export class BattleScene extends Phaser.Scene {
         : won
           ? victoryLine(this.opponentView())
           : defeatLine(this.opponentView());
-    const blurb = finaleWon || finaleLost ? '' : `\n\n${materialBlurb(this.opponentView())}`;
+    const blurb = finaleWon || finaleLost ? '' : `\n\n${materialBlurbFor(this.opponentView(), storyLength(this.game.registry))}`;
     // The end-of-battle summary runs several lines longer than an in-combat
     // log line (flavor + token delta + the physics blurb), so it needs a
     // much higher clamp ceiling than setLogText's default LOG_Y -- a big

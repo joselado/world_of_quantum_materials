@@ -86,10 +86,10 @@ export const FINALE_TITLE = 'The Decoherence is stabilized.';
 export const FINALE_BODY =
   'The road ends at this edge, and every world you walked lies below it at once. This is how the thing that trained on you saw them: all together, from above. The only way to stand here was to bring down what stood here first. Nothing was undone. What it learned stays learned, the light it cost does not come back, and a record never goes back into superposition. But a record holds only what was measured, and nothing is measuring now. Every symmetry, every edge state, every fractionalized spin down there holds on its own. The materials that held the passes are whole again, and home. And the one thing the map below does not show is the step you take next.';
 
-// The ending at Brief length, the same beats as FINALE_BODY in under half
-// the words.
+// The ending at Brief length, the same beats as FINALE_BODY in a bit over a
+// third of the words.
 export const FINALE_BODY_BRIEF =
-  'The road ends here, with every world you walked lying below at once, the way the thing that trained on you saw them. Nothing was undone: what it learned stays learned, and the light it cost does not come back. But nothing is measuring now, and the step you take next is on no record.';
+  'The road ends here, every world you walked lying below at once, as the thing that trained on you saw them. What it learned stays learned, and the light it cost does not come back. But nothing is measuring now, and your next step is on no record.';
 
 // The two screens between World 10's three finale stages
 // (BattleScene.advanceFinaleStage, DESIGN.md §6), each shown once the stage
@@ -131,13 +131,13 @@ export const FINALE_STAGES_BRIEF: Record<2 | 3, FinaleStage> = {
   2: {
     title: 'The Model of You',
     body:
-      'The form goes still and comes apart, and nothing anneals: a record does not. What steps out is a network in the exact shape of your own crystal, lit in your colour, and it will not reshape again.\n\n"I have finished. This is you: your phase, your quasiparticles, nothing you were lent. Not your levels, not your impurity, not your clouds. Just you, held exactly."',
+      'The form goes still and comes apart, and nothing anneals. What steps out is a network in the exact shape of your crystal, lit in your colour, and it will not reshape again.\n\n"I have finished. This is you: your phase, your quasiparticles, nothing you were lent. Not your levels, not your impurity, not your clouds. Just you, held exactly."',
     button: 'Face it',
   },
   3: {
     title: 'The Quantum Adapted',
     body:
-      'The record breaks, and the pass fills with a smoke lit from inside, sparks running through it, the network still burning in it. To learn you, something had to measure you, and what did the measuring was never a copy of you: it is everything it consumed, entangled with all of it at once, answering as one of them each time you ask and never the same one twice running.\n\n"The record was only where I kept you. I am what kept it. Whatever your lattice cannot carry, that is what I throw."',
+      'The record breaks, and the pass fills with smoke lit from inside, the network still burning in it. To learn you, something had to measure you, and what measured was never a copy of you: it is everything it consumed, entangled with all of it at once, answering as a different one each time you ask.\n\n"The record was only where I kept you. I am what kept it. Whatever your lattice cannot carry, I throw."',
     button: 'Battle!',
   },
 };
@@ -151,7 +151,7 @@ export const FINALE_VICTORY_LINE =
   'The smoke thins and does not re-form. The sparks run out of links to cross, the network goes dark node by node, and the last colour left in it is your own. Nothing anneals here; nothing was ever a crystal. But nothing is answering anymore, either.';
 
 export const FINALE_VICTORY_LINE_BRIEF =
-  'The smoke thins and does not re-form. The network goes dark node by node, its last colour your own. Nothing anneals here, and nothing is answering anymore.';
+  'The smoke thins and does not re-form. The network goes dark, its last colour yours. Nothing anneals; nothing answers anymore.';
 
 // The end-of-battle summary when the player falls to the second or third
 // stage, in place of a compound's defeat line and blurb: neither form is a
@@ -163,7 +163,7 @@ export const FINALE_DEFEAT_LINE =
   'It has you again. What you tried is in the record now, with everything else, and the pass holds. Nothing here anneals and nothing here is freed. Walk back in, from the first form, and bring it something it has not seen.';
 
 export const FINALE_DEFEAT_LINE_BRIEF =
-  'It has you again, and the pass holds. Nothing here anneals. Walk back in, from the first form, with something it has not seen.';
+  'It has you again. Walk back in, from the first form, with something it has not seen.';
 
 export function finaleDefeatLineFor(length: StoryLength): string {
   return length === 'brief' ? FINALE_DEFEAT_LINE_BRIEF : FINALE_DEFEAT_LINE;

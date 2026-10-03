@@ -228,7 +228,7 @@ export const WORLD_LORE_BRIEF: Partial<Record<number, WorldLore>> = {
 export const RIVAL_TAUNTS_BRIEF: Partial<Record<number, RivalTaunt>> = {
   1: {
     part1:
-      'A shard-fused golem of scraped silicon stands where the branches meet. "Polycrystalline Silicon Golem. A thousand grains, each one chose long ago. Doubt dies at my boundaries."',
+      'A shard-fused golem of scraped silicon stands where the branches meet. "Polycrystalline Silicon Golem. Every grain chose long ago. Doubt dies at my boundaries."',
     part2:
       '"Ask any grain of me which way the fields broke. Each will answer, and swear the others say the same."',
   },
@@ -258,13 +258,13 @@ export const RIVAL_TAUNTS_BRIEF: Partial<Record<number, RivalTaunt>> = {
   },
   6: {
     part1:
-      'A shard-fused golem of grey iron rises off the shingle, domains redrawing across it. "Polycrystalline Iron Golem. Shove me and my walls slide over. I stay the same magnet."',
+      'A shard-fused golem of grey iron rises off the shingle, domains redrawing across it. "Polycrystalline Iron Golem. Shove me and my walls slide. I stay the same magnet."',
     part2:
       '"Flip what you can reach. It walks off through me as a wave and fades. Nothing finishes in me."',
   },
   7: {
     part1:
-      'A shard-fused golem of pale green triangles, cracked through, spans every lane. "Polycrystalline Herbertsmithite Golem. No piece of me holds what I am. Grind me fine."',
+      'A shard-fused golem of cracked green triangles spans every lane. "Polycrystalline Herbertsmithite Golem. No piece of me holds what I am. Grind me fine."',
     part2:
       '"Cut me anywhere: nothing. By every test I have, nothing was taken from me, and there was never anything to take."',
   },
@@ -276,7 +276,7 @@ export const RIVAL_TAUNTS_BRIEF: Partial<Record<number, RivalTaunt>> = {
   },
   9: {
     part1:
-      'A shard-fused golem pocked with a thousand faint, separate glows rises where the scars close. "A thousand holes in me, and I have answered every one."',
+      'A shard-fused golem pocked with a thousand separate glows rises where the scars close. "A thousand holes in me, and I answered every one."',
     part2:
       '"Right where each was made. Nothing in me carries an answer away. Every state I have stays where it came to rest. Come and ask."',
   },

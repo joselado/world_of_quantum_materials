@@ -1,4 +1,5 @@
 import type { MaterialType } from './types';
+import type { StoryLength } from './settings';
 
 // One physics-grounded blurb per real compound -- shown after a battle
 // (BattleScene.endBattle, "tying the move/outcome to the real physics" per
@@ -8,6 +9,11 @@ import type { MaterialType } from './types';
 // from. Materials without a dedicated entry fall back to a generic blurb
 // keyed by MaterialType -- the same "not every world is filled in yet"
 // pattern the per-world crystal/biome tables already use.
+//
+// The end-of-battle summary reads a blurb at whichever length the Settings
+// station's Text Length row asks for (materialBlurbFor below, the Brief
+// tables further down); the Materialdex station always shows the full one
+// (materialBlurb).
 export const MATERIAL_BLURBS: Record<string, string> = {
   Graphene:
     "Graphene's honeycomb lattice carries two atoms per unit cell, and its bands touch linearly at the K and K' points: electrons there behave as massless, relativistic (Dirac-like) particles instead of ordinary parabolic ones.",
@@ -149,6 +155,108 @@ const TYPE_FALLBACK_BLURBS: Record<MaterialType, string> = {
 
 export function materialBlurb(material: { name: string; type: MaterialType }): string {
   return MATERIAL_BLURBS[material.name] ?? TYPE_FALLBACK_BLURBS[material.type];
+}
+
+// The Brief versions, what the end-of-battle summary shows while the Settings
+// station's Text Length row is on Brief (data/settings.ts's
+// STORY_LENGTH_PRESETS). Each keeps the one physics claim its compound stands
+// for, with its numbers and its hedges ("predicted", "candidate"), in a bit
+// over a third of the words. A blurb under BRIEF_MIN_WORDS words is already
+// brief and has no entry, so it reads the same at both lengths. A golem's
+// still names the specific order that boss lost. Same keys as MATERIAL_BLURBS
+// and TYPE_FALLBACK_BLURBS, so materialBlurbFor below only chooses which
+// table to read.
+export const MATERIAL_BLURBS_BRIEF: Record<string, string> = {
+  Graphene: "Graphene's bands touch linearly at K and K', giving massless Dirac electrons.",
+  'Manganese Oxide': "Hubbard repulsion splits MnO's band, opening a Mott gap and locking in antiferromagnetic order.",
+  'Nickel Oxide': 'A textbook Mott insulator: on-site repulsion, not a band gap, localizes its electrons.',
+  'Sodium Chloride':
+    'Table salt, gap near 8.5 eV. Its two ions sit at different energies: the alternating potential a charge density wave must build is already there.',
+  'Lithium Fluoride':
+    'The widest gap of any alkali halide, about 14 eV, keeps LiF transparent deep into the ultraviolet. Its filled shells leave nothing to order.',
+  'Polycrystalline Silicon Golem':
+    'An ordinary semiconductor in grains. Each broke the symmetry in its own direction, so over the whole body the order parameter averages to zero.',
+  'Polycrystalline Silica Golem':
+    "Silica in grains, each a perfect lattice. Bloch's theorem needs the repetition to span the solid; here it stops at each grain, so the whole body has no crystal momentum.",
+  'Polycrystalline Bismuth Telluride Golem':
+    "Time reversal protects Bi₂Te₃'s surface state only so far. Past a critical disorder the crystal is a trivial Anderson insulator, every state localized.",
+  'Polycrystalline Manganese Bismuth Telluride Golem':
+    "MnBi₂Te₄'s magnetic order stands in for an applied field. Enough antisite disorder removes the extended states carrying the Chern number, and the plateau is gone.",
+  'Polycrystalline YBCO Golem':
+    'Granular YBCO superconducts grain by grain; Josephson weak links still lock it to one phase, a treaty that holds only at small current, low field and deep cold.',
+  'Polycrystalline Iron Golem':
+    'Polycrystalline iron is still a magnet. What its grains take is the magnon: a spin wave scatters at every boundary, confined to one grain.',
+  'Polycrystalline Herbertsmithite Golem':
+    'Each grain is still a spin liquid; the one long-range entangled state joining them is gone, and nothing local can tell.',
+  'Polycrystalline Ruthenium Trichloride Golem':
+    "α-RuCl₃'s Kitaev bonds split a flipped spin into halves that travel apart. Stacking faults confine them again at the first seam.",
+  'Twisted CrI₃': 'Twisting two CrI₃ layers is predicted to create moiré spin textures hosting electromagnons.',
+  'HgTe/CdTe Quantum Well':
+    'A HgTe layer of the right thickness between CdTe barriers inverts its bands, hiding a helical edge state.',
+  'Y₂BaNiO₅': 'An S=1 chain with a Haldane gap; its ground state connects adiabatically to the AKLT state.',
+  'YbRh₂Si₂': 'A heavy-fermion metal at the Kondo-lattice quantum critical point, where its heavy Fermi liquid breaks down.',
+  'Barium Titanate': "Below ~120°C BaTiO₃'s Ti⁴⁺ sits off-center, giving a switchable polarization: the textbook ferroelectric.",
+  GeTe: 'A ferroelectric semiconductor: spin-orbit coupling locks its polarization to a Rashba spin texture.',
+  Silver: "Silver's half-filled 5s band carries the sharpest plasmon of any metal, so plasmonic devices use it.",
+  Diamond: "Diamond's ~5.5 eV gap blocks charge entirely, while its stiff sp³ lattice makes it an exceptional phonon conductor.",
+  'Monolayer Boron Nitride':
+    "A wide-gap (~5.9 eV) insulator whose honeycomb lattice nearly matches graphene's, which is why graphene devices are built on it.",
+  'Yttrium Iron Garnet': 'A ferrimagnet with the lowest magnon damping known, so most spin-wave experiments are done in it.',
+  'Bismuth Ferrite':
+    'The flagship room-temperature multiferroic: polarization coexists with antiferromagnetic order, and their coupling yields electromagnons seen in experiment.',
+  'Hafnium Oxide':
+    'Bulk HfO₂ is not ferroelectric, but a thin strained film locks into a switchable polar phase, the CMOS-compatible ferroelectric of real devices.',
+  'Lanthanum Decahydride':
+    'LaH₁₀ superconducts up to roughly 250-260 K, but only under ~170 GPa, by ordinary phonon-mediated BCS pairing.',
+  'Uranium Ditelluride':
+    'The leading candidate spin-triplet superconductor: critical fields far beyond the Pauli limit, with topological pairing still an open question.',
+  'Cerium Cobalt Indide':
+    'Ce 4f moments and conduction electrons hybridize into quasiparticles about a hundred times heavier, which pair into a d-wave superconductor.',
+  'Cerium Zirconate Pyrochlore':
+    'No magnetic order down to tens of millikelvin: evidence for a U(1) quantum spin ice, with an emergent photon and gapped spinons.',
+  'Rhombohedral Pentalayer Graphene/hBN Moiré':
+    'Five graphene layers on aligned hBN host a flat topological band that can become a fractional quantum anomalous Hall state at zero field.',
+  Tungsten: 'An ordinary band conductor with the highest melting point of any elemental metal.',
+  'Europium Oxide':
+    "EuO's 4f moments are localized; their magnetization curve is the textbook test of Weiss mean-field theory.",
+  'Manganese Fluoride':
+    "MnF₂'s single-ion anisotropy and ionic local moments make it the real-material mean-field Ising antiferromagnet.",
+  'Potassium Dihydrogen Phosphate':
+    'An order-disorder ferroelectric: protons pick one of two sites in each hydrogen bond, an Ising-like pseudospin.',
+  'Titanium Diselenide':
+    "Below ~200 K a charge density wave breaks 1T-TiSe₂'s translational symmetry, freezing into a commensurate 2a×2a×2c superlattice and opening a small gap.",
+  Bismuthene:
+    "Honeycomb bismuth on silicon carbide, with the largest quantum spin Hall gap measured, near 0.8 eV: graphene's lattice, built from atoms heavy enough to gap it.",
+  Jacutingaite:
+    'Pt₂HgSe₃ is a real mineral whose monolayer is predicted to realize the Kane-Mele model, a honeycomb lattice gapped by spin-orbit coupling. Not yet confirmed by transport.',
+  'Fe₃GeTe₂':
+    'The itinerant two-dimensional magnet: the same band electrons carry its current and its moment. Uniaxial anisotropy lets it order; gating lifts its Curie point to about room temperature.',
+  'FePS₃':
+    'The Ising member of the MPS₃ family: spins locked along one axis, which lets it order antiferromagnetically near 118 K, down to a single layer.',
+  'Monolayer SnTe':
+    'Ferroelectricity surviving to the two-dimensional limit: a film one unit cell thick polarizes in its own plane, up to about 270 K.',
+  Phosphorene:
+    'Black phosphorus thinned to one sheet. Its direct gap climbs from roughly 0.3 eV in bulk to around 2 eV, and its carriers are light along armchair, heavy along zigzag.',
+};
+
+const TYPE_FALLBACK_BLURBS_BRIEF: Partial<Record<MaterialType, string>> = {
+  metal: 'An ordinary conductor: a partially filled band that can carry a plasmon.',
+  metallicMagnet: 'A magnet that also conducts: its moments order on the band that carries its current.',
+  insulatingMagnet: 'A gapped magnet: local moments order with no carriers beneath, leaving only magnons and phonons.',
+  chernSuperconductor: 'A superconductor whose pairing is itself topological, which hosts a Majorana zero mode.',
+  chernInsulator: 'Hall conductance quantized by an integer Chern number and carried by a chiral edge channel.',
+  quantumSpinHall: 'A gapped bulk hiding a protected helical boundary state: opposite spins travel opposite ways around the edge.',
+  ferroelectric: 'Electric dipoles order into a switchable polarization: the electric analog of a ferromagnet.',
+};
+
+// The blurb the end-of-battle summary shows, picked by the Text Length
+// setting. A compound's own Brief entry and its type's Brief fallback are
+// looked up the same way the full ones are, each falling back to the full
+// text where no Brief sibling exists.
+export function materialBlurbFor(material: { name: string; type: MaterialType }, length: StoryLength): string {
+  if (length === 'detailed') return materialBlurb(material);
+  if (material.name in MATERIAL_BLURBS) return MATERIAL_BLURBS_BRIEF[material.name] ?? MATERIAL_BLURBS[material.name];
+  return TYPE_FALLBACK_BLURBS_BRIEF[material.type] ?? TYPE_FALLBACK_BLURBS[material.type];
 }
 
 // One epic-narrative-plus-physics blurb per `HYBRID_RECIPES` result

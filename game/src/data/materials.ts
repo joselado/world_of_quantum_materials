@@ -244,7 +244,7 @@ export const MOVES: Record<string, Move> = {
     name: 'Restoring Cloud',
     class: 'screening',
     power: 7,
-    description: 'Binds the moment into a singlet and lets the electron sea settle back around you: restores 5% of your max HP when cast and on each of its 3 turns.',
+    description: 'Binds the moment into a singlet and lets the electron sea settle back around you: restores 5% of your max HP on cast and each of its 3 turns.',
   },
   anomalousCloud: {
     id: 'anomalousCloud',

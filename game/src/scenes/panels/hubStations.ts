@@ -31,7 +31,7 @@ import { stopMoveEffectPreview } from '../../art/moveEffectPreview';
 import { killTweensDeep } from '../../art/crystals';
 import { makeSlotPips, slotMeterStates, slotPipRadius, slotPipsWidth } from '../../art/slotIcons';
 import type { SlotPipState } from '../../art/slotIcons';
-import { MOVE_CLASS_LORE } from '../../data/moveLore';
+import { moveClassLoreFor } from '../../data/moveLore';
 import {
   PASSIVES,
   PASSIVE_MAX_SLOTS,
@@ -165,8 +165,9 @@ function browsableBattleMoves(scene: HubScene): string[] {
 // passes.
 //
 // Under the animation: what the move carries and how hard it lands, then what
-// that quasiparticle *is* in physics (data/moveLore.ts's MOVE_CLASS_LORE,
-// keyed by the class the move currently carries). A screening cloud says what
+// that quasiparticle *is* in physics (data/moveLore.ts's moveClassLoreFor,
+// keyed by the class the move currently carries, at the Text Length row's
+// length). A screening cloud says what
 // the cloud does for the player first, since that is the move's own effect
 // text, and the physics of screening under it.
 //
@@ -314,7 +315,7 @@ export function showMovesPanel(scene: HubScene) {
         })
         .setOrigin(0.5, 0);
       detailBlock.add(loreText);
-      fitProseToBudget(loreText, [MOVE_CLASS_LORE[moveClass]], CANVAS_H - 16 - 14 - 14 - rightY);
+      fitProseToBudget(loreText, [moveClassLoreFor(moveClass, storyLength(scene.game.registry))], CANVAS_H - 16 - 14 - 14 - rightY);
       rightY += loreText.height + 14;
     }
 
@@ -939,8 +940,8 @@ export function showStoryLog(scene: HubScene) {
 // via encounterChance()), world size (WORLD_SIZE_PRESETS). Story: story
 // screens and tutorial tips (ON_OFF_PRESETS, read by OverworldScene's
 // lore/taunt/beat screens and showTutorialTip, and by HubScene.maybeShowLabTip),
-// and text length (STORY_LENGTH_PRESETS, read by worldLoreFor/rivalTauntFor/
-// storyBeatFor/finaleBodyFor/tipBodyFor). Presentation: text size (FONT_SCALE_PRESETS, read
+// and text length (STORY_LENGTH_PRESETS, read by every `...For(length)` text
+// reader data/settings.ts's StoryLength comment lists). Presentation: text size (FONT_SCALE_PRESETS, read
 // live by every fontPx() call), full screen (ON_OFF_PRESETS over ui/
 // fullscreen.ts's live scale-manager state, the one row with no save field
 // behind it), music style (MUSIC_STYLE_PRESETS, which of audio/music.ts's
@@ -1164,7 +1165,7 @@ export function showSettingsPanel(scene: HubScene) {
     {
       category: 'story',
       label: 'Text Length',
-      when: 'Story screens, tips, guardians: Brief a third as long. The stations keep it all. Immediately.',
+      when: 'Story, tips, guardians, blurbs and moves: Brief a third as long. Immediately.',
       options: STORY_LENGTH_PRESETS.map((p) => ({
         label: p.label,
         selected: p.value === length,

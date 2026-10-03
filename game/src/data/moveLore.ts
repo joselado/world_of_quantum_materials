@@ -1,9 +1,11 @@
 import type { MoveClass } from './types';
+import type { StoryLength } from './settings';
 
 // What the quasiparticle a move throws actually *is*, in physics -- shown in
 // the detail pane of the Lab's own Moves station (scenes/panels/
 // hubStations.ts's showMovesPanel), beside that move's looping battle-effect
-// animation.
+// animation, at whichever length the Settings station's Text Length row asks
+// for (moveClassLoreFor below).
 //
 // Keyed by quasiparticle class rather than by move id on purpose: what a
 // player is being told is the physics of the excitation, and two moves that
@@ -52,3 +54,49 @@ export const MOVE_CLASS_LORE: Record<MoveClass, string> = {
   screening:
     'Surround something and it stops being visible from outside. A magnetic moment in a metal is wrapped in conduction electrons until, from a distance, its spin has gone; a stray charge is wrapped in mobile carriers until its field is cut off within a few atomic spacings; the soft mode of a broken symmetry can be soaked up the same way. What a cloud can hide depends on what its own carriers couple to. Let the wrapping finish and the sea it drew on settles back into a calm Fermi liquid around the bound moment; hold it where it can neither finish nor let go, at a quantum critical point, and it fluctuates at every scale at once.',
 };
+
+// The Brief versions, what the Moves station shows while the Settings
+// station's Text Length row is on Brief (data/settings.ts's
+// STORY_LENGTH_PRESETS). Each keeps what the excitation is and the one thing
+// that sets it apart, in a bit over a third of the words. Same keys as
+// MOVE_CLASS_LORE, so moveClassLoreFor below only chooses which table to read.
+export const MOVE_CLASS_LORE_BRIEF: Partial<Record<MoveClass, string>> = {
+  phonon:
+    'The lattice itself, ringing. Atoms are tied to their neighbours, so a displacement travels as a wave, its energy in fixed quanta. Every crystal can ring.',
+  electron:
+    'One electron added to or removed from the filled sea, never bare: its dressing gives it its own mass and lifetime.',
+  magnon:
+    "A spin wave in an ordered magnet: exchange spreads one tipped moment's tilt, and each quantum carries one unit of spin.",
+  plasmon:
+    'The whole electron liquid sloshing against the positive ions, at a frequency set by its density. Metals carry one; insulators do not.',
+  ferron:
+    "A quantum of a ferroelectric's polarization wave: the offset between its charge centres, oscillating and travelling.",
+  triplon:
+    'In a magnet of singlet pairs, breaking one into a triplet costs an energy gap. The triplet hops pair to pair, one whole unit of spin.',
+  electromagnon:
+    "A spin wave that also moves charge: where magnetic order and polarization couple, light's electric field can drive it.",
+  spinon:
+    'One flipped spin in a spin liquid splits into two halves, each with half a unit of spin and no charge.',
+  chiral:
+    "A Chern insulator's edge carries current one way only: no channel runs back, so impurities cannot reverse it.",
+  helical:
+    'Two opposite edge channels, spin locked to direction. Turning around means flipping spin, so only magnetic impurities backscatter.',
+  higgs:
+    "The size of the order parameter, oscillating. Unlike the phase, the amplitude costs energy to change: a superconductor's pairing strength, breathing.",
+  heavyFermion:
+    'A conduction electron entangled with a local magnetic moment, moving as though hundreds of times heavier.',
+  vison:
+    "A spinless, chargeless vortex in a spin liquid's emergent gauge field. A spinon circling it changes sign.",
+  chargedAnyon:
+    "A fraction of an electron's charge in a fractionally filled topological band, with exchange statistics neither bosonic nor fermionic.",
+  majorana:
+    "A zero energy mode at a topological superconductor's end, its own antiparticle. Two share one fermionic state neither end can read alone.",
+  screening:
+    "Surround something and it stops being visible from outside. Conduction electrons wrap a magnetic moment until its spin is gone; mobile carriers cut off a stray charge's field. What a cloud hides depends on what its carriers couple to.",
+};
+
+// The paragraph the Moves station shows, picked by the Text Length setting,
+// falling back to the full paragraph for a class with no Brief one.
+export function moveClassLoreFor(moveClass: MoveClass, length: StoryLength): string {
+  return (length === 'brief' ? MOVE_CLASS_LORE_BRIEF[moveClass] : undefined) ?? MOVE_CLASS_LORE[moveClass];
+}

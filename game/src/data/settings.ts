@@ -294,26 +294,38 @@ export function storyScreensEnabled(registry: RegistryLike): boolean {
   return defaultStoryScreens(!!registry.get('superpositionMode'));
 }
 
-// The Story category's third row, labelled "Text Length": how much the text
-// that interrupts play says. Every screen that carries the arc (a world's entry
-// lore, a rival's taunt, the beat between worlds, the ending), every tutorial
-// popup, and the prose in the guardians' own panels (a guardian's opening
+// The Story category's third row, labelled "Text Length": how much the prose a
+// player meets while playing says. Every screen that carries the arc (a world's
+// entry lore, a rival's taunt, the beat between worlds, the ending), every
+// tutorial popup, the prose in the guardians' own panels (a guardian's opening
 // line, the physics paragraph under a stat in Noether's shop and under a
-// destination in Bloch's) is written twice, a Detailed version and a Brief one
-// roughly a third its length, keyed identically and shaped identically (two
-// lore pages, two taunt parts, one beat, one tip body, one quote per mode), so
-// the screens and panels themselves never branch on this: they only ask which
+// destination in Bloch's), the Qumatex blurb the end-of-battle summary shows
+// and the quasiparticle paragraph in the Lab's Moves station is written twice,
+// a Detailed version and a Brief one roughly a third its length, keyed
+// identically and shaped identically (two lore pages, two taunt parts, one
+// beat, one tip body, one quote per mode, one blurb per compound), so the
+// screens and panels themselves never branch on this: they only ask which
 // text to read (data/worldLore.ts's worldLoreFor/rivalTauntFor, data/story.ts's
 // storyBeatFor/finaleBodyFor, data/tutorial.ts's tipBodyFor,
 // data/guardianQuotes.ts's guardianQuoteFor, data/statLore.ts's statLoreFor,
-// data/worldFlavor.ts's worldFlavorFor). Named for the story in code, since the
+// data/worldFlavor.ts's worldFlavorFor, data/materialdex.ts's materialBlurbFor,
+// data/moveLore.ts's moveClassLoreFor). Named for the story in code, since the
 // story is what it was built for, and labelled for text in the panel, since it
-// covers the tips and the guardians too. Brief is the default because a story
-// screen stops play and a guardian's panel is opened again and again, and a
-// player who wants the whole of it picks Detailed once. The Lab's reference
-// stations (Story, Tutorial, Moves, Qumatex) always read the full text
-// regardless, the same way they keep what an Off row skips: they are where the
-// full text lives.
+// covers the tips, the guardians, the blurbs and the moves too. Brief is the
+// default because a story screen stops play, a guardian's panel is opened
+// again and again and a blurb follows every fight, and a player who wants the
+// whole of it picks Detailed once. The Lab's Story, Tutorial and Qumatex
+// stations always read the full text regardless, the same way they keep what
+// an Off row skips: they are where the full text lives.
+//
+// BRIEF_MIN_WORDS is where "written twice" starts. A governed text this long
+// or longer, in words, has a Brief sibling; a shorter one is already brief,
+// has none, and reads the same at both lengths (a compound's one-sentence
+// blurb). It is also the ceiling on the one-line effect descriptions that have
+// a single version by design (a Kondo cloud's, a passive's). content-lint's
+// check 19 reads it and holds every Brief to the same ratios, table by table.
+export const BRIEF_MIN_WORDS = 30;
+
 export type StoryLength = 'brief' | 'detailed';
 
 export interface StoryLengthPreset {

@@ -2750,7 +2750,8 @@ world are shaped, since world N's start is world N-1's exit.
   the full text-size preset and only a genuinely long wrapped one trades size for lines.
   The end-of-battle summary reuses the same helper with a much higher ceiling (`150`) and a
   wider wrap, since it runs several lines longer once the physics blurb
-  (`data/materialdex.ts`'s `materialBlurb`) is appended after the flavor/token lines, and
+  (`data/materialdex.ts`'s `materialBlurbFor`, the Brief blurb while the Settings station's
+  Text Length row is on Brief and the full one on Detailed) is appended after the flavor/token lines, and
   the move menu it would otherwise have to stay clear of is already destroyed by then.
 - Per-turn log text appends "No natural defense against this!" when the quasiparticle
   mismatch multiplier fires (`BattleScene.resolveHit`, the sole type-interaction rule in

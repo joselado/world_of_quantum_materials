@@ -81,7 +81,11 @@ export interface Passive {
 // Franklin's panel (scenes/panels/franklin.ts) prints the selected one in
 // its detail pane under a fixed-height art stage, and that pane has to
 // close with a status line and a confirm button inside the canvas at the
-// largest text-size preset (the same budget Kondo's own pane lives in).
+// largest text-size preset (the same budget Kondo's own pane lives in). A
+// description has a single version, shown at both Text Length settings, so
+// each one stays under data/settings.ts's BRIEF_MIN_WORDS words, the length a
+// Brief sibling would start at (content-lint's check 19, which holds
+// BUILT_IN_PASSIVES below to the same ceiling).
 export const PASSIVES: Record<string, Passive> = {
   // Franklin (world 9, X-ray diffraction of defect-riddled/porous carbon --
   // the real-world tie between Rosalind Franklin and "excitations and
@@ -174,7 +178,7 @@ export const BUILT_IN_PASSIVES: Record<string, BuiltInPassive> = {
   hybridAura: {
     id: 'hybridAura',
     name: 'Hybrid Aura',
-    description: 'Two phases coupled across one interface lend each other what neither has alone: your hits land 30% harder and every hit you take is softened by 30%. Built into every hybrid crystal, it takes no slot and is never set aside.',
+    description: 'Two phases coupled across one interface lend each other what neither has alone: your hits land 30% harder and every hit you take is softened by 30%.',
   },
 };
 

@@ -1060,8 +1060,10 @@ battle's opening line and its win/lose closing line are both flavor text from
 
 **Post-battle screen and Qumatex.** Every battle's end screen also shows one
 sentence tying the fight to the real physics of the material just fought
-(`game/src/data/materialdex.ts`'s `materialBlurb`, falling back to a generic blurb per
-`MaterialType` for a compound without its own entry yet). The first time a wild material is
+(`game/src/data/materialdex.ts`'s `materialBlurbFor`, at the length the Settings station's
+Text Length row asks for (§5), falling back to a generic blurb per `MaterialType` for a
+compound without its own entry yet). The Qumatex station shows the same blurb in full
+(`materialBlurb`). The first time a wild material is
 encountered (not per-battle, and not for rival crystals, which are gate encounters rather
 than collectible materials), it's
 recorded into the Phaser registry's `discoveredMaterials` list
@@ -1672,30 +1674,52 @@ screens are the one setting whose default depends on the mode (`defaultSave(supe
 on in Story Mode, off in Superposition Mode, which has no road to walk through. The finale
 screen is exempt from the switch, being the run's only acknowledgment that it is finished.
 
-**Text length.** The same category's Text Length row picks how much the screens that stop play
-say: Brief (the default) or Detailed (`data/settings.ts`'s `STORY_LENGTH_PRESETS`, save field
-`storyLength`, named for the story it was built for). Every screen that carries the arc
-(world-entry lore, a rival's taunt, the between-worlds beat and the finale) is written twice, the Detailed text and a Brief one
-roughly a third its length (`WORLD_LORE_BRIEF`/`RIVAL_TAUNTS_BRIEF` in `data/worldLore.ts`,
-`STORY_BEATS_BRIEF`/`FINALE_BODY_BRIEF` in `data/story.ts`), with the same keys and the same
-two-page/two-part shape, so a screen only chooses which table to read
-(`worldLoreFor`/`rivalTauntFor`/`storyBeatFor`/`finaleBodyFor`, each falling back to Detailed
-for a missing Brief entry). Brief is the default because these screens stop play. A Brief entry
-keeps every beat WORLDS.md's voice rules require and gives up only texture; `content-lint`
-checks that every Detailed entry has a Brief sibling and that the Brief text stays near a third
-of the words. The goal-tile line is already one sentence and has a single version. The
-tutorial popups follow the same row: every topic that plays as a popup has a Brief body in
-`data/tutorial.ts`'s `TUTORIAL_TIP_BRIEF`, read through `tipBodyFor`, held by `content-lint` to
-the same limits, while a topic read only at the Tutorial station has none. The guardians'
-panels follow it too, since a panel is opened again and again while playing: a guardian's
-opening line (`data/guardianQuotes.ts`'s `GUARDIAN_QUOTES`/`GUARDIAN_QUOTES_BRIEF`, read through
-`guardianQuoteFor`; a line under `BRIEF_QUOTE_MIN_WORDS` words is already brief and has no
-sibling), the physics paragraph under a stat in Noether's shop (`data/statLore.ts`'s
-`STAT_LORE_BRIEF`, `statLoreFor`) and the blurb under a destination in Bloch's
-(`data/worldFlavor.ts`'s `WORLD_FLAVOR_BRIEF`, `worldFlavorFor`), each table held by
-`content-lint` to the same limits on its own. The Lab's reference stations (Story, Tutorial,
-Moves, Qumatex) always show the full text, since they are where the full text lives, and the
-end-of-battle summary's Qumatex blurb has a single version.
+**Text length.** The same category's Text Length row picks how much the prose a player meets
+while playing says: Brief (the default) or Detailed (`data/settings.ts`'s `STORY_LENGTH_PRESETS`,
+save field `storyLength`, named for the story it was built for). Everything the row governs is
+written twice, the Detailed text and a Brief one roughly a third its length, with the same keys
+and the same shape, so a screen or a panel only chooses which table to read, and each reader
+falls back to Detailed for a missing Brief entry:
+
+- The screens that carry the arc: world-entry lore, a rival's taunt, the between-worlds beat
+  and the finale (`WORLD_LORE_BRIEF`/`RIVAL_TAUNTS_BRIEF` in `data/worldLore.ts`,
+  `STORY_BEATS_BRIEF`/`FINALE_BODY_BRIEF`/`FINALE_STAGES_BRIEF` and the finale's two
+  end-of-battle lines in `data/story.ts`; `worldLoreFor`/`rivalTauntFor`/`storyBeatFor`/
+  `finaleBodyFor`/`finaleStageFor`/`finaleVictoryLineFor`/`finaleDefeatLineFor`), with the same
+  two-page and two-part shape. A Brief entry keeps every beat WORLDS.md's voice rules require
+  and gives up only texture.
+- The tutorial popups (`data/tutorial.ts`'s `TUTORIAL_TIP_BRIEF`, `tipBodyFor`). A topic read
+  only at the Tutorial station has no Brief body.
+- The guardians' panels, since a panel is opened again and again: every guardian's opening
+  line, in both modes (`data/guardianQuotes.ts`'s `GUARDIAN_QUOTES`/`GUARDIAN_QUOTES_BRIEF`,
+  `guardianQuoteFor`), the physics paragraph under a stat in Noether's shop
+  (`data/statLore.ts`'s `STAT_LORE_BRIEF`, `statLoreFor`) and the blurb under a destination in
+  Bloch's (`data/worldFlavor.ts`'s `WORLD_FLAVOR_BRIEF`, `worldFlavorFor`).
+- The Qumatex blurb in the end-of-battle summary, since it follows every fight
+  (`data/materialdex.ts`'s `MATERIAL_BLURBS_BRIEF` and the per-type
+  `TYPE_FALLBACK_BLURBS_BRIEF`, `materialBlurbFor`). A Brief blurb keeps the compound's one
+  physics claim with its numbers and its hedges ("predicted", "candidate"), and a golem's
+  still names the order that boss lost.
+- The quasiparticle paragraph in the Lab's Moves station (`data/moveLore.ts`'s
+  `MOVE_CLASS_LORE_BRIEF`, `moveClassLoreFor`).
+
+One rule decides which of those texts are written twice and how long the Brief one is, and
+`content-lint` (check 19) holds every table to it on its own. A governed text of
+`BRIEF_MIN_WORDS` words or more (30, `data/settings.ts`) has a Brief sibling; a shorter one is
+already brief, has none, and reads the same at both lengths (a compound whose blurb is one
+sentence). Each Brief is between 0.25 and 0.45 of its Detailed sibling's words: short enough
+to be brief, long enough that it gave up texture rather than a claim. Each table as a whole
+stays at or under 0.40, table by table, so the finale's five texts cannot drift behind the
+lore's twenty pages. Brief is the default because these texts stop play or are met again and
+again, and a player who wants the whole of it picks Detailed once.
+
+Text with a single version, the same at both settings: the goal-tile line (one sentence), the
+encounter greeting and the win/lose lines (`data/greetings.ts`, a sentence each), quiz prompts
+and options (a shortened question is a different question), and the one-line effect
+descriptions under a Kondo cloud or a passive, which the same lint check keeps under
+`BRIEF_MIN_WORDS` words. The Lab's Story, Tutorial and Qumatex stations always show the full
+text, since they are where the full text lives: what Brief leaves out of a story screen, a
+popup or a blurb is read there.
 
 **Text size.** The same Settings station offers Compact/Normal/Large
 (`data/settings.ts`'s `FONT_SCALE_PRESETS`, 1x / 1.5x / 2x on every base px size

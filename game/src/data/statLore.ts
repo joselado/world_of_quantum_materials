@@ -33,7 +33,7 @@ export const STAT_LORE: Record<keyof Stats, string> = {
 // the same three claims in about a third of the words: what the quantity is,
 // the physics that sets it, and what the number does in a fight. Same keys as
 // STAT_LORE, so statLoreFor below only chooses which table to read.
-export const STAT_LORE_BRIEF: Record<keyof Stats, string> = {
+export const STAT_LORE_BRIEF: Partial<Record<keyof Stats, string>> = {
   quantumness:
     'How high your excitations sit above the ground state, the first number naming a quasiparticle. A high-lying one arrives carrying more. Raise Energy and every blow deposits more.',
   velocity:
@@ -42,7 +42,8 @@ export const STAT_LORE_BRIEF: Record<keyof Stats, string> = {
     'How long an excitation survives before it scatters. Lifetime is the third number, set by how strongly your electrons act together: a collective state soaks up a blow as a whole, so raising Lifetime divides incoming damage down.',
 };
 
-// The paragraph the pane shows, picked by the Text Length setting.
+// The paragraph the pane shows, picked by the Text Length setting, falling
+// back to the full paragraph for a stat with no Brief one.
 export function statLoreFor(key: keyof Stats, length: StoryLength): string {
-  return length === 'brief' ? STAT_LORE_BRIEF[key] : STAT_LORE[key];
+  return (length === 'brief' ? STAT_LORE_BRIEF[key] : undefined) ?? STAT_LORE[key];
 }

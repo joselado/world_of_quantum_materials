@@ -745,58 +745,118 @@ for (const w of BUILT_WORLDS.filter((w) => w !== '10')) {
   }
 }
 
-// 19. Every story screen's text, every tutorial popup's, and every guardian
-// panel's prose exists at both Text Length settings, and the Brief one is
-// actually brief. The screens read the Brief table through
-// worldLoreFor/rivalTauntFor/storyBeatFor/finaleBodyFor, which fall back to
-// Detailed for a missing entry, so a world written once still plays; this
-// check is what keeps that fallback a safety net rather than the quiet
-// reason a Brief setting shows the full text. Each Brief string has to be
-// shorter than its Detailed sibling by a real margin (at most 0.6 of its
-// words: a taunt's first part spends several on the golem's full material
-// name, which does not shrink), and the Brief text as a whole has to stay
-// near the third it is promised in the Settings panel. The guardian panels'
-// three tables (statLore.ts, worldFlavor.ts, guardianQuotes.ts) are held to
-// the same two ratios, each table on its own.
+// 19. Text Length. Every text the Settings station's Text Length row governs
+// is written twice, and this check is what keeps the two lengths consistent
+// across all of it: the story screens (world lore, rival taunts, the beats
+// between worlds, the finale), the tutorial popups, the guardians' panel
+// prose (opening lines, Noether's stat paragraphs, Bloch's world blurbs),
+// the Qumatex blurb the end-of-battle summary shows, and the Moves station's
+// quasiparticle paragraphs. One rule for all of them:
+//   - a governed text of BRIEF_MIN_WORDS words or more (data/settings.ts) has
+//     a Brief sibling, and a shorter one is already brief and has none, so it
+//     reads the same at both lengths;
+//   - each Brief is between ENTRY_RATIO_MIN and ENTRY_RATIO_MAX of its
+//     Detailed sibling's words: short enough to be brief, long enough that it
+//     gave up texture rather than a claim;
+//   - each table as a whole stays at or under TABLE_RATIO_MAX, held table by
+//     table, so a long table cannot hide a short one that drifted (the
+//     finale's five texts against the lore's twenty pages).
+// The readers (worldLoreFor, materialBlurbFor, ...) fall back to Detailed for
+// a missing Brief, so a text written once still plays; this check is what
+// keeps that fallback a safety net rather than the quiet reason a Brief
+// setting shows the full text.
+//
+// The one-line effect descriptions (a Kondo cloud's Move.description, a
+// passive's) are the other side of the same rule: they have a single version,
+// so each has to stay under BRIEF_MIN_WORDS words.
 {
-  const loreSf = parseFile('src/data/worldLore.ts');
-  const storySf = parseFile('src/data/story.ts');
+  const settingsSf = parseFile('src/data/settings.ts');
+  const BRIEF_MIN_WORDS = evalNode(findTopLevelConst(settingsSf, 'BRIEF_MIN_WORDS'), settingsSf);
+  const ENTRY_RATIO_MIN = 0.25;
+  const ENTRY_RATIO_MAX = 0.45;
+  const TABLE_RATIO_MAX = 0.4;
   const words = (s) => s.split(/\s+/).filter(Boolean).length;
-  const pairs = [];
-  const nested = (sf, name, fields) => {
-    const detailed = evalNode(findTopLevelConst(sf, name), sf);
-    const brief = evalNode(findTopLevelConst(sf, `${name}_BRIEF`), sf);
-    for (const world of Object.keys(detailed)) {
-      for (const field of fields) pairs.push([`${name}[${world}].${field}`, detailed[world][field], brief[world]?.[field]]);
+
+  // pairs: [label, detailed, brief | undefined].
+  const holdTable = (label, pairs) => {
+    let detailedTotal = 0;
+    let briefTotal = 0;
+    for (const [entry, detailed, brief] of pairs) {
+      const hasBrief = typeof brief === 'string' && brief.trim() !== '';
+      if (words(detailed) < BRIEF_MIN_WORDS) {
+        if (hasBrief) {
+          flag(
+            `${entry} is ${words(detailed)} words, under the ${BRIEF_MIN_WORDS} a Brief version starts at -- ` +
+              `it is already brief, so drop its Brief sibling and let it read the same at both lengths`
+          );
+        }
+        continue;
+      }
+      if (!hasBrief) {
+        flag(`${entry} has no Brief version -- the Text Length setting's Brief default would show the Detailed text here`);
+        continue;
+      }
+      const ratio = words(brief) / words(detailed);
+      if (ratio > ENTRY_RATIO_MAX) {
+        flag(`${entry}'s Brief text is ${words(brief)} words against ${words(detailed)} Detailed (${ratio.toFixed(2)}, over ${ENTRY_RATIO_MAX}), not brief`);
+      } else if (ratio < ENTRY_RATIO_MIN) {
+        flag(
+          `${entry}'s Brief text is ${words(brief)} words against ${words(detailed)} Detailed (${ratio.toFixed(2)}, under ${ENTRY_RATIO_MIN}) -- ` +
+            `cut that far it has given up a claim, not just texture`
+        );
+      }
+      detailedTotal += words(detailed);
+      briefTotal += words(brief);
+    }
+    if (detailedTotal && briefTotal / detailedTotal > TABLE_RATIO_MAX) {
+      flag(
+        `the Brief ${label} text totals ${briefTotal} words against ${detailedTotal} Detailed (${(briefTotal / detailedTotal).toFixed(2)}), ` +
+          `above the ${TABLE_RATIO_MAX} that keeps Brief near the third the Settings panel promises`
+      );
     }
   };
-  nested(loreSf, 'WORLD_LORE', ['page1', 'page2']);
-  nested(loreSf, 'RIVAL_TAUNTS', ['part1', 'part2']);
+
+  // A table keyed the same way at both lengths, each value one string.
+  const flatTable = (file, name) => {
+    const sf = parseFile(file);
+    const detailed = evalNode(findTopLevelConst(sf, name), sf);
+    const brief = evalNode(findTopLevelConst(sf, `${name}_BRIEF`), sf);
+    for (const key of Object.keys(brief)) {
+      if (!(key in detailed)) flag(`${name}_BRIEF[${key}] names no ${name} entry`);
+    }
+    return Object.keys(detailed).map((key) => [`${name}[${key}]`, detailed[key], brief[key]]);
+  };
+  // A table keyed by world, each value an object of named parts.
+  const nestedTable = (file, name, fields) => {
+    const sf = parseFile(file);
+    const detailed = evalNode(findTopLevelConst(sf, name), sf);
+    const brief = evalNode(findTopLevelConst(sf, `${name}_BRIEF`), sf);
+    for (const key of Object.keys(brief)) {
+      if (!(key in detailed)) flag(`${name}_BRIEF[${key}] names no ${name} entry`);
+    }
+    const pairs = [];
+    for (const key of Object.keys(detailed)) {
+      for (const field of fields) pairs.push([`${name}[${key}].${field}`, detailed[key][field], brief[key]?.[field]]);
+    }
+    return pairs;
+  };
+
+  // The story screens, one table each.
+  holdTable('world lore', nestedTable('src/data/worldLore.ts', 'WORLD_LORE', ['page1', 'page2']));
+  holdTable('rival taunt', nestedTable('src/data/worldLore.ts', 'RIVAL_TAUNTS', ['part1', 'part2']));
+  holdTable('story beat', flatTable('src/data/story.ts', 'STORY_BEATS'));
   {
-    const detailed = evalNode(findTopLevelConst(storySf, 'STORY_BEATS'), storySf);
-    const brief = evalNode(findTopLevelConst(storySf, 'STORY_BEATS_BRIEF'), storySf);
-    for (const world of Object.keys(detailed)) pairs.push([`STORY_BEATS[${world}]`, detailed[world], brief[world]]);
-  }
-  pairs.push([
-    'FINALE_BODY',
-    evalNode(findTopLevelConst(storySf, 'FINALE_BODY'), storySf),
-    evalNode(findTopLevelConst(storySf, 'FINALE_BODY_BRIEF'), storySf),
-  ]);
-  pairs.push([
-    'FINALE_VICTORY_LINE',
-    evalNode(findTopLevelConst(storySf, 'FINALE_VICTORY_LINE'), storySf),
-    evalNode(findTopLevelConst(storySf, 'FINALE_VICTORY_LINE_BRIEF'), storySf),
-  ]);
-  pairs.push([
-    'FINALE_DEFEAT_LINE',
-    evalNode(findTopLevelConst(storySf, 'FINALE_DEFEAT_LINE'), storySf),
-    evalNode(findTopLevelConst(storySf, 'FINALE_DEFEAT_LINE_BRIEF'), storySf),
-  ]);
-  // The finale's stage screens: both stages, each with a title, a body and a
-  // button at both lengths, the body paired like every other twice-written
-  // text and the title and button identical at both (the name a stage
-  // stands under is not a matter of length).
-  {
+    const storySf = parseFile('src/data/story.ts');
+    const single = (name) => [
+      name,
+      evalNode(findTopLevelConst(storySf, name), storySf),
+      evalNode(findTopLevelConst(storySf, `${name}_BRIEF`), storySf),
+    ];
+    const pairs = [single('FINALE_BODY'), single('FINALE_VICTORY_LINE'), single('FINALE_DEFEAT_LINE')];
+    // The finale's stage screens: both stages, each with a title, a body and
+    // a button at both lengths, the body paired like every other
+    // twice-written text and the title and button identical at both (the
+    // name a stage stands under is not a matter of length).
     const detailed = evalNode(findTopLevelConst(storySf, 'FINALE_STAGES'), storySf);
     const brief = evalNode(findTopLevelConst(storySf, 'FINALE_STAGES_BRIEF'), storySf);
     for (const stage of ['2', '3']) {
@@ -811,112 +871,40 @@ for (const w of BUILT_WORLDS.filter((w) => w !== '10')) {
       if (b.button !== d.button) flag(`FINALE_STAGES_BRIEF[${stage}].button '${b.button}' differs from the Detailed '${d.button}'`);
       pairs.push([`FINALE_STAGES[${stage}].body`, d.body, b.body]);
     }
-  }
-  let detailedTotal = 0;
-  let briefTotal = 0;
-  for (const [label, detailed, brief] of pairs) {
-    if (typeof brief !== 'string' || !brief.trim()) {
-      flag(`${label} has no Brief version -- the Text Length setting's Brief default would show the Detailed text here`);
-      continue;
-    }
-    const ratio = words(brief) / words(detailed);
-    if (ratio > 0.6) {
-      flag(`${label}'s Brief text is ${words(brief)} words against ${words(detailed)} Detailed (${ratio.toFixed(2)}), not brief`);
-    }
-    detailedTotal += words(detailed);
-    briefTotal += words(brief);
-  }
-  if (detailedTotal && briefTotal / detailedTotal > 0.4) {
-    flag(
-      `the Brief story text totals ${briefTotal} words against ${detailedTotal} Detailed (${(briefTotal / detailedTotal).toFixed(2)}), ` +
-        `well above the third the Settings panel promises`
-    );
+    holdTable('finale', pairs);
   }
 
-  // The tutorial popups follow the same setting: every topic that plays as a
-  // popup (`unlock.kind === 'tip'`) needs a Brief body held to the same limits,
-  // and nothing else should carry one, since a station-only topic never pops
-  // up and the station always shows the full body.
-  const tutorialSf = parseFile('src/data/tutorial.ts');
-  const tips = evalNode(findTopLevelConst(tutorialSf, 'TUTORIAL_TIPS'), tutorialSf);
-  const tipBrief = evalNode(findTopLevelConst(tutorialSf, 'TUTORIAL_TIP_BRIEF'), tutorialSf);
-  let tipDetailed = 0;
-  let tipBriefTotal = 0;
-  for (const [id, page] of Object.entries(tips)) {
-    const brief = tipBrief[id];
-    if (page.unlock?.kind !== 'tip') {
-      if (brief !== undefined) flag(`TUTORIAL_TIP_BRIEF.${id} exists, but '${id}' never plays as a popup, so nothing reads it`);
-      continue;
-    }
-    if (typeof brief !== 'string' || !brief.trim()) {
-      flag(`tutorial popup '${id}' has no TUTORIAL_TIP_BRIEF body -- the Brief default would show its full body`);
-      continue;
-    }
-    const ratio = words(brief) / words(page.body);
-    if (ratio > 0.6) {
-      flag(`TUTORIAL_TIP_BRIEF.${id} is ${words(brief)} words against ${words(page.body)} in full (${ratio.toFixed(2)}), not brief`);
-    }
-    tipDetailed += words(page.body);
-    tipBriefTotal += words(brief);
-  }
-  if (tipDetailed && tipBriefTotal / tipDetailed > 0.4) {
-    flag(
-      `the Brief tutorial popups total ${tipBriefTotal} words against ${tipDetailed} in full (${(tipBriefTotal / tipDetailed).toFixed(2)}), ` +
-        `well above the third the Settings panel promises`
-    );
-  }
-  for (const id of Object.keys(tipBrief)) {
-    if (!(id in tips)) flag(`TUTORIAL_TIP_BRIEF.${id} names no TUTORIAL_TIPS topic`);
-  }
-
-  // The guardian panels' own prose follows the setting too: the paragraph
-  // under a stat in Noether's shop (STAT_LORE), the blurb under a destination
-  // in Bloch's (WORLD_FLAVOR) and every guardian's opening line
-  // (GUARDIAN_QUOTES). Each table is paired with its _BRIEF sibling and held
-  // to the same per-entry and whole-table ratios as the story, table by
-  // table, so one short table cannot hide a long one. A stat and a world
-  // always need a Brief entry; a guardian's line needs one only from
-  // BRIEF_QUOTE_MIN_WORDS words up, since a line already that short reads the
-  // same at both lengths, and any Brief line that exists is held to the ratio
-  // whatever its Detailed length.
-  const holdTable = (label, pairs) => {
-    let detailedTotal = 0;
-    let briefTotal = 0;
-    for (const [entry, detailed, brief] of pairs) {
-      if (typeof brief !== 'string' || !brief.trim()) {
-        flag(`${entry} has no Brief version -- the Text Length setting's Brief default would show the Detailed text here`);
+  // The tutorial popups: every topic that plays as a popup
+  // (`unlock.kind === 'tip'`) is governed, and nothing else carries a Brief
+  // body, since a station-only topic never pops up and the Tutorial station
+  // always shows the full body.
+  {
+    const tutorialSf = parseFile('src/data/tutorial.ts');
+    const tips = evalNode(findTopLevelConst(tutorialSf, 'TUTORIAL_TIPS'), tutorialSf);
+    const tipBrief = evalNode(findTopLevelConst(tutorialSf, 'TUTORIAL_TIP_BRIEF'), tutorialSf);
+    const pairs = [];
+    for (const [id, page] of Object.entries(tips)) {
+      if (page.unlock?.kind !== 'tip') {
+        if (tipBrief[id] !== undefined) flag(`TUTORIAL_TIP_BRIEF.${id} exists, but '${id}' never plays as a popup, so nothing reads it`);
         continue;
       }
-      const ratio = words(brief) / words(detailed);
-      if (ratio > 0.6) {
-        flag(`${entry}'s Brief text is ${words(brief)} words against ${words(detailed)} Detailed (${ratio.toFixed(2)}), not brief`);
-      }
-      detailedTotal += words(detailed);
-      briefTotal += words(brief);
+      pairs.push([`tutorial popup '${id}'`, page.body, tipBrief[id]]);
     }
-    if (detailedTotal && briefTotal / detailedTotal > 0.4) {
-      flag(
-        `the Brief ${label} text totals ${briefTotal} words against ${detailedTotal} Detailed (${(briefTotal / detailedTotal).toFixed(2)}), ` +
-          `well above the third the Settings panel promises`
-      );
+    for (const id of Object.keys(tipBrief)) {
+      if (!(id in tips)) flag(`TUTORIAL_TIP_BRIEF.${id} names no TUTORIAL_TIPS topic`);
     }
-  };
-  const flatTable = (file, name) => {
-    const sf = parseFile(file);
-    const detailed = evalNode(findTopLevelConst(sf, name), sf);
-    const brief = evalNode(findTopLevelConst(sf, `${name}_BRIEF`), sf);
-    for (const key of Object.keys(brief)) {
-      if (!(key in detailed)) flag(`${name}_BRIEF[${key}] names no ${name} entry`);
-    }
-    return Object.keys(detailed).map((key) => [`${name}[${key}]`, detailed[key], brief[key]]);
-  };
+    holdTable('tutorial popup', pairs);
+  }
+
+  // The guardian panels' own prose: the paragraph under a stat in Noether's
+  // shop, the blurb under a destination in Bloch's, and every guardian's
+  // opening line in both modes.
   holdTable('stat', flatTable('src/data/statLore.ts', 'STAT_LORE'));
   holdTable('world blurb', flatTable('src/data/worldFlavor.ts', 'WORLD_FLAVOR'));
   {
     const sf = parseFile('src/data/guardianQuotes.ts');
     const detailed = evalNode(findTopLevelConst(sf, 'GUARDIAN_QUOTES'), sf);
     const brief = evalNode(findTopLevelConst(sf, 'GUARDIAN_QUOTES_BRIEF'), sf);
-    const minWords = evalNode(findTopLevelConst(sf, 'BRIEF_QUOTE_MIN_WORDS'), sf);
     const pairs = [];
     for (const [id, quote] of Object.entries(detailed)) {
       for (const field of ['story', 'superposition']) {
@@ -926,7 +914,6 @@ for (const w of BUILT_WORLDS.filter((w) => w !== '10')) {
           if (briefLine !== undefined) flag(`GUARDIAN_QUOTES_BRIEF.${id}.${field} exists, but ${id} has no ${field} line to shorten`);
           continue;
         }
-        if (briefLine === undefined && words(line) < minWords) continue;
         pairs.push([`GUARDIAN_QUOTES.${id}.${field}`, line, briefLine]);
       }
     }
@@ -934,6 +921,30 @@ for (const w of BUILT_WORLDS.filter((w) => w !== '10')) {
       if (!(id in detailed)) flag(`GUARDIAN_QUOTES_BRIEF.${id} names no guardian`);
     }
     holdTable('guardian quote', pairs);
+  }
+
+  // The Qumatex blurb the end-of-battle summary shows (per compound, and the
+  // per-type fallback a compound without its own entry takes), and the
+  // quasiparticle paragraph in the Lab's Moves station.
+  holdTable('Qumatex blurb', flatTable('src/data/materialdex.ts', 'MATERIAL_BLURBS'));
+  holdTable('type fallback blurb', flatTable('src/data/materialdex.ts', 'TYPE_FALLBACK_BLURBS'));
+  holdTable('quasiparticle', flatTable('src/data/moveLore.ts', 'MOVE_CLASS_LORE'));
+
+  // The single-version one-liners.
+  const BUILT_IN_PASSIVES = evalNode(findTopLevelConst(passivesSf, 'BUILT_IN_PASSIVES'), passivesSf);
+  const oneLiners = [
+    ...Object.values(MOVES).map((m) => [`MOVES['${m.id}'].description`, m.description]),
+    ...Object.values(PASSIVES).map((p) => [`PASSIVES['${p.id}'].description`, p.description]),
+    ...Object.values(BUILT_IN_PASSIVES).map((p) => [`BUILT_IN_PASSIVES['${p.id}'].description`, p.description]),
+  ];
+  for (const [entry, text] of oneLiners) {
+    if (typeof text !== 'string') continue;
+    if (words(text) >= BRIEF_MIN_WORDS) {
+      flag(
+        `${entry} is ${words(text)} words -- an effect description has a single version, shown at both Text Length settings, ` +
+          `so it has to stay under ${BRIEF_MIN_WORDS}`
+      );
+    }
   }
 }
 

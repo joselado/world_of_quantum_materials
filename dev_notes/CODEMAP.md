@@ -795,7 +795,9 @@ game/src/
                                   that quasiparticle is in physics, shown under the animation
                                   in the Lab's Moves station. Keyed by class rather than by
                                   move id, so a tunable move reads the entry for whichever
-                                  class it currently carries
+                                  class it currently carries. MOVE_CLASS_LORE_BRIEF is the
+                                  Brief version, read through moveClassLoreFor() at the Text
+                                  Length setting
     statLore.ts                  STAT_LORE -- one short paragraph per Stats field on what that
                                   stat is in physics and why it does what it does in a fight,
                                   shown in the detail pane of Noether's Stats section. Energy/
@@ -808,13 +810,16 @@ game/src/
                                   line, plus a Superposition Mode line for the four whose service
                                   is gated on progress), the quote beside the portrait every
                                   panel under scenes/panels/ opens with (guardianHeader.ts);
-                                  GUARDIAN_QUOTES_BRIEF the Brief versions of every line of
-                                  BRIEF_QUOTE_MIN_WORDS words or more, read through
-                                  guardianQuoteFor() at the Text Length setting
+                                  GUARDIAN_QUOTES_BRIEF the Brief version of every line, read
+                                  through guardianQuoteFor() at the Text Length setting
     materialdex.ts               Per-material (fallback per-type) physics blurb for Qumatex --
-                                  MATERIAL_BLURBS/materialBlurb(); HYBRID_FUSION_LORE, a separate
-                                  epic-plus-physics blurb per HYBRID_RECIPES result for Majorana's
-                                  panel
+                                  MATERIAL_BLURBS/materialBlurb(), the full blurb the Qumatex
+                                  station shows; MATERIAL_BLURBS_BRIEF/TYPE_FALLBACK_BLURBS_BRIEF
+                                  the Brief versions of every blurb of BRIEF_MIN_WORDS words or
+                                  more, read through materialBlurbFor() by the end-of-battle
+                                  summary at the Text Length setting; HYBRID_FUSION_LORE, a
+                                  separate epic-plus-physics blurb per HYBRID_RECIPES result for
+                                  Majorana's panel
     save.ts                      localStorage schema + persistFromRegistry()/load()
     tutorial.ts                    TUTORIAL_TIPS (copy + per-topic `unlock`)/visibleTutorialPages() --
                                     contextual + replayable tutorial copy. TUTORIAL_TIP_BRIEF is the
@@ -833,8 +838,11 @@ game/src/
                                     scene asks "does this screen play", and defaultStoryScreens(superposition),
                                     the one setting whose default differs per save slot),
                                     STORY_LENGTH_PRESETS/DEFAULT_STORY_LENGTH/storyLength() (the "Text Length"
-                                    row: Brief or Detailed story screens, tip popups and guardian-panel
-                                    prose, Brief by default), and
+                                    row: Brief or Detailed story screens, tip popups, guardian-panel
+                                    prose, end-of-battle blurbs and Moves-station paragraphs, Brief by
+                                    default), BRIEF_MIN_WORDS (the length a governed text gets a Brief
+                                    sibling from, and the ceiling on single-version effect descriptions;
+                                    read by content-lint's check 19), and
                                     SETTINGS_CATEGORIES/DEFAULT_SETTINGS_CATEGORY, the Settings panel's own
                                     Gameplay/Story/Presentation grouping
     story.ts                       STORY_BEATS -- per-world Decoherence-arc line shown on advancing worlds --
@@ -3190,8 +3198,9 @@ exactly as `BattleScene` does; a `screening`-class move is raised on the caster 
 thrown, so it uses `renderSelfBuffMoveDetailHeader` over the player's own crystal instead.
 Below the animation: a `<quasiparticle> carrier. Power N.` line (`quasiparticleLabel`/
 `effectiveMovePower`, so a Feynman level shows up here too) or, for a screening cloud, that
-move's own `Move.description`; then `data/moveLore.ts`'s `MOVE_CLASS_LORE` paragraph on what
-the quasiparticle is in physics, shrink-fitted with `fitProseToBudget`. A row click is a
+move's own `Move.description`; then `data/moveLore.ts`'s `moveClassLoreFor` paragraph on what
+the quasiparticle is in physics (`MOVE_CLASS_LORE_BRIEF` at the Text Length row's Brief,
+`MOVE_CLASS_LORE` at Detailed), shrink-fitted with `fitProseToBudget`. A row click is a
 scoped update (`movesSelectedId`/`movesPage` on `HubScene`, panel state only, reset by
 `closeDialogue()`); a page flip rebuilds. `showAbilitiesPanel`
 is the "check anytime" surface for every passive the crystal currently runs, the same

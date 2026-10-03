@@ -71,7 +71,8 @@ The Lab's Moves station lists everything you can currently swing and plays it
 for you: pick a move and its real battle effect loops on a small stage, at
 whatever level you carry it at, over a line saying which quasiparticle it
 throws and how hard it lands, and a short piece on what that quasiparticle
-actually is in physics. Kondo's screening cloud is shown the way it is
+actually is in physics (a couple of lines on the Brief Text Length setting, the
+full paragraph on Detailed). Kondo's screening cloud is shown the way it is
 actually used, rising on your own crystal rather than thrown at anyone.
 
 <img src="../screenshots/docs-quasiparticles-moves.png" width="300" alt="The Lab's Moves station, an Ultimate meteor playing on its stage beside what the move carries and what a phonon is">
