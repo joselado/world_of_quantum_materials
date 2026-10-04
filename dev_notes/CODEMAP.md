@@ -867,14 +867,22 @@ game/src/
                                     third. STORY_BEATS_BRIEF/FINALE_BODY_BRIEF/FINALE_STAGES_BRIEF/
                                     FINALE_VICTORY_LINE_BRIEF/FINALE_DEFEAT_LINE_BRIEF are the Brief
                                     versions, read through storyBeatFor()/finaleBodyFor()/
-                                    finaleStageFor()/finaleVictoryLineFor()/finaleDefeatLineFor()
+                                    finaleStageFor()/finaleVictoryLineFor()/finaleDefeatLineFor().
+                                    AFTER_STORY/AFTER_STORY_BRIEF (afterStoryFor()) are the two texts the
+                                    cliff reads in place of the ending at a cleared later epoch
+    epochs.ts                      The state side of the post-game epochs (balance.ts holds their
+                                    numbers): getEpoch/getEpochUnlocked, epochProgressOf, allRivalsFallen,
+                                    everVisitedWorlds, switchEpoch, canBeginNextEpoch/beginNextEpoch.
+                                    rivalDefeated/visitedWorlds stay the current epoch's; the rest wait in
+                                    epochProgress -- see "Epochs" under "Rival/boss fights"
     storyLog.ts                    STORY_LOG/storyLogIndex() -- the whole Decoherence arc in the order a
                                     playthrough delivers it, for the Lab's Story station. Authors no copy
                                     of its own: assembles every chapter from tutorial.ts's `lab` page,
                                     worldLore.ts, story.ts, so a chapter re-read here and met in play can
                                     never drift. Always the Detailed tables, whatever Text Length says. Each chapter's `unlock` maps onto save state the
                                     playthrough already persists (tutorialTipsSeen/worldLoreSeen/
-                                    rivalDefeated) -- no progress field of its own
+                                    rivalDefeated, and the epochs' state for the two after-story
+                                    chapters) -- no progress field of its own
     worldLore.ts                   WORLD_LORE (per-world 2-page history, shown once per save on first entry)/
                                     RIVAL_TAUNTS (per-world 2-part rival gate taunt) -- worldLoreSeen gating via
                                     hasSeenWorldLore/markWorldLoreSeen. WORLD_LORE_BRIEF/RIVAL_TAUNTS_BRIEF
@@ -2320,9 +2328,10 @@ at the pass mouth; any other world re-renders the panel in place. The other comm
 the row above the ten worlds, `EPOCH_ROW` (a list item of its own, id `0`, labelled "Epoch N of
 3"): its detail pane (`renderEpochDetail`) says how many rivals have fallen and what the next
 epoch does (`epochSummary`, composed from `data/balance.ts`'s epoch tables so the text cannot
-drift from the numbers), and once `allRivalsFallen(registry)` holds it offers "Begin Epoch N+1",
-whose `beginNextEpoch` sets `epoch + 1`, sets `rivalDefeated` to `{}`, persists, and leaves
-through the same `advanceToWorld(world, 'goal')`. Both detail panes end in the shared
+drift from the numbers), and once `canBeginNextEpoch(registry)` holds (`data/epochs.ts`) it
+offers "Begin Epoch N+1", whose `beginEpoch` calls `beginNextEpoch`, persists, and leaves through
+`advanceToWorld(1)`: the new epoch starts in World 1. On an epoch below the highest unlocked the
+row says the next one is already begun and offers nothing. Both detail panes end in the shared
 `closePanel(rightY)`, which lays the footer, the divider and the panel background.
 
 **The star network (`art/stars.ts`).** Worlds 7-10 share one sky that assembles a network across
@@ -2586,8 +2595,17 @@ The post-game axis (DESIGN.md §2/§3/§6). Everything about it is in four place
   defaults to 1, so a call that leaves it off reads the player's own bar or the Epoch-1 value.
   `ANALYTIC_CORRECT_MULTIPLIER`/`ANALYTIC_WRONG_MULTIPLIER` live here too, shared by the
   player's question and the rival's roll.
-- **`data/materials.ts`**: `getEpoch(registry)` and `allRivalsFallen(registry)` (every key of
-  `WORLD_NAMES` set in `rivalDefeated`), the two reads every other module makes.
+- **`data/epochs.ts`**: the state. `rivalDefeated` and `visitedWorlds` in the registry are
+  always the *current* epoch's, so no reader of either knows epochs exist; every other
+  epoch's pair waits in `epochProgress` (`EpochProgressMap`, keyed by epoch), and
+  `epochUnlocked` is the highest epoch ever begun. `getEpoch`/`getEpochUnlocked` read the two
+  numbers; `epochProgressOf(registry, epoch)` returns one epoch's pair, live or stashed;
+  `allRivalsFallen(registry, epoch?)` checks every key of `WORLD_NAMES`;
+  `everVisitedWorlds(registry)` is the union over epochs, which is what the question pools
+  read (`BattleScene.showAnalyticQuestion`, Feynman's streak) so a topic once met stays
+  askable. `switchEpoch(registry, target)` stashes the current pair, loads the target's and
+  drops `mapState`; `canBeginNextEpoch`/`beginNextEpoch` raise `epochUnlocked` and switch onto
+  the untouched new epoch. None of them persists; the caller does.
 - **`BattleScene`**: `create()` reads the epoch once into `this.epoch` and uses it for the
   stat multiplier and the opponent's bar; `endBattle` for the stake; `opponentAction()` for
   what a rival throws. There, from Epoch 2, a rival fight other than finale stage 2 rolls
@@ -2599,13 +2617,18 @@ The post-game axis (DESIGN.md §2/§3/§6). Everything about it is in four place
   the mismatch and screening checks and the effect's class, `name` for the log, and adds the
   "full power"/"half power" clause for a rival's Analytic move. Those ids are never in a
   `moves` array (`data/integrity.ts`).
-- **`scenes/panels/overlook.ts`**: the only writer (`beginNextEpoch`, see "Taking hold of it"
-  under the overlook). `OverworldScene.showFinalePanel` swaps in `afterStoryFor(epoch, length)`
+- **`scenes/panels/overlook.ts`** begins an epoch (see "Taking hold of it" under the overlook)
+  and **`scenes/panels/bloch.ts`** moves between unlocked ones: `showBlochHub` reads
+  `scene.blochEpoch` (a `GuardianPanelHost` field, reset with `blochPreview`) as the epoch
+  whose reached worlds it lists, draws one numbered tab per unlocked epoch at the head of the
+  left column when there is more than one (a tab click sets `blochEpoch` and rebuilds the
+  panel), and `travelTo` calls `switchEpoch` before `advanceToWorld` when the destination is
+  in another epoch. `OverworldScene.showFinalePanel` swaps in `afterStoryFor(epoch, length)`
   when `epoch >= 2 && allRivalsFallen`.
 
-`TitleScene.loadIntoRegistry` seeds the registry key and `OverworldScene`'s bare-registry
-fallback sets it beside `rivalDefeated`. `OverworldScene.create` draws the "Epoch N of 3" line
-under the world label when the epoch is past the first. `scripts/balance-sim.mjs` reads the same tables for
+`TitleScene.loadIntoRegistry` seeds the three registry keys and `OverworldScene`'s
+bare-registry fallback sets them beside `rivalDefeated`. `OverworldScene.create` draws the
+"Epoch N of 3" line under the world label once a second epoch is unlocked. `scripts/balance-sim.mjs` reads the same tables for
 its post-game pass, and `scripts/component-check.mjs`'s `testBeginEpoch` drives the button.
 
 ## World progression
@@ -3489,8 +3512,8 @@ hooks, the same treatment Qumatex gives an undiscovered crystal and Bloch's tabl
 world, with its detail pane cut to one short line rather than a pane of question marks. Reach is
 derived, never stored: `{ kind: 'tip' }` reads `tutorialTipsSeen`, `{ kind: 'lore'; world }`
 reads `worldLoreSeen`, `{ kind: 'rival'; world }` reads `rivalDefeated`, `{ kind: 'epoch'; epoch }`
-(the after-story's two chapters) reads `epoch` with `allRivalsFallen` -- on that epoch with all ten
-down, or already past it -- and Superposition Mode
+(the after-story's two chapters) reads `data/epochs.ts` -- all ten down in that epoch, or a later
+one unlocked -- and Superposition Mode
 reads everything -- so the station adds no persisted state and `defaultSave`/
 `persistFromRegistry` are untouched. That derivation is also why the Settings station's Story
 Screens row can be turned off without stranding a chapter: a skipped screen still marks its own
@@ -3666,9 +3689,12 @@ guardian panels above.
 
 ## Save schema
 
-`data/save.ts`'s `SaveData`: `epoch: Epoch` (1-3, which pass over the ten worlds the run is on;
-raised only by `scenes/panels/overlook.ts`'s `beginNextEpoch`, clamped by `clampEpoch` on load
-and on every persist, read through `data/materials.ts`'s `getEpoch`), `playerStats: Stats`, `visitedWorlds: number[]`,
+`data/save.ts`'s `SaveData`: `epoch: Epoch` (1-3, which pass over the ten worlds the run is on,
+clamped by `clampEpoch` on load and on every persist), `epochUnlocked: Epoch` (the highest ever
+begun, never below `epoch`) and `epochProgress: EpochProgressMap` (`rivalDefeated` and
+`visitedWorlds` for every epoch other than the current one) -- all three read and written
+through `data/epochs.ts`, see "Epochs" -- `playerStats: Stats`, `visitedWorlds: number[]`
+(the current epoch's),
 `defeatedMaterials: DiscoveredMaterial[]` (written by `BattleScene.endBattle` on an ordinary
 wild win, same "not for rivals" rule as `discoveredMaterials`), `playerForm: Material | null`
 (round-trips a *whole* `Material` object through `JSON.stringify`/`localStorage`, so the

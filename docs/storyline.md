@@ -598,8 +598,9 @@ again.
 ## After the ending
 
 The map has one more thing on it. Once every rival has fallen you can begin the
-next **epoch**: one more full pass over all ten worlds, with every golem
-standing again and everything in the game stronger. There are three epochs, and
+next **epoch**: one more full pass over all ten worlds, from the Mean Fields
+on, with every golem standing again and everything in the game stronger. The
+epoch you leave stays as you left it, and Bloch can fold you back to it. There are three epochs, and
 clearing the second and the third each changes what you read at the cliff.
 
 After the second, the Decoherence does not gather itself again. It seems to

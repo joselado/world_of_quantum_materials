@@ -6,7 +6,8 @@ import { buildQumatuomiMap } from '../../art/qumatuomiMap';
 import { CANVAS_W, CANVAS_H } from '../../art/perspective';
 import { fontScale } from '../../ui/text';
 import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
-import { WORLD_RIVALS, worldName, getEpoch, allRivalsFallen } from '../../data/materials';
+import { WORLD_RIVALS, worldName } from '../../data/materials';
+import { getEpoch, getEpochUnlocked, allRivalsFallen, canBeginNextEpoch, beginNextEpoch } from '../../data/epochs';
 import {
   MAX_EPOCH,
   epochStatMultiplier,
@@ -50,13 +51,14 @@ import {
 // (`advanceToWorld(world, 'goal')`), which puts the player at the pass mouth
 // facing a rival that stands again.
 //
-// The row above the ten worlds is the epoch (data/balance.ts's Epoch), the
-// same act at the scale of the whole map: once all ten rivals have fallen it
-// begins the next pass over the worlds, which stands every one of them back
-// up at once, stronger, and cannot be taken back. All ten, because Bloch
-// folds the player to any world they have visited and The Adapted can be
-// brought down with other passes still held. It closes the edge the way
-// resetting The Adapted does, and for the same reason.
+// The row above the ten worlds is the epoch (data/balance.ts's Epoch,
+// data/epochs.ts), the same act at the scale of the whole map: once all ten
+// rivals of the latest epoch have fallen it begins the next pass over the
+// worlds, in which every one of them stands again, stronger, and the worlds
+// are walked in order from the first. All ten, because Bloch folds the player
+// to any world reached in the epoch and The Adapted can be brought down with
+// other passes still held. The epoch being left stays as it is, and Bloch
+// folds the player back to it; what begins here is only ever the next one.
 const EPOCH_ROW = 0;
 const MAP_H = 146;
 const PANEL_STROKE = GOLD_ACCENT;
@@ -256,13 +258,17 @@ export function showOverlookPanel(scene: GuardianPanelHost, selected?: number, p
     const cleared = allRivalsFallen(scene.game.registry);
     const next = (epoch + 1) as Epoch;
     const fallenLine = `${fallenCount} of ${BUILT_WORLDS.length} rivals ${fallenCount === 1 ? 'has' : 'have'} fallen.`;
+    // An epoch already begun is Bloch's to fold the player to, not this
+    // row's to begin again.
     const status =
       epoch >= MAX_EPOCH
         ? cleared
           ? 'The last epoch, and every rival of it has fallen.'
           : `The last epoch. ${fallenLine}`
+        : epoch < getEpochUnlocked(scene.game.registry)
+        ? `${fallenLine} Epoch ${next} is already begun: Bloch folds you to it.`
         : cleared
-        ? `All ten have fallen. Epoch ${next} stands every rival back up and cannot be undone: ${epochSummary(next)}`
+        ? `All ten have fallen. Epoch ${next} starts again from ${worldName(1)}, every pass shut: ${epochSummary(next)}`
         : `${fallenLine} All ten open Epoch ${next}: ${epochSummary(next)}`;
 
     const rightY = renderStatusAndConfirm({
@@ -273,7 +279,7 @@ export function showOverlookPanel(scene: GuardianPanelHost, selected?: number, p
       colW: columns.rightColW,
       maxBottom: CANVAS_H - 16,
       status,
-      confirm: epoch < MAX_EPOCH && cleared ? { label: `Begin Epoch ${next}`, onClick: () => beginNextEpoch(scene) } : undefined,
+      confirm: canBeginNextEpoch(scene.game.registry) ? { label: `Begin Epoch ${next}`, onClick: () => beginEpoch(scene) } : undefined,
     });
     closePanel(rightY);
   };
@@ -294,17 +300,14 @@ export function showOverlookPanel(scene: GuardianPanelHost, selected?: number, p
   renderDetail();
 }
 
-// Begins the next epoch: every rival stands again, and the world is
-// re-entered from its far end like a reset of The Adapted, since the cliff
-// this panel was opened from is gone with it.
-function beginNextEpoch(scene: GuardianPanelHost) {
+// Begins the next epoch (data/epochs.ts's beginNextEpoch) and puts the
+// player where that epoch starts: World 1, with nothing in it reached and no
+// rival fallen.
+function beginEpoch(scene: GuardianPanelHost) {
   const registry = scene.game.registry;
-  const epoch = getEpoch(registry);
-  if (epoch >= MAX_EPOCH || !allRivalsFallen(registry)) return;
-  registry.set('epoch', epoch + 1);
-  registry.set('rivalDefeated', {});
+  if (!beginNextEpoch(registry)) return;
   persistFromRegistry(registry);
-  scene.advanceToWorld(scene.world, 'goal');
+  scene.advanceToWorld(1);
 }
 
 function resetRival(scene: GuardianPanelHost, world: number, page: number) {

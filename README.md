@@ -251,9 +251,13 @@ every world's full wild-material list.
 
 **After the ending: epochs.** The same map has one more row, the epoch. Once
 all ten rivals have fallen you can begin Epoch 2, and after clearing that,
-Epoch 3. Beginning an epoch stands every rival back up at once and cannot be
-undone, and it makes the whole game harder (from Epoch 2 on, the epoch you
-are in is shown under the world's name):
+Epoch 3. A new epoch starts over from The Mean Fields with every rival
+standing and every pass shut, so you walk the ten worlds in order again, and
+it makes the whole game harder. Nothing is lost by beginning one: each epoch
+keeps its own progress, and Bloch's travel panel has a tab for every epoch
+you have unlocked, so he can fold you to any world you have reached in any of
+them. Your stats, moves and qumatessence come with you. Once you have more
+than one epoch, the one you are in is shown under the world's name:
 
 | | Epoch 1 | Epoch 2 | Epoch 3 |
 |---|---|---|---|

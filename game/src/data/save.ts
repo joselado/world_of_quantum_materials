@@ -20,6 +20,7 @@ import {
 } from './settings';
 import type { MusicStyle, DifficultyTier, WorldSizeId, TouchControlsMode, StoryLength } from './settings';
 import type { ActivePassivesByOwner, PassiveSlotsByOwner } from './passives';
+import type { EpochProgressMap } from './epochs';
 
 // Two independent localStorage-backed save slots, one per starting mode
 // (Story Mode / Superposition Mode -- see the `superpositionMode` field
@@ -53,12 +54,19 @@ export interface SaveData {
   unlockedMoves: string[];
   playerHp: number;
   rivalDefeated: Record<number, boolean>;
-  // Which pass over the ten worlds this run is on (data/balance.ts's Epoch):
-  // 1 for the game as first played, raised one at a time from the map below
-  // World 10's cliff (scenes/panels/overlook.ts) once all ten rivals have
-  // fallen, which also empties `rivalDefeated` above. Scales every opponent's
-  // stats and every stake, and decides what the rivals throw.
+  // Which pass over the ten worlds this run is on (data/balance.ts's Epoch,
+  // data/epochs.ts for the state): 1 for the game as first played. Scales
+  // every opponent's stats and every stake, and decides what the rivals
+  // throw. Each epoch keeps its own progress: `rivalDefeated` above and
+  // `visitedWorlds` below are the current epoch's, and `epochProgress` holds
+  // the same pair for every other epoch entered, swapped in and out by
+  // data/epochs.ts's switchEpoch. `epochUnlocked` is the highest epoch ever
+  // begun -- raised one at a time from the map below World 10's cliff once
+  // all ten rivals of the latest one have fallen -- and Bloch folds the
+  // player between the epochs up to it.
   epoch: Epoch;
+  epochUnlocked: Epoch;
+  epochProgress: EpochProgressMap;
   discoveredMaterials: DiscoveredMaterial[];
   // Added alongside the stats/teleport/transmutation batch:
   playerStats: Stats;
@@ -262,6 +270,8 @@ export function defaultSave(superposition: boolean): SaveData {
     playerHp: wildHpForWorld(1),
     rivalDefeated: {},
     epoch: DEFAULT_EPOCH,
+    epochUnlocked: DEFAULT_EPOCH,
+    epochProgress: {},
     discoveredMaterials: [],
     playerStats: { ...DEFAULT_STATS },
     visitedWorlds: [],
@@ -448,6 +458,8 @@ export function loadSave(superposition: boolean): SaveData {
     }
     if (data.rival9Type && !(data.rival9Type in TYPE_LOOK)) data.rival9Type = null;
     data.epoch = clampEpoch(data.epoch);
+    data.epochUnlocked = Math.max(clampEpoch(data.epochUnlocked), data.epoch) as Epoch;
+    if (!data.epochProgress || typeof data.epochProgress !== 'object') data.epochProgress = {};
     if (!MUSIC_STYLE_PRESETS.some((p) => p.value === data.musicStyle)) data.musicStyle = DEFAULT_MUSIC_STYLE;
     if (!DIFFICULTY_TIER_PRESETS.some((p) => p.value === data.difficultyTier)) data.difficultyTier = DEFAULT_DIFFICULTY_TIER;
     if (!WORLD_SIZE_PRESETS.some((p) => p.value === data.worldSize)) data.worldSize = DEFAULT_WORLD_SIZE;
@@ -484,6 +496,8 @@ export function persistFromRegistry(registry: RegistryLike) {
     playerHp: (registry.get('playerHp') as number) ?? wildHpForWorld(1),
     rivalDefeated: (registry.get('rivalDefeated') as Record<number, boolean>) ?? {},
     epoch: clampEpoch(registry.get('epoch')),
+    epochUnlocked: Math.max(clampEpoch(registry.get('epochUnlocked')), clampEpoch(registry.get('epoch'))) as Epoch,
+    epochProgress: (registry.get('epochProgress') as EpochProgressMap) ?? {},
     discoveredMaterials: (registry.get('discoveredMaterials') as DiscoveredMaterial[]) ?? [],
     playerStats: (registry.get('playerStats') as Stats) ?? { ...DEFAULT_STATS },
     visitedWorlds: (registry.get('visitedWorlds') as number[]) ?? [],

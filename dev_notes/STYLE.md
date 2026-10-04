@@ -1144,9 +1144,14 @@ of 3"), in the panel's gold rather than a world's pale blue, since it is not a p
 selected, it rings no marker, and the right column carries the same three things in
 the same positions -- the epoch in gold where a rival's name would be, one status
 sentence, and a "Begin Epoch N" button present only once all ten rivals have fallen.
-Out in the worlds the same words sit under the world label in the top-left corner from
-Epoch 2 on: one line, in the gold of the qumatessence counter opposite it, two sizes
-under the label (12 against 16), on the label's own translucent backing.
+Out in the worlds the same words sit under the world label in the top-left corner once
+a second epoch is unlocked: one line, in the gold of the qumatessence counter opposite
+it, two sizes under the label (12 against 16), on the label's own translucent backing.
+Bloch's travel panel gains a row at the head of its table at the same moment: a muted
+"Epoch" and one numbered tab per unlocked epoch, at the rows' own size and padding, the
+shown epoch in the selected row's gold on purple and the others in a row's pale on
+dark. The tabs take their height from the table, which pages; the map beside them
+does not move.
 
 At a cleared later epoch the finale panel this menu is reached from shows the
 after-story in the ending's own layout: gold title, pale body with its paragraphs kept

@@ -19,9 +19,7 @@ import {
   MOVE_LEVEL_MULTIPLIERS,
   MOVE_LEVEL_STREAKS,
   feynmanLevelCost,
-  clampEpoch,
 } from './balance';
-import type { Epoch } from './balance';
 export {
   BASE_STAT,
   MAX_STAT,
@@ -2118,23 +2116,6 @@ export const WORLD_NAMES: Partial<Record<number, string>> = {
 // banner. Falls back to "World N" for a number with no entry above.
 export function worldName(world: number): string {
   return WORLD_NAMES[world] ?? `World ${world}`;
-}
-
-// Which pass over the worlds a save is on (data/balance.ts's Epoch), read
-// off the registry and pinned to a real one.
-export function getEpoch(registry: RegistryLike): Epoch {
-  return clampEpoch(registry.get('epoch'));
-}
-
-// Whether every world's rival has fallen in the epoch the save is on. This
-// is what the map below World 10's cliff asks for before it begins the next
-// epoch (scenes/panels/overlook.ts), and what the after-story waits for
-// (data/story.ts's AFTER_STORY). All ten, not the last alone: Bloch folds
-// the player to any world already visited, so The Adapted can be reached
-// with other passes still held.
-export function allRivalsFallen(registry: RegistryLike): boolean {
-  const defeated = (registry.get('rivalDefeated') as Record<number, boolean>) ?? {};
-  return Object.keys(WORLD_NAMES).every((world) => !!defeated[Number(world)]);
 }
 
 // World 9 (defects/excitations) additionally spawns every non-hybrid

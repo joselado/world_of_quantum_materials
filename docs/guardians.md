@@ -57,6 +57,10 @@ visited, so backtracking never means re-walking a whole corridor.
 - Every later trip to that same world: free
 - Each world you haven't unlocked yet is priced separately, there's no
   single purchase that opens every destination at once
+- After the ending, once you have begun a second epoch, his panel has a tab
+  for each epoch you have unlocked: pick the epoch, then a world you have
+  reached in it, and he folds you there. A world paid for once is free in
+  every epoch
 
 <img src="../screenshots/docs-guardians-bloch-panel.png" width="300" alt="Bloch's destination list: visited worlds named, unvisited ones masked, the chosen one ringed on the Qumatuomi map above its 15-qumatessence first trip">
 

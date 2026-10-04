@@ -217,6 +217,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // because the Lab's door previews wherever the player is currently going:
   // moving the selection re-points the door in the same gesture, with no
   // separate refresh call for the panel to remember to make.
+  blochEpoch: number | null = null;
   private blochPreviewWorld: number | null = null;
   get blochPreview(): number | null {
     return this.blochPreviewWorld;
@@ -1480,6 +1481,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.franklinPreview = null;
     this.franklinPage = 0;
     this.blochPreview = null;
+    this.blochEpoch = null;
 
     // A panel that just closed may have changed which stations belong in the
     // room: learning a first passive from Franklin's avatar is what puts

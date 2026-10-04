@@ -48,9 +48,8 @@ import {
   DEFAULT_STATS,
   allCrystals,
   isHybridMaterial,
-  getEpoch,
-  allRivalsFallen,
 } from '../data/materials';
+import { getEpoch, getEpochUnlocked, allRivalsFallen } from '../data/epochs';
 import { wildHpForWorld, MAX_STAT, DEFAULT_EPOCH, MAX_EPOCH } from '../data/balance';
 import { PASSIVES, PASSIVE_OWNERS, PASSIVE_MAX_SLOTS, passiveSlotsUsed } from '../data/passives';
 import type { ActivePassivesByOwner, PassiveSlotsByOwner } from '../data/passives';
@@ -560,6 +559,10 @@ export interface GuardianPanelHost extends Phaser.Scene {
   // yet," in which case the panel falls back to the first travelable
   // destination.
   blochPreview: number | null;
+  // Bloch-only: which unlocked epoch his table is showing the worlds of
+  // (data/epochs.ts), reset with blochPreview. Null means the epoch the save
+  // is on.
+  blochEpoch: number | null;
 }
 
 // One entry per world with a guardian, dispatched data-driven through
@@ -821,6 +824,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // Same reset rules as dresselhausPreview/majoranaPreview above -- see the
   // GuardianPanelHost interface's own comment on this field.
   blochPreview: number | null = null;
+  blochEpoch: number | null = null;
 
   // One entry per world with a guardian (see GuardianDef above). Most `open`
   // callbacks call an imported scenes/panels/<guardian>.ts function with `s`
@@ -1026,6 +1030,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.franklinPreview = null;
     this.franklinPage = 0;
     this.blochPreview = null;
+    this.blochEpoch = null;
     this.biome = getBiome(this.world);
 
     const state = this.game.registry;
@@ -1111,13 +1116,13 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
         wordWrap: { width: CANVAS_W - 16 - essenceGutter },
       })
       .setDepth(50);
-    // Past the first epoch the label carries which one this is, on a line of
-    // its own under the world's name: the map that begins an epoch is out of
-    // reach until The Adapted falls again, so this is where a run reads it.
-    const epoch = getEpoch(this.game.registry);
-    if (epoch > DEFAULT_EPOCH) {
+    // Once a second epoch is unlocked the label carries which one this is,
+    // on a line of its own under the world's name: the same world can be
+    // stood in at any epoch unlocked, and nothing else on screen tells them
+    // apart.
+    if (getEpochUnlocked(this.game.registry) > DEFAULT_EPOCH) {
       this.add
-        .text(8, 8 + worldLabel.height + 2, `Epoch ${epoch} of ${MAX_EPOCH}`, {
+        .text(8, 8 + worldLabel.height + 2, `Epoch ${getEpoch(this.game.registry)} of ${MAX_EPOCH}`, {
           fontSize: fontPx(this, 12),
           color: GOLD_ACCENT_HEX,
           backgroundColor: 'rgba(0,0,0,0.35)',
@@ -1244,6 +1249,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       state.set('playerHp', wildHpForWorld(this.world));
       state.set('rivalDefeated', {});
       state.set('epoch', DEFAULT_EPOCH);
+      state.set('epochUnlocked', DEFAULT_EPOCH);
+      state.set('epochProgress', {});
       state.set('discoveredMaterials', []);
       state.set('playerStats', { ...DEFAULT_STATS });
       state.set('visitedWorlds', []);
@@ -2809,6 +2816,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.franklinPreview = null;
     this.franklinPage = 0;
     this.blochPreview = null;
+    this.blochEpoch = null;
 
     // An introduction owed from a step that also opened something else (the
     // wild or the token on the same tile, see maybeReachMiddle) is taken now

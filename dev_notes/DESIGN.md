@@ -58,20 +58,28 @@ doors. Resetting The Adapted itself takes the cliff, the land below it and this 
 it, since all three exist only while it is beaten; the player is put back at the pass mouth
 facing it.
 
-**The whole map can be stood back up at once: epochs.** The same menu carries one row above
-the ten worlds, "Epoch N of 3" (`data/balance.ts`'s `Epoch`, save field `epoch`). An epoch is
-one full pass over the ten worlds, the way a training epoch is one full pass over a training
-set. Epoch 1 is the game as first played. Once all ten rivals have fallen the row offers
-"Begin Epoch N+1", which raises the epoch, empties `rivalDefeated` and nothing else, and puts
-the player back at World 10's pass mouth with The Adapted standing, exactly as resetting it
-alone does. It cannot be undone, and it asks for all ten rather than The Adapted alone because
-Bloch folds the player to any world already visited: World 10 can be reached, and its rival
-beaten, with other passes still held. A later epoch makes every opponent stronger and longer
-lived, raises every stake, and changes what the rivals throw (§3, §4, §6); a cleared one is
-answered at the cliff by the after-story (§5). Worlds already reached stay reached, so the
-early worlds of a new epoch, which are its gentlest, are always open to earn in. Past Epoch 1
-every world's top-left label carries the epoch on a second line ("Epoch 2 of 3"), since the
-map that shows it is out of reach until The Adapted falls again.
+**The whole road can be walked again: epochs.** The same menu carries one row above the ten
+worlds, "Epoch N of 3" (`data/balance.ts`'s `Epoch` for the numbers, `data/epochs.ts` for the
+state). An epoch is one full pass over the ten worlds, the way a training epoch is one full
+pass over a training set. Epoch 1 is the game as first played. Once all ten rivals of the
+latest epoch have fallen the row offers "Begin Epoch N+1", and the new epoch starts where the
+game itself did: the player is put in World 1 with no rival fallen and no other world reached,
+so the worlds are walked in order again, each pass opened by beating its rival. It asks for
+all ten rather than The Adapted alone because Bloch folds the player to any world reached in
+the epoch: World 10 can be reached, and its rival beaten, with other passes still held. A
+later epoch makes every opponent stronger and longer lived, raises every stake, and changes
+what the rivals throw (§3, §4, §6); a cleared one is answered at the cliff by the after-story
+(§5).
+
+Each epoch keeps its own progress, and none is lost by beginning the next. Which rivals have
+fallen and which worlds have been reached are recorded per epoch (`rivalDefeated` and
+`visitedWorlds` are the current epoch's; the others wait in `epochProgress`), so the epoch
+left behind stays exactly as it was, cliff and all. Bloch is the way between them (§5): his
+table shows one unlocked epoch at a time, and travelling to a world of another epoch moves
+the player onto that epoch. Everything else the player owns is theirs in every epoch: stats,
+moves, forms, passives, qumatessence, and the destinations already paid for at Bloch. Once a
+second epoch is unlocked every world's top-left label carries the epoch on a second line
+("Epoch 2 of 3"), since the same world can then be stood in at more than one.
 
 | World | Course topic | In-game name (`WORLD_NAMES`) | Wild material archetypes |
 |---|---|---|---|
@@ -426,8 +434,9 @@ next battle, no restart needed.
 
 **Epoch** (`data/balance.ts`'s `Epoch`, begun from the map below World 10's cliff, §2): the
 post-game's own axis, independent of the difficulty tier and stacked on it. Where the tier is a
-setting, the epoch is progress: it only ever goes up, one at a time, each time all ten rivals
-have fallen. It does four things, each one table in `data/balance.ts`:
+setting, the epoch is progress: a new one is unlocked only by clearing all ten rivals of the
+latest, one at a time, and the player can stand in any epoch they have unlocked. It does four
+things, each one table in `data/balance.ts`:
 
 | | Epoch 1 | Epoch 2 | Epoch 3 |
 |---|---|---|---|
@@ -451,8 +460,9 @@ grows more slowly than the stats do, so each epoch still asks for more fights th
 
 The values are `npm run balance-sim`-verified against the same three archetypes as the tiers,
 each carried on from the state it finished World 10 in. The M.Sc. build ends Epoch 1 near 5 in
-each stat, clears Epoch 2 at about 13 with some sixteen ordinary wins beyond the rivals
-themselves, and clears Epoch 3 at about 38 with some seventy. The Ph.D. build lands in the
+each stat, clears Epoch 2 at about 13 with some twenty ordinary wins beyond the rivals
+themselves, and clears Epoch 3 at about 38 with some eighty, farming only where it can stand:
+the new epoch's worlds up to the one it has reached, or an earlier epoch's. The Ph.D. build lands in the
 same range against its own stronger opponents (53 in each stat in the last world). The B.Sc.
 build, which by construction never uses a quiz-gated move, needs stats near 40 and then near
 90, and several hundred wins: the later epochs are built to be answered with Analytic moves,
@@ -1172,6 +1182,10 @@ state can mark her met before the player has actually reached her.
 - **Bloch** → world 2 middle → folds space between worlds: teleports the player to any
   world they've already visited (`scenes/panels/bloch.ts`'s `showBlochHub`) -- fitting, since a
   Bloch state is a superposition spread across every unit cell, not pinned to one.
+  "Visited" is per epoch (§2): once a second epoch is unlocked the table is headed by a row
+  of numbered epoch tabs, it lists the worlds reached in the epoch whose tab is lit, and
+  travelling to a world of another epoch is what moves the player onto it. A destination is
+  paid for once, whichever epoch it is first travelled to in.
   The destination list is the shared list+detail left column (`renderListColumn`,
   `scenes/panels/listDetail.ts`, STYLE.md's "List+detail panels"): it always lists all ten
   built worlds, masking rows the save hasn't discovered to `???`, and pages itself

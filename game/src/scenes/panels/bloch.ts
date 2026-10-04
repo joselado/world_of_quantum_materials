@@ -6,13 +6,15 @@ import { makeBlochAvatar } from '../../art/bloch';
 import { killTweensDeep } from '../../art/crystals';
 import { buildQumatuomiMap } from '../../art/qumatuomiMap';
 import { CANVAS_W, CANVAS_H } from '../../art/perspective';
-import { fontScale } from '../../ui/text';
-import { PANEL_BG, GOLD_ACCENT } from '../../ui/theme';
+import { fontScale, fontPx } from '../../ui/text';
+import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 import { worldName, BLOCH_DESTINATION_COST } from '../../data/materials';
 import { worldFlavorFor } from '../../data/worldFlavor';
 import { guardianQuoteFor } from '../../data/guardianQuotes';
 import { storyLength } from '../../data/settings';
 import { persistFromRegistry } from '../../data/save';
+import { getEpoch, getEpochUnlocked, epochProgressOf, switchEpoch } from '../../data/epochs';
+import type { Epoch } from '../../data/balance';
 import {
   LIST_DETAIL_PANEL_W,
   destroyPanel,
@@ -81,6 +83,16 @@ import {
 // its own status line still names it, "You are standing in World N --
 // <name>."), or it hasn't been discovered yet, in which case the status
 // line says so in Bloch's own voice instead.
+//
+// Once a second epoch is unlocked (data/epochs.ts) the table is of one epoch
+// at a time, picked on a row of numbered tabs above it: each epoch keeps its
+// own record of which worlds the player has reached in it, so the same world
+// can be a destination in one epoch and mist in another. The tabs only
+// change what the table and map show (`scene.blochEpoch`, a panel rebuild);
+// travelling to a world of another epoch is what moves the save onto that
+// epoch (switchEpoch), in the same click that folds the player there. The
+// world the player stands in is a destination in every epoch but the one
+// they are on.
 // The height budget the Qumatuomi map is drawn into, above the blurb/status/
 // button that share the right column with it. Well past the map's own 110px
 // native height, so the coastline draws scaled up and its painted regions and
@@ -96,6 +108,12 @@ export function showBlochHub(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
   const superposition = scene.isSuperpositionMode();
+  const registry = scene.game.registry;
+  const currentEpoch = getEpoch(registry);
+  const epochsUnlocked = getEpochUnlocked(registry);
+  const viewEpoch = (
+    scene.blochEpoch !== null && scene.blochEpoch >= 1 && scene.blochEpoch <= epochsUnlocked ? scene.blochEpoch : currentEpoch
+  ) as Epoch;
   // Superposition Mode reads BUILT_WORLDS directly rather than the
   // persisted `visitedWorlds` list -- same isSuperpositionMode() short-
   // circuit Dresselhaus/Majorana/Anderson use for their own candidate
@@ -105,9 +123,11 @@ export function showBlochHub(scene: GuardianPanelHost) {
   // still starts in the Lab (TitleScene always starts 'Hub'), so reading
   // the persisted list here would treat every world as undiscovered until
   // the player had already stepped through a world door once.
-  const discoveredWorlds = new Set<number>(
-    superposition ? BUILT_WORLDS : scene.getVisitedWorlds().filter((w) => BUILT_WORLDS.includes(w))
-  );
+  // The worlds reached in the epoch being shown. An epoch other than the
+  // current one always counts its first world, where beginning it put the
+  // player.
+  const reached = viewEpoch === currentEpoch ? scene.getVisitedWorlds() : [1, ...epochProgressOf(registry, viewEpoch).visitedWorlds];
+  const discoveredWorlds = new Set<number>(superposition ? BUILT_WORLDS : reached.filter((w) => BUILT_WORLDS.includes(w)));
   const unlockedWorlds = (scene.game.registry.get('blochUnlockedWorlds') as number[]) ?? [];
   const isUnlocked = (world: number) => superposition || unlockedWorlds.includes(world);
 
@@ -139,8 +159,45 @@ export function showBlochHub(scene: GuardianPanelHost) {
   const columns = listDetailColumns(panelLeft);
   const columnsTop = y;
 
+  // The epoch tabs, at the head of the left column: a muted "Epoch" and one
+  // numbered tab per unlocked epoch, the shown one in the selected row's
+  // gold-on-purple. They take their height out of the table below them, which
+  // pages, and leave the right column's map where it is.
+  let listTop = columnsTop;
+  if (epochsUnlocked > 1) {
+    const tabPx = fontPx(scene, 12);
+    const label = scene.add.text(columns.leftX, columnsTop, 'Epoch', { fontSize: tabPx, color: REFERENCE_BLUE_GREY_HEX, padding: { x: 0, y: 4 } });
+    container.add(label);
+    let tabX = columns.leftX + label.width + 8;
+    let tabBottom = columnsTop + label.height;
+    for (let epoch = 1; epoch <= epochsUnlocked; epoch++) {
+      const shown = epoch === viewEpoch;
+      const tab = scene.add
+        .text(tabX, columnsTop, String(epoch), {
+          fontSize: tabPx,
+          color: shown ? GOLD_ACCENT_HEX : '#cfd8ff',
+          backgroundColor: shown ? '#3a2a5c' : '#1c1c30',
+          padding: { x: 8, y: 4 },
+        })
+        .setInteractive({ useHandCursor: true })
+        .on('pointerdown', () => {
+          if (shown) return;
+          scene.blochEpoch = epoch;
+          scene.blochPreview = null;
+          scene.blochPage = 0;
+          destroyPanel(scene);
+          showBlochHub(scene);
+        });
+      container.add(tab);
+      tabX += tab.width + 4;
+      tabBottom = Math.max(tabBottom, columnsTop + tab.height);
+    }
+    listTop = tabBottom + 6;
+  }
+
   const items = BUILT_WORLDS;
-  const isTravelable = (w: number) => discoveredWorlds.has(w) && w !== scene.world;
+  const isStandingIn = (w: number) => w === scene.world && viewEpoch === currentEpoch;
+  const isTravelable = (w: number) => discoveredWorlds.has(w) && !isStandingIn(w);
   const firstTravelable = items.find(isTravelable);
   let preview = items.includes(scene.blochPreview ?? -1) ? (scene.blochPreview as number) : firstTravelable ?? items[0];
 
@@ -155,7 +212,7 @@ export function showBlochHub(scene: GuardianPanelHost) {
     scene,
     container,
     x: columns.leftX,
-    y: columnsTop,
+    y: listTop,
     width: columns.leftColW,
     items,
     idFor: (w) => String(w),
@@ -219,7 +276,7 @@ export function showBlochHub(scene: GuardianPanelHost) {
       scene.tweens.add({ targets: ring, scale: 1.8, alpha: { from: 1, to: 0 }, duration: 900, repeat: -1, ease: 'Sine.easeOut' });
     }
 
-    const isCurrent = preview === scene.world;
+    const isCurrent = isStandingIn(preview);
     const discovered = discoveredWorlds.has(preview);
     const name = worldName(preview);
 
@@ -255,6 +312,11 @@ export function showBlochHub(scene: GuardianPanelHost) {
 
     const unlocked = isUnlocked(preview);
     const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
+    // Travelling to another epoch's world moves the save onto that epoch, so
+    // the status line names the epoch ahead of the price. Kept to the one
+    // line the status has at the default text size: this pane has no spare
+    // row to wrap into.
+    const crossing = viewEpoch !== currentEpoch;
     const rightY = renderStatusAndConfirm({
       scene,
       container: detailBlock,
@@ -274,7 +336,13 @@ export function showBlochHub(scene: GuardianPanelHost) {
       status: isCurrent
         ? `You are standing in World ${preview}: ${name}.`
         : !discovered
-        ? 'You have never walked this land. I cannot fold you where you have not been.'
+        ? viewEpoch === currentEpoch
+          ? 'You have never walked this land. I cannot fold you where you have not been.'
+          : `You have not walked this land in Epoch ${viewEpoch}. I cannot fold you where you have not been.`
+        : crossing
+        ? unlocked
+          ? `Epoch ${viewEpoch}: already unlocked, free to travel.`
+          : `Epoch ${viewEpoch}: costs ${BLOCH_DESTINATION_COST} qumatessence to unlock (one-time).`
         : unlocked
         ? 'Already unlocked, free to travel.'
         : `Costs ${BLOCH_DESTINATION_COST} qumatessence to unlock (one-time; free after).`,
@@ -286,7 +354,7 @@ export function showBlochHub(scene: GuardianPanelHost) {
           ? undefined
           : {
               label: `Travel to ${name}`,
-              onClick: () => travelTo(scene, preview, unlocked, unlockedWorlds),
+              onClick: () => travelTo(scene, preview, viewEpoch, unlocked, unlockedWorlds),
               dimmed: !unlocked && tokens < BLOCH_DESTINATION_COST,
             },
     });
@@ -304,16 +372,20 @@ export function showBlochHub(scene: GuardianPanelHost) {
   renderDetail();
 }
 
-function travelTo(scene: GuardianPanelHost, world: number, isUnlocked: boolean, unlockedWorlds: number[]) {
-  if (isUnlocked) {
-    scene.advanceToWorld(world);
-    return;
+// Folds the player to `world` as it stands in `epoch`. A destination is
+// paid for once, whichever epoch it is first travelled to in. Going to
+// another epoch's world moves the save onto that epoch first (switchEpoch),
+// so the world is entered under its rules and with its passes.
+function travelTo(scene: GuardianPanelHost, world: number, epoch: Epoch, isUnlocked: boolean, unlockedWorlds: number[]) {
+  const registry = scene.game.registry;
+  if (!isUnlocked) {
+    if ((registry.get('qumatessence') as number) < BLOCH_DESTINATION_COST) return;
+    scene.qumatessence -= BLOCH_DESTINATION_COST;
+    registry.set('qumatessence', scene.qumatessence);
+    scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
+    registry.set('blochUnlockedWorlds', [...unlockedWorlds, world]);
   }
-  if ((scene.game.registry.get('qumatessence') as number) < BLOCH_DESTINATION_COST) return;
-  scene.qumatessence -= BLOCH_DESTINATION_COST;
-  scene.game.registry.set('qumatessence', scene.qumatessence);
-  scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
-  scene.game.registry.set('blochUnlockedWorlds', [...unlockedWorlds, world]);
-  persistFromRegistry(scene.game.registry);
+  if (epoch !== getEpoch(registry)) switchEpoch(registry, epoch);
+  persistFromRegistry(registry);
   scene.advanceToWorld(world);
 }

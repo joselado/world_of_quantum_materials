@@ -24,6 +24,7 @@ import {
 } from '../../data/materials';
 import type { MoveLevel } from '../../data/materials';
 import { getAnalyticQuestions } from '../../data/quiz';
+import { everVisitedWorlds } from '../../data/epochs';
 import { persistFromRegistry } from '../../data/save';
 import type { Move } from '../../data/types';
 import {
@@ -360,7 +361,7 @@ function showLevelStreak(scene: GuardianPanelHost, moveId: string, targetLevel: 
   // flashing over the questions (it draws above a dialogue container by
   // design, art/moveEffectPreview.ts).
   stopMoveEffectPreview();
-  const questions = getAnalyticQuestions(scene.getVisitedWorlds(), MOVE_LEVEL_STREAKS[targetLevel]);
+  const questions = getAnalyticQuestions(everVisitedWorlds(scene.game.registry), MOVE_LEVEL_STREAKS[targetLevel]);
   let index = 0;
 
   const finishStreak = (success: boolean) => {

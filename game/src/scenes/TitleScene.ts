@@ -250,6 +250,8 @@ export class TitleScene extends Phaser.Scene {
     registry.set('playerHp', save.playerHp);
     registry.set('rivalDefeated', save.rivalDefeated);
     registry.set('epoch', save.epoch);
+    registry.set('epochUnlocked', save.epochUnlocked);
+    registry.set('epochProgress', save.epochProgress);
     registry.set('discoveredMaterials', save.discoveredMaterials);
     registry.set('playerStats', save.playerStats);
     registry.set('visitedWorlds', save.visitedWorlds);

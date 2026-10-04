@@ -1,4 +1,5 @@
-import { worldName, getEpoch, allRivalsFallen } from './materials';
+import { worldName } from './materials';
+import { getEpochUnlocked, allRivalsFallen } from './epochs';
 import { STORY_BEATS, WORLD_GOAL_TEXT, FINALE_TITLE, FINALE_BODY, FINALE_STAGES, AFTER_STORY } from './story';
 import { WORLD_LORE, RIVAL_TAUNTS } from './worldLore';
 import { TUTORIAL_TIPS } from './tutorial';
@@ -57,9 +58,9 @@ export interface StoryEntry {
 //             meets a little earlier, on reaching the pass mouth -- nothing
 //             persists that moment, and the whole pass sequence reads as one
 //             chapter either way.
-//   - `epoch` every rival has fallen in this epoch (`epoch` with
-//             `rivalDefeated`): the save is on it with all ten down, or
-//             already past it, which it can only be by having cleared it.
+//   - `epoch` every rival has fallen in this epoch (data/epochs.ts): all ten
+//             are down in it now, or a later epoch is unlocked, which it can
+//             only be by this one having been cleared.
 export type StoryUnlock =
   | { kind: 'tip'; id: TutorialTipId }
   | { kind: 'lore'; world: number }
@@ -191,8 +192,7 @@ export function storyLogIndex(registry: RegistryLike): StoryLogRow[] {
   const tipsSeen = (registry.get('tutorialTipsSeen') as string[]) ?? [];
   const loreSeen = (registry.get('worldLoreSeen') as number[]) ?? [];
   const rivalDefeated = (registry.get('rivalDefeated') as Record<number, boolean>) ?? {};
-  const epoch = getEpoch(registry);
-  const cleared = allRivalsFallen(registry);
+  const epochUnlocked = getEpochUnlocked(registry);
   return STORY_LOG.map((entry) => {
     const unlock = entry.unlock;
     let reached: boolean;
@@ -207,7 +207,7 @@ export function storyLogIndex(registry: RegistryLike): StoryLogRow[] {
         reached = !!rivalDefeated[unlock.world];
         break;
       case 'epoch':
-        reached = epoch > unlock.epoch || (epoch === unlock.epoch && cleared);
+        reached = epochUnlocked > unlock.epoch || (epochUnlocked === unlock.epoch && allRivalsFallen(registry, unlock.epoch));
         break;
     }
     return { entry, reached: superposition || reached };

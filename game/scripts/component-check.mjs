@@ -1289,12 +1289,15 @@ async function main() {
     };
   }
 
-  // The epoch row of the same menu (data/balance.ts's Epoch). With one rival
-  // still standing the row offers nothing; with all ten fallen its button
-  // begins the next epoch, which empties `rivalDefeated`, raises `epoch` and
-  // re-enters World 10 with The Adapted standing in the pass again. Then,
-  // with all ten fallen in that later epoch, the cliff's panel reads the
-  // after-story in place of the ending and still offers the map.
+  // The epoch row of the same menu (data/balance.ts's Epoch, data/epochs.ts).
+  // With one rival still standing the row offers nothing; with all ten
+  // fallen its button begins the next epoch, which starts untouched in World
+  // 1 -- no rival fallen, no other world reached -- while the epoch left
+  // behind keeps its own progress. Bloch's panel then shows one tab per
+  // unlocked epoch, and travelling to a world of the earlier one moves the
+  // save back onto it as it was left, where the cliff's row no longer offers
+  // an epoch already begun. Last, with all ten fallen in the later epoch,
+  // the cliff's panel reads the after-story in place of the ending.
   async function testBeginEpoch() {
     await resetRegistryOnly();
     await jumpToScene('Overworld', { world: 10, regenerate: true });
@@ -1305,23 +1308,39 @@ async function main() {
       await page.screenshot({ path: `${SHOT_DIR}/fail-epoch-${tag}.png` });
       return { pass: false, detail };
     };
+    const epochState = () =>
+      page.evaluate(() => {
+        const r = window.__game.registry;
+        const stash = r.get('epochProgress') || {};
+        return {
+          epoch: r.get('epoch'),
+          unlocked: r.get('epochUnlocked'),
+          defeated: Object.keys(r.get('rivalDefeated') || {}).length,
+          visited: [...(r.get('visitedWorlds') || [])].sort((x, y) => x - y),
+          stash: Object.fromEntries(
+            Object.entries(stash).map(([e, p]) => [e, { defeated: Object.keys(p.rivalDefeated || {}).length, visited: (p.visitedWorlds || []).length }])
+          ),
+        };
+      });
     // Enters World 10 at its cliff with the given rivals fallen in the given
     // epoch, and opens the map menu on its epoch row.
-    const openEpochRow = async (epoch, standing) => {
-      await page.evaluate(
-        ({ epoch, standing }) => {
-          const all = {};
-          for (let w = 1; w <= 10; w++) if (!standing.includes(w)) all[w] = true;
-          window.__game.registry.set('rivalDefeated', all);
-          window.__game.registry.set('epoch', epoch);
-          window.__game.registry.set('visitedWorlds', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-        },
-        { epoch, standing }
-      );
-      await jumpToScene('Overworld', { world: 10, regenerate: true });
-      if (!(await waitOverworldActive(10))) return 'Overworld never active on re-entry';
-      const entry = await resolveOverworldDialogue(15);
-      if (!entry.cleared) return `re-entry sequence never cleared (${entry.reason})`;
+    const openEpochRow = async (epoch, standing, seed = true) => {
+      if (seed) {
+        await page.evaluate(
+          ({ epoch, standing }) => {
+            const all = {};
+            for (let w = 1; w <= 10; w++) if (!standing.includes(w)) all[w] = true;
+            window.__game.registry.set('rivalDefeated', all);
+            window.__game.registry.set('epoch', epoch);
+            window.__game.registry.set('visitedWorlds', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+          },
+          { epoch, standing }
+        );
+        await jumpToScene('Overworld', { world: 10, regenerate: true });
+        if (!(await waitOverworldActive(10))) return 'Overworld never active on re-entry';
+        const entry = await resolveOverworldDialogue(15);
+        if (!entry.cleared) return `re-entry sequence never cleared (${entry.reason})`;
+      }
       await standAtPassMouth();
       await pressAtPass();
       const study = await clickText(['Study the map']);
@@ -1343,22 +1362,72 @@ async function main() {
     const begin = await clickText(['Begin Epoch 2']);
     if (!begin.clicked) return fail('begin', `no 'Begin Epoch 2' with all ten fallen. available=${JSON.stringify(begin.available)}`);
     await sleep(900);
-    if (!(await waitOverworldActive(10))) return fail('reenter', 'world 10 did not come back after beginning Epoch 2');
+    if (!(await waitOverworldActive(1))) return fail('reenter', 'World 1 did not open after beginning Epoch 2');
     const reentry = await resolveOverworldDialogue(15);
-    if (!reentry.cleared) return fail('reenter-dialogue', `world 10 re-entry got stuck (${reentry.reason})`);
-    const begun = await page.evaluate(() => {
-      const s = window.__game.scene.getScene('Overworld');
-      s['updateGatePrompt']();
-      return {
-        epoch: window.__game.registry.get('epoch'),
-        defeated: Object.keys(window.__game.registry.get('rivalDefeated') || {}).length,
-        boss: s['bossSprites'].length,
-        prompt: s['gatePrompt'].visible ? s['gatePrompt'].text : null,
-      };
-    });
-    if (begun.epoch !== 2 || begun.defeated !== 0 || begun.boss !== 1 || !begun.prompt || !begun.prompt.includes('challenge')) {
+    if (!reentry.cleared) return fail('reenter-dialogue', `World 1 entry got stuck (${reentry.reason})`);
+    const begun = await epochState();
+    if (
+      begun.epoch !== 2 ||
+      begun.unlocked !== 2 ||
+      begun.defeated !== 0 ||
+      JSON.stringify(begun.visited) !== '[1]' ||
+      !begun.stash[1] ||
+      begun.stash[1].defeated !== 10 ||
+      begun.stash[1].visited !== 10
+    ) {
       return fail('begun-state', `after beginning Epoch 2: ${JSON.stringify(begun)}`);
     }
+
+    // Bloch, from World 2 of the new epoch: a tab per unlocked epoch, and a
+    // world of Epoch 1 as a destination.
+    await page.evaluate(() => window.__game.registry.set('qumatessence', 1000));
+    await jumpToScene('Overworld', { world: 2, regenerate: true });
+    if (!(await waitOverworldActive(2))) return fail('bloch-world', 'World 2 never active');
+    const w2 = await resolveOverworldDialogue(15);
+    if (!w2.cleared) return fail('bloch-entry', `World 2 entry got stuck (${w2.reason})`);
+    await page.evaluate(() => {
+      const s = window.__game.scene.getScene('Overworld');
+      const mid = s['midTile'];
+      s['playerTile'] = { x: mid.x, y: mid.y };
+      s['maybeReachMiddle'](mid.x, mid.y);
+    });
+    await sleep(350);
+    for (let i = 0; i < 3; i++) {
+      const tip = await clickText(['Got it']);
+      if (!tip.clicked) break;
+      await sleep(350);
+    }
+    const hidden = await clickText(['The Devour']);
+    if (hidden.clicked) return fail('bloch-fresh', 'Epoch 2 listed World 10 as reached before it was walked to');
+    const tab = await clickText(['1']);
+    if (tab.clicked !== '1') return fail('bloch-tab', `Bloch's panel offered no Epoch 1 tab. available=${JSON.stringify(tab.available || tab.clicked)}`);
+    await sleep(450);
+    // The tabs take a row from the table, so World 10 can be two pages on.
+    const MIRROR_ROW = 'The Devour';
+    let mirror = await clickText([MIRROR_ROW]);
+    for (let flips = 0; !mirror.clicked && flips < 4; flips++) {
+      await clickText(['Next ->']);
+      await sleep(350);
+      mirror = await clickText([MIRROR_ROW]);
+    }
+    if (!mirror.clicked) return fail('bloch-row', `Epoch 1's table did not list World 10. available=${JSON.stringify(mirror.available)}`);
+    await sleep(250);
+    const travel = await clickText(['Travel to']);
+    if (!travel.clicked) return fail('bloch-travel', `no Travel button for World 10 of Epoch 1. available=${JSON.stringify(travel.available)}`);
+    await sleep(900);
+    if (!(await waitOverworldActive(10))) return fail('bloch-arrive', 'World 10 did not open after travelling to Epoch 1');
+    const arrived = await resolveOverworldDialogue(15);
+    if (!arrived.cleared) return fail('bloch-arrive-dialogue', `World 10 entry got stuck (${arrived.reason})`);
+    const back = await epochState();
+    if (back.epoch !== 1 || back.unlocked !== 2 || back.defeated !== 10 || back.visited.length !== 10 || !back.stash[2] || back.stash[2].defeated !== 0 || back.stash[2].visited !== 2) {
+      return fail('back-state', `after travelling back to Epoch 1: ${JSON.stringify(back)}`);
+    }
+    const again = await openEpochRow(1, [], false);
+    if (again) return fail('again', again);
+    const rebegin = await clickText(['Begin Epoch']);
+    if (rebegin.clicked) return fail('rebegin', 'the cliff offered to begin an epoch that is already begun');
+    await clickText(['Step back']);
+    await sleep(350);
 
     // All ten fallen again, in Epoch 2: the cliff reads the after-story.
     const cleared = await openEpochRow(2, []);
@@ -1375,7 +1444,7 @@ async function main() {
     if (!bye.clicked || (await readOverworldDialogueActive())) return fail('farewell', 'the after-story panel did not close on Farewell');
     return {
       pass: true,
-      detail: `no epoch offered with World 4's rival standing; all ten fallen -> Begin Epoch 2 -> epoch=2, rivalDefeated empty, The Adapted standing ("${begun.prompt}"); cleared Epoch 2 reads "${title}"`,
+      detail: `no epoch offered with World 4's rival standing; Begin Epoch 2 -> World 1, epoch=2, no rival fallen, visited=[1], Epoch 1 kept (10 fallen); Bloch's Epoch 1 tab -> World 10 -> epoch=1 as left, Epoch 2 kept; cliff offers no re-begin; cleared Epoch 2 reads "${title}"`,
     };
   }
 
@@ -1889,7 +1958,7 @@ async function main() {
   log('=== Test 4b2: the map below the cliff -- finale -> map menu -> reset a rival, land tap, resetting The Adapted ===');
   await runTest('overlook map: reset rivals', () => testOverlookReset());
 
-  log('=== Test 4b3: the epoch row -- gated on all ten rivals, Begin Epoch 2, the after-story at a cleared epoch ===');
+  log('=== Test 4b3: epochs -- gated on all ten rivals, Begin Epoch 2 from World 1, Bloch back to Epoch 1, the after-story ===');
   await runTest('overlook map: begin the next epoch', () => testBeginEpoch());
 
   log('=== Test 4c: rival gate round-trip -- actually WON battle (world 3, boosted defense) ===');

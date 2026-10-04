@@ -164,8 +164,9 @@ export function superpositionEnemyStats(difficultyMultiplier = 1): Stats {
 // training epoch is one full pass over a training set. Epoch 1 is the game
 // as every other constant in this file is written; the cliff's map
 // (scenes/panels/overlook.ts) begins the next one once all ten rivals have
-// fallen, which stands every one of them back up. Stored in the save and the
-// registry as `epoch`.
+// fallen. Each epoch keeps its own progress and the save is on one at a
+// time, the registry's `epoch` (data/epochs.ts holds that state; this file
+// holds the numbers).
 export type Epoch = 1 | 2 | 3;
 export const MAX_EPOCH: Epoch = 3;
 export const DEFAULT_EPOCH: Epoch = 1;
@@ -186,7 +187,11 @@ export function clampEpoch(value: unknown): Epoch {
 // deadliest world of the epoch. Scaling the whole curve keeps the ladder --
 // an epoch's early worlds stay the gentle ones, so a player who has just
 // begun it can always earn there -- and puts its World 10 well past where the
-// previous epoch ended (`npm run balance-sim`-verified, like the tiers).
+// previous epoch ended. The values are `npm run balance-sim`-verified, like
+// the tiers: at M.Sc. a build that ends Epoch 1 near 5 in each stat clears
+// Epoch 2 at about 13 and Epoch 3 at about 38, well short of MAX_STAT, and
+// at Ph.D. the last world's opponents sit at 53, where a player can still
+// reach the Momentum that keeps them to one swing a round.
 const EPOCH_STAT_MULTIPLIERS: readonly number[] = [1, 4, 8];
 export function epochStatMultiplier(epoch: Epoch): number {
   return EPOCH_STAT_MULTIPLIERS[epoch - 1];
@@ -208,7 +213,9 @@ export function epochHpMultiplier(epoch: Epoch): number {
 // the total to reach a stat grows as its square; stakes that stayed at Epoch
 // 1's would turn the stats a later epoch asks for into hundreds of fights.
 // These grow more slowly than the square of the stat multiplier, so each
-// epoch still asks for more fights than the one before it.
+// epoch still asks for more fights than the one before it: in balance-sim's
+// post-game pass the M.Sc. build takes about 20 ordinary wins beyond the
+// rivals themselves to clear Epoch 2 and about 80 to clear Epoch 3.
 const EPOCH_STAKE_MULTIPLIERS: readonly number[] = [1, 3, 6];
 export function epochStakeMultiplier(epoch: Epoch): number {
   return EPOCH_STAKE_MULTIPLIERS[epoch - 1];

@@ -1621,10 +1621,11 @@ function simulateBuild(build) {
 // - There is no grind-patience cap. The question here is not whether a build
 //   would stall but how much leveling an epoch asks for, so the search runs
 //   until the rival is beatable (POST_GAME_WIN_CEILING guards a runaway).
-// - Income is farmed where it pays best. Every world stays reachable through
-//   Bloch after its pass shuts again, so a build farms the best-paying world
-//   of the current epoch whose wilds it reliably beats, not only the worlds
-//   behind it.
+// - Income is farmed where it pays best among the worlds the build can
+//   stand in: the current epoch's worlds up to the one it has reached (a new
+//   epoch is walked in order from World 1, data/epochs.ts), and every world
+//   of an earlier epoch, which Bloch folds it back to. It takes the
+//   best-paying of those whose wilds it reliably beats.
 // - Spending is one post-game policy rather than the build's own spend():
 //   the kit is already bought, so what is left to buy is stat points, spread
 //   evenly, cheapest first, and -- for the two builds that use Feynman at
@@ -1655,16 +1656,25 @@ function nextPostGamePurchase(build, state) {
   return { cost: statUpgradeCost(state.stats[stat], stat), apply: (st) => { st.stats[stat] += 1; } };
 }
 
-// The best-paying world of the current epoch whose ordinary wilds this
-// state beats with a full round to spare, or failing that at all.
-function bestFarmWorld(state) {
+// The best-paying place this state can farm from `world` of `epoch`: that
+// epoch's worlds up to `world`, or any world of an earlier epoch. Prefers a
+// fight won with a full round to spare, and falls back to any it wins.
+function bestFarm(state, epoch, world) {
+  const standing = activeEpoch;
+  let best = null;
   let fallback = null;
-  for (let w = 10; w >= 1; w--) {
-    const fight = evaluateWildFight(frozenHitDamage, state, w);
-    if (fight.beatable && fight.margin >= 1.5) return w;
-    if (fight.beatable && fallback === null) fallback = w;
+  for (let e = epoch; e >= 1; e--) {
+    activeEpoch = e;
+    for (let w = e === epoch ? world : 10; w >= 1; w--) {
+      const fight = evaluateWildFight(frozenHitDamage, state, w);
+      if (!fight.beatable) continue;
+      const option = { epoch: e, world: w, stake: battleStakeForWorld(w, e) };
+      if (fight.margin >= 1.5 && (!best || option.stake > best.stake)) best = option;
+      if (!fallback || option.stake > fallback.stake) fallback = option;
+    }
   }
-  return fallback;
+  activeEpoch = standing;
+  return best ?? fallback;
 }
 
 function simulatePostGame(build, state) {
@@ -1685,12 +1695,12 @@ function simulatePostGame(build, state) {
           purchase.apply(state);
           continue;
         }
-        const farmWorld = bestFarmWorld(state);
-        if (farmWorld === null || wins >= POST_GAME_WIN_CEILING) { stuck = true; break; }
-        const income = battleStakeForWorld(farmWorld, epoch);
-        state.qumatessence += income;
-        state.earnedTotal += income;
-        farmed.set(farmWorld, (farmed.get(farmWorld) ?? 0) + 1);
+        const farm = bestFarm(state, epoch, world);
+        if (farm === null || wins >= POST_GAME_WIN_CEILING) { stuck = true; break; }
+        state.qumatessence += farm.stake;
+        state.earnedTotal += farm.stake;
+        const where = `E${farm.epoch}W${farm.world}`;
+        farmed.set(where, (farmed.get(where) ?? 0) + 1);
         wins += 1;
       }
       const rival = evaluateRivalFight(frozenHitDamage, state, world);
@@ -1820,7 +1830,7 @@ for (const { build, rows, state } of allResults) {
         r.world,
         fmt(r.enemy),
         r.stuck ? `${r.wins}+ (STUCK)` : r.wins,
-        [...r.farmed].map(([w, n]) => `W${w}x${n}`).join(' ') || '-',
+        [...r.farmed].map(([where, n]) => `${where}x${n}`).join(' ') || '-',
         `${r.stats.quantumness}/${r.stats.velocity}/${r.stats.correlation}`,
         r.form,
         `${fmt(r.wild.roundsToKill)}/${fmt(r.wild.roundsToDie)}`,

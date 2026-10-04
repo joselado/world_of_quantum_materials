@@ -1021,10 +1021,13 @@ calls it back has to earn the view again.
 **And the whole record can be run again: an epoch.** The same panel carries one
 row above the ten worlds, the epoch. In the vocabulary this world teaches, an
 epoch is one full pass over the training set, and here the training set is the
-ten worlds: once every rival has fallen the player can begin the next one, and
-all ten stand again at once, stronger, with no way back. The name obeys the
-naming law, because it promises exactly what happens: every world, again, in
-order. What a later pass changes is what a second pass over the data changes in
+ten worlds: once every rival has fallen the player can begin the next one, in
+which all ten stand again, stronger, and the road starts over at the Mean
+Fields. The name obeys the naming law, because it promises exactly what
+happens: every world, again, in order. An epoch already run is not erased by
+the next: it stays as it was left, and Bloch, whose own physics is a state
+spread over every cell at once, folds the player between the passes as he
+does between the worlds. What a later pass changes is what a second pass over the data changes in
 any learner. The golems throw the player's own answer-gated technique, the
 Analytic moves, landing them at full strength half the time in the second epoch
 and every time in the third, and in the third the environment that measured the

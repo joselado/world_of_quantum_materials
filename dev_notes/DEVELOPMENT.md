@@ -171,7 +171,8 @@ point, then the total per epoch. This is what the epoch tables in `balance.ts`
 are tuned against. That pass makes its own assumptions, stated above
 `simulatePostGame`: no grind-patience cap (it measures how much leveling an
 epoch asks for, not whether a build would stall), farming in the best-paying
-world of the epoch the build reliably wins in, stat points bought evenly, a
+world the build can stand in and reliably wins in (the new epoch's worlds up
+to the one it has reached, or any world of an earlier epoch), stat points bought evenly, a
 fight read with turn order (an opponent with more Momentum swings first), and
 an Ultimate counted in casts rather than as an averaged multiplier, since past
 Epoch 1 one landed cast is many times the bar it hits. A last line per build

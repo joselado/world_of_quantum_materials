@@ -88,6 +88,7 @@ import {
   DEFAULT_EPOCH,
 } from '../data/balance';
 import type { Epoch } from '../data/balance';
+import { everVisitedWorlds } from '../data/epochs';
 import type { KondoCloud, ScreeningChannel } from '../data/materials';
 import { DEFAULT_DIFFICULTY_TIER, DEFAULT_TOUCH_CONTROLS, touchControlsActive, storyLength, storyScreensEnabled } from '../data/settings';
 import { FINALE_STAGES, finaleStageFor, finaleVictoryLineFor, finaleDefeatLineFor } from '../data/story';
@@ -1303,7 +1304,9 @@ export class BattleScene extends Phaser.Scene {
   // ends in the lock being released, same invariant playerAttack/resolveHit
   // already rely on.
   private showAnalyticQuestion(move: Move, onAnswered: (bonusMultiplier: number) => void) {
-    const question = getAnalyticQuestion(this.game.registry.get('visitedWorlds') as number[]);
+    // Every world reached in any epoch: a new epoch sends the player back to
+    // World 1, and a topic once met stays askable.
+    const question = getAnalyticQuestion(everVisitedWorlds(this.game.registry));
     this.renderQuestionPanel({
       title: moveDisplayName(this.game.registry, move.id),
       titleColor: GOLD_ACCENT_HEX,
