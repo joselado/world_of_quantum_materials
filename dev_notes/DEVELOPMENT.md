@@ -177,7 +177,10 @@ fight read with turn order (an opponent with more Momentum swings first), and
 an Ultimate counted in casts rather than as an averaged multiplier, since past
 Epoch 1 one landed cast is many times the bar it hits. A last line per build
 reports what The Quantum Adapted's Ultimate does to it at Epoch 3 against its
-bar, outside the expected-value table, which would average a one-shot away.
+bar, outside the expected-value table, which would average a one-shot away,
+and the other way round: the stage's own bar against the largest single
+Ultimate the build could open with, and how many swings it gets before the
+stage's first slot.
 
 ## Content lint
 

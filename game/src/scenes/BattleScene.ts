@@ -2913,8 +2913,10 @@ export class BattleScene extends Phaser.Scene {
   // channel, since compatibleMoves reads the form alone -- a doped-in class
   // stays the player's own edge over it, and the Model can never throw it
   // back. Phonon Beam is always unlocked and always hostable, so the pool is
-  // never empty. Stage 3, The Quantum Adapted, throws every basic move and
-  // answers as a fresh sample of the environment each round (rollQuantumForm).
+  // never empty. Stage 3, The Quantum Adapted, holds every basic move (at the
+  // last epoch only as the quasiparticles its Ultimates carry, see
+  // opponentAction) and answers as a fresh sample of the environment each
+  // round (rollQuantumForm).
   // Both bars refill -- the player's to full as well; the screen between
   // stages is the breath, and a lost stage restarts the whole finale from the
   // pass -- every cloud and status clears, the round is laid out afresh and
@@ -3206,8 +3208,9 @@ export class BattleScene extends Phaser.Scene {
   // the moves in that same pool, rolled per cast, so a golem's Lance is its
   // own world's excitation, World 1's phonon-only rule still holds, and the
   // last stage's still fails to be hosted. At the last epoch The Quantum
-  // Adapted also casts Skłodowska-Curie's Ultimates, with a fixed chance per
-  // slot (QUANTUM_ULTIMATE_CHANCE), tuned the same way; an opponent's
+  // Adapted casts Skłodowska-Curie's Ultimates instead, on every slot
+  // (QUANTUM_ULTIMATE_CHANCE), tuned the same way, so its pool and the two
+  // Analytic moves are only ever thrown at the epoch before; an opponent's
   // Ultimate never fizzles.
   private opponentAction(): OpponentAction {
     const moves = this.finaleStage ? this.finalePool : this.wild.moves;

@@ -2590,7 +2590,8 @@ The post-game axis (DESIGN.md §2/§3/§6). Everything about it is in four place
 - **`data/balance.ts`** (Phaser-free): the `Epoch` type, `MAX_EPOCH`/`DEFAULT_EPOCH`,
   `clampEpoch`, and one table per effect behind an accessor -- `epochStatMultiplier`,
   `epochHpMultiplier`, `epochStakeMultiplier`, `rivalAnalyticChance`/`rivalsThrowAnalytic`,
-  `QUANTUM_ULTIMATE_EPOCH`/`QUANTUM_ULTIMATE_CHANCE`. `wildHpForWorld`, `rivalHpForWorld`,
+  `QUANTUM_ULTIMATE_EPOCH`/`QUANTUM_ULTIMATE_CHANCE`, and `QUANTUM_STAGE_HP_MULTIPLIER`, which
+  `finaleStageHp` applies to the third stage's bar from that epoch. `wildHpForWorld`, `rivalHpForWorld`,
   `finaleStageHp` and `battleStakeForWorld` each take the epoch as a trailing argument that
   defaults to 1, so a call that leaves it off reads the player's own bar or the Epoch-1 value.
   `ANALYTIC_CORRECT_MULTIPLIER`/`ANALYTIC_WRONG_MULTIPLIER` live here too, shared by the
@@ -2610,7 +2611,7 @@ The post-game axis (DESIGN.md §2/§3/§6). Everything about it is in four place
   stat multiplier and the opponent's bar; `endBattle` for the stake; `opponentAction()` for
   what a rival throws. There, from Epoch 2, a rival fight other than finale stage 2 rolls
   uniformly over its pool plus `ANALYTIC_MOVE_IDS`, and stage 3 at `QUANTUM_ULTIMATE_EPOCH`
-  first rolls `QUANTUM_ULTIMATE_CHANCE` for an Ultimate. A quiz-gated pick goes through the
+  first rolls `QUANTUM_ULTIMATE_CHANCE` for an Ultimate, which at 1 is every slot. A quiz-gated pick goes through the
   local `tuned()`, which takes the class of a random move of that same (already filtered)
   pool as `carrying` and builds the name from `quasiparticleLabel` + `moveShapeName`, prefixed
   "Decohered" when the source move is in `GOLEM_MOVE_IDS`. `resolveHit` reads `carrying` for

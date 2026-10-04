@@ -241,17 +241,20 @@ export function rivalsThrowAnalytic(epoch: Epoch): boolean {
   return epoch >= 2;
 }
 
-// At the last epoch the finale's third stage, The Quantum Adapted, also casts
+// At the last epoch the finale's third stage, The Quantum Adapted, casts
 // Skłodowska-Curie's Ultimates: on each of its slots it throws one with this
 // chance, carried by a quasiparticle the player's lattice cannot host, and an
 // opponent's Ultimate never fizzles. A fixed chance per slot rather than two
-// more entries in its pool, whose size depends on the player's type. One slot
-// in ten, because the hit is lethal: a mismatched power-100 move at that
-// epoch's Energy takes more than the player's whole bar at any Lifetime they
-// can buy, so what answers it is Franklin's Last Scattering or Full
-// Reflection, or ending the stage before it comes.
+// more entries in its pool, whose size depends on the player's type. Every
+// slot, and every one lethal: a mismatched power-100 move at that epoch's
+// Energy takes more than the player's whole bar at any Lifetime they can
+// buy, so the stage is answered by pairing one of Franklin's whole-loadout
+// passives with one of Kondo's clouds -- Last Scattering under a Restoring
+// Cloud, whose heal lifts the holder off the one point the floor leaves so
+// the floor holds again, or Full Reflection under an Anomalous Cloud, which
+// pulls the reflection roll toward certainty.
 export const QUANTUM_ULTIMATE_EPOCH: Epoch = 3;
-export const QUANTUM_ULTIMATE_CHANCE = 0.1;
+export const QUANTUM_ULTIMATE_CHANCE = 1;
 
 // Correlation prices the same as Quantumness/Velocity -- all three share the
 // same "full range stays meaningful, then plateaus" shape (the Energy and
@@ -328,7 +331,8 @@ export function rivalHpForWorld(world: number, epoch: Epoch = DEFAULT_EPOCH): nu
 
 // World 10's finale is three fights in one scene (BattleScene's
 // `finaleStage`, DESIGN.md §6), each on a fresh bar of its own. Stage 1
-// (The Adapted) and stage 3 (The Quantum Adapted) stand at rival scale.
+// (The Adapted) and stage 3 (The Quantum Adapted) stand at rival scale,
+// stage 3 at a multiple of it from QUANTUM_ULTIMATE_EPOCH (below).
 // Stage 2 (The Model of You) is the finished record of the player and
 // carries the player's own max HP -- `wildHpForWorld` for that world, the
 // same read the player's bar comes from -- as it carries their type and
@@ -336,8 +340,24 @@ export function rivalHpForWorld(world: number, epoch: Epoch = DEFAULT_EPOCH): nu
 // rather than a wall, and the breath between the two rival-scale bars.
 // The epoch lengthens the two rival-scale bars and leaves the mirror's alone:
 // the player's bar does not grow with the epoch, so neither does its copy.
+//
+// At QUANTUM_ULTIMATE_EPOCH the third stage's bar is QUANTUM_STAGE_HP_MULTIPLIER
+// times that, because a stage that throws an Ultimate on every slot is meant
+// to be answered by its two pairings (Last Scattering under a Restoring
+// Cloud, Full Reflection under an Anomalous Cloud), not ended on its first
+// slot by a player who moves first. A rival fight carries no pre-battle quiz
+// bonus, so the largest single attack a build near 40-50 in each stat can
+// open with is an Infinite Ultimate that crits at the top of its variance
+// band, from a hybrid form, with Satellite Reflection's echo: about 1800-2000
+// at M.Sc., under the 2184 this gives World 10. Last Scattering under a
+// Restoring Cloud holds the fight indefinitely once the cloud is up, and so
+// does Full Reflection under an Anomalous Cloud leveled to Infinite, so the
+// longer bar costs either pairing rounds, not the win.
+export const QUANTUM_STAGE_HP_MULTIPLIER = 8;
 export function finaleStageHp(stage: 1 | 2 | 3, world: number, epoch: Epoch = DEFAULT_EPOCH): number {
-  return stage === 2 ? wildHpForWorld(world) : rivalHpForWorld(world, epoch);
+  if (stage === 2) return wildHpForWorld(world);
+  const bar = rivalHpForWorld(world, epoch);
+  return stage === 3 && epoch >= QUANTUM_ULTIMATE_EPOCH ? bar * QUANTUM_STAGE_HP_MULTIPLIER : bar;
 }
 
 // Qumatessence price for one of Noether's ordinary attack moves, scaled off

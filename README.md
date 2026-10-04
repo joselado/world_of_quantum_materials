@@ -262,18 +262,24 @@ than one epoch, the one you are in is shown under the world's name:
 | | Epoch 1 | Epoch 2 | Epoch 3 |
 |---|---|---|---|
 | Every opponent's Energy, Momentum and Lifetime | x1 | x4 | x8 |
-| Every opponent's HP | x1 | x2 | x3 |
+| Every opponent's HP | x1 | x2 | x3 (The Quantum Adapted x24) |
 | Qumatessence won or lost per battle | x1 | x3 | x6 |
 | Rivals throw Analytic moves | no | full power half the time | always full power |
-| The Quantum Adapted casts Ultimates | no | no | yes |
+| The Quantum Adapted casts Ultimates | no | no | every turn |
 
 Your own HP does not grow, so a later epoch is won by leveling: expect to
 roughly triple your stats for Epoch 2 and triple them again for Epoch 3, and
 to lean on Analytic moves, Ultimates and Feynman's levels to get through the
-longer HP bars. An Ultimate from The Quantum Adapted takes your whole bar
-whatever your Lifetime; Franklin's Last Scattering and Full Reflection are
-the answers to it. Clearing all ten rivals in Epoch 2, and again in Epoch 3,
-changes what you read at the cliff.
+longer HP bars. In Epoch 3 The Quantum Adapted casts an Ultimate every
+turn, and each one takes your whole bar whatever your Lifetime; its own bar
+is eight times The Adapted's, too long to empty before it casts the first
+one. Answer it
+with one of Franklin's passives and one of Kondo's clouds together: Last
+Scattering with a Restoring Cloud, whose heal lifts you off the one point
+Last Scattering leaves so it can hold again, or Full Reflection with an
+Anomalous Cloud, which tips the reflection toward every hit (all of them
+once the cloud is leveled to Infinite). Clearing all ten rivals in Epoch 2,
+and again in Epoch 3, changes what you read at the cliff.
 
 Each world has its own history, its own way the Decoherence comes for it,
 and its own rival standing in the way, and the ten of them tell one story.

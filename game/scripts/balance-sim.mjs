@@ -569,6 +569,8 @@ const {
   ANALYTIC_WRONG_MULTIPLIER,
   QUANTUM_ULTIMATE_EPOCH,
   QUANTUM_ULTIMATE_CHANCE,
+  finaleStageHp,
+  ANYON_ECHO_FRACTION,
 } = balance;
 
 // --- Seeded RNG (mulberry32) -- deterministic so re-running this script
@@ -1719,7 +1721,13 @@ function simulatePostGame(build, state) {
 // outside the expected-value tables above, which would average a one-shot
 // away: one cast at the middle of its variance band, mismatched (the last
 // stage only throws what the player's type cannot host), against the
-// build's Lifetime and whatever it holds, beside the bar it lands on.
+// build's Lifetime and whatever it holds, beside the bar it lands on. Then
+// the other way round: the largest single attack this build could open the
+// stage with, before anything is thrown -- a mismatched Ultimate at
+// Feynman's top tier that crits at the top of its variance band, from a
+// hybrid form, with Satellite Reflection's echo (a rival fight carries no
+// pre-battle quiz bonus) -- beside the stage's own bar, which is meant to
+// stand it, and how many swings the build gets before the stage's first.
 function quantumUltimateReport(state) {
   activeEpoch = QUANTUM_ULTIMATE_EPOCH;
   const enemyStats = activeEnemyStats(10);
@@ -1734,7 +1742,28 @@ function quantumUltimateReport(state) {
     1,
     playerFractionalGuardMult(state)
   );
-  return { damage, hp: wildHpForWorld(10) };
+  const strike = resolveHitDamage({
+    attackerStats: state.stats,
+    defenderStats: enemyStats,
+    power: MOVES.ultimateMeteor.power * MOVE_LEVEL_MULTIPLIERS[MOVE_LEVEL_MULTIPLIERS.length - 1],
+    mismatch: true,
+    mismatchMultiplier: MISMATCH_MULTIPLIER,
+    attackMult: 1,
+    bonusMultiplier: 1,
+    screenedMult: 1,
+    fractionalGuardMult: 1,
+    hybridAuraAttackMult: HYBRID_AURA_ATTACK_MULT,
+    critRng: () => 0,
+    varianceRng: () => 1,
+  }).damage;
+  const { playerHits, enemyHits } = roundHits(state.stats.velocity, enemyStats.velocity);
+  return {
+    damage,
+    hp: wildHpForWorld(10),
+    strike: strike + Math.round(strike * ANYON_ECHO_FRACTION),
+    opening: state.stats.velocity >= enemyStats.velocity ? playerHits : 0,
+    stageHp: finaleStageHp(3, 10, QUANTUM_ULTIMATE_EPOCH),
+  };
 }
 
 // --- Report -----------------------------------------------------------
@@ -1840,10 +1869,12 @@ for (const { build, rows, state } of allResults) {
   }
   console.log([...totals].map(([epoch, wins]) => `Epoch ${epoch}: ${wins} wild wins (${fmt(wins / 10)} per world)`).join('; '));
   if (post.length === 20 && !post[19].stuck) {
-    const { damage, hp } = quantumUltimateReport(state);
+    const { damage, hp, strike, opening, stageHp } = quantumUltimateReport(state);
     console.log(
       `The Quantum Adapted's Ultimate at Epoch ${QUANTUM_ULTIMATE_EPOCH}: ${damage} damage against a ${hp}-point bar ` +
-        `(${damage >= hp ? 'lethal from full' : 'survivable from full'}), cast on ${Math.round(QUANTUM_ULTIMATE_CHANCE * 100)}% of its slots.`
+        `(${damage >= hp ? 'lethal from full' : 'survivable from full'}), cast on ${Math.round(QUANTUM_ULTIMATE_CHANCE * 100)}% of its slots. ` +
+        `Its own bar is ${stageHp}; this build's largest single Ultimate is ${strike}, ` +
+        (opening > 0 ? `with ${opening} swing${opening > 1 ? 's' : ''} before its first slot.` : 'and the stage moves first.')
     );
   }
 }

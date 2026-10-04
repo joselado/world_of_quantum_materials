@@ -441,7 +441,7 @@ things, each one table in `data/balance.ts`:
 | | Epoch 1 | Epoch 2 | Epoch 3 |
 |---|---|---|---|
 | Every opponent's Energy, Momentum and Lifetime (`epochStatMultiplier`) | x1 | x4 | x8 |
-| Every opponent's max HP (`epochHpMultiplier`) | x1 | x2 | x3 |
+| Every opponent's max HP (`epochHpMultiplier`; The Quantum Adapted's x8 again in Epoch 3, §6) | x1 | x2 | x3 |
 | Every battle stake (`epochStakeMultiplier`) | x1 | x3 | x6 |
 | A rival's Analytic moves land at full power (`rivalAnalyticChance`, §6) | not thrown | 50% | always |
 
@@ -507,7 +507,8 @@ world sets the player's HP to that world's own number
 (`OverworldScene.levelHpToWorld`, run on every entry), so the first fight of a world opens at
 its full bar rather than the previous world's smaller one. A later epoch multiplies an
 opponent's bar, wild and rival alike (`wildHpForWorld(world, epoch)`/`rivalHpForWorld(world,
-epoch)`), and never the player's, nor the Model of You's copy of it (§6).
+epoch)`), and never the player's, nor the Model of You's copy of it (§6). In Epoch 3 The
+Quantum Adapted's bar is multiplied again, by `QUANTUM_STAGE_HP_MULTIPLIER` (§6).
 
 **Crystal database.** Each wild "crystal" is named after a real compound rather than
 an invented species name, and inherits its main type (and therefore its look and its
@@ -2001,7 +2002,8 @@ Two of the ten answer to something other than a fixed row in `WORLD_RIVALS`:
     blind. It stands at three times the golem's size with the arena held pulled back for
     the whole stage, the player's own crystal small beneath it, under a sky of its own -- a
     second star network filling the whole painted sky (STYLE.md's boss section).
-    Its bar is `rivalHpForWorld(10)`; its fall ends the chain with its own closing line
+    Its bar is `rivalHpForWorld(10)`, and `QUANTUM_STAGE_HP_MULTIPLIER` (8) times that in
+    Epoch 3 (below); its fall ends the chain with its own closing line
     (`FINALE_VICTORY_LINE`) in place of a compound's greeting and blurb.
 
 **Later epochs.** From Epoch 2 (§2, §3) every rival fight changes in one way beyond the
@@ -2013,19 +2015,43 @@ otherwise; the log line says which. It is tuned the way the player's is, to the 
 of one of the moves the rival would otherwise have thrown, rolled per cast, and named for it:
 a golem's is its world's own excitation, decohered ("Decohered Helical Lance"), so the mismatch
 rule reads exactly as it does for the golem's own move, and World 1's phonon-only rule (§4)
-still holds. This covers golems 1-9, The Adapted and The Quantum Adapted, whose Analytic moves
-carry a class the player's type cannot host like everything else it throws. The Model of You
+still holds. This covers golems 1-9, The Adapted and, in Epoch 2, The Quantum Adapted, whose
+Analytic moves carry a class the player's type cannot host like everything else it throws. The Model of You
 is the exception: it is the record of the player's basic moves and throws nothing else in any
 epoch, on the player's own bar. Wild crystals never throw them. Neither id sits in any
 material's `moves` list (`data/integrity.ts` forbids it); they are supplied at battle time.
 
-In Epoch 3 The Quantum Adapted also casts Skłodowska-Curie's Ultimates: on each of its slots,
-one time in ten (`QUANTUM_ULTIMATE_CHANCE`), a Meteor or a Nova carried by a quasiparticle the
-player cannot host, and an opponent's Ultimate never fizzles. This is lethal by construction
-and meant to be: a mismatched power-100 move at that epoch's Energy takes several times the
-player's 43-point bar at any Lifetime they can buy. What answers it is Franklin's Last
-Scattering (the hit leaves one point), Full Reflection (three in ten go back), or ending the
-stage before it comes, which is what Energy and the player's own Ultimates are for.
+In Epoch 3 The Quantum Adapted casts Skłodowska-Curie's Ultimates and nothing else: on every
+one of its slots (`QUANTUM_ULTIMATE_CHANCE`), a Meteor or a Nova carried by a quasiparticle the
+player cannot host, and an opponent's Ultimate never fizzles. Every one is lethal by
+construction and meant to be: a mismatched power-100 move at that epoch's Energy takes several
+times the player's 43-point bar at any Lifetime they can buy. The stage is built to be
+answered by pairing one of Franklin's whole-loadout passives with one of Kondo's clouds, each
+supplying what the other lacks:
+
+- **Last Scattering under a Restoring Cloud.** The floor leaves one point after the hit, but
+  only for a holder with more than one, so on its own it buys a single Ultimate. The cloud's
+  heal (2 points at the base level, on the cast and on each of its turns) lifts the holder off
+  that point before the stage's next slot, so the floor holds again. Raised again on the round
+  after it lapses, it covers every slot of the stage in either turn order, as long as the
+  stage is held to one swing a round (§4's Momentum ratio).
+- **Full Reflection under an Anomalous Cloud.** Three hits in ten go back on their own; the
+  cloud pulls the roll toward certainty (53%, 65% and 77% at the base level and Feynman's
+  first two tiers, every hit at Infinite), and a reflected Ultimate lands its whole number on
+  the stage's own bar. Raised again on the round it would lapse, it covers every slot after
+  its first cast, but every cloud clears when the stage stands, so a stage faster than the
+  player throws its first Ultimate at them bare.
+
+The stage cannot be ended on its first slot instead, before anything is thrown, because in
+Epoch 3 its bar is eight times the rival-scale one (`QUANTUM_STAGE_HP_MULTIPLIER`, 2184
+points). A rival fight carries no pre-battle quiz bonus, so the most a player who moves
+first can open with is an Infinite Ultimate that crits at the top of its variance band, from a
+hybrid form, with Satellite Reflection's echo: about 1800 at the end of the M.Sc. climb (`npm
+run balance-sim`'s last line per build), short of the bar through stats near 50. Last
+Scattering under a Restoring Cloud holds the stage indefinitely once the cloud is up, and so
+does Full Reflection under an Infinite Anomalous Cloud, so the long bar costs either pairing
+rounds rather than the win. A build far above that, which out-swings the stage several times
+a round, can still empty it before its first slot: that range is the expansion's (below).
 
 **What the top of the stat ladder is for.** Reaching `MAX_STAT` costs roughly a hundred
 Epoch-1 playthroughs' worth of qumatessence in one stat (`statUpgradeCost` is linear per point,
