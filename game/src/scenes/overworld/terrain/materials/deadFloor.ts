@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { blend } from '../../../../art/colors';
 import { LANE_PX } from '../../../../art/perspective';
+import { fillConvex } from '../../../../art/shapes';
 import { invariantOfTint } from '../../../../world/generators/world3';
 import { TILE_SCALE } from '../../projection';
 import type { AccentTile } from '../types';
@@ -64,7 +65,8 @@ function hash(gx: number, gy: number, salt: number): number {
 // its own lean. Every corner is obtuse -- points and facets are the crystals'
 // own language, since the player and every wild encounter is one, so a rock
 // here never comes to a tip -- but the top stays flat rather than domed, or
-// the field reads as cobbles.
+// the field reads as cobbles. Every turn goes the same way at every lean, so
+// the outline is convex and is filled as one (art/shapes.ts's fillConvex).
 function rockOutline(cx: number, cy: number, u: number, size: number, lean: number): { x: number; y: number }[] {
   const w = size * u;
   const h = size * u * 0.5;
@@ -127,7 +129,7 @@ export function drawDeadFloorAccent(
   // Both faces come off the domain's own tint, so the rubble states which phase
   // it belongs to at the same time as it states that it cannot be walked on.
   g.fillStyle(blend(blend(tint, 0x000000, 0.55), haze, air), detail);
-  for (const rock of rocks) g.fillPoints(rock.map((pt) => ({ x: pt.x + SHADOW_DX * u, y: pt.y + SHADOW_DY * u })), true);
+  for (const rock of rocks) fillConvex(g, rock.map((pt) => ({ x: pt.x + SHADOW_DX * u, y: pt.y + SHADOW_DY * u })));
   g.fillStyle(blend(blend(tint, 0xffffff, 0.34), haze, air), detail);
-  for (const rock of rocks) g.fillPoints(rock, true);
+  for (const rock of rocks) fillConvex(g, rock);
 }

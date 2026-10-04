@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { blend } from '../../../../art/colors';
 import { LANE_PX } from '../../../../art/perspective';
-import { ellipseSteps, fillPolygon } from '../../../../art/shapes';
+import { ellipseSteps, fillOval, fillPolygon } from '../../../../art/shapes';
 import { TILE_SCALE } from '../../projection';
 import type { AccentTile } from '../types';
 
@@ -53,7 +53,7 @@ export function drawLavaAccent(g: Phaser.GameObjects.Graphics, { fill, cx, cy, s
   g.fillStyle(0xfff0a0, 0.6 * pulse);
   const coreW = 0.2 * u * pulse;
   const coreH = 0.11 * u * pulse;
-  g.fillEllipse(cx, cy, coreW, coreH, ellipseSteps(coreW, coreH));
+  fillOval(g, cx, cy, coreW, coreH);
 
   if (hash(gx, gy) < DRUM_RATE) drawColumnDrum(g, cx, cy, s, depth, haze, detail);
 }
@@ -78,7 +78,7 @@ function drawColumnDrum(
   const faceH = 0.3 * u;
   const steps = ellipseSteps(faceW, faceH);
   g.fillStyle(blend(0xd9c19a, haze, air), detail);
-  g.fillEllipse(cx + 0.2 * u, cy, faceW, faceH, steps);
+  fillOval(g, cx + 0.2 * u, cy, faceW, faceH, steps);
   g.lineStyle(1, blend(0x5c4530, haze, air), 0.7 * detail);
   g.strokeEllipse(cx + 0.2 * u, cy, faceW, faceH, steps);
 }

@@ -551,7 +551,8 @@ re-uploads from their canvas like any loaded image. Its one documented
 exception is GPU-bound dynamic textures (`RenderTexture`/`DynamicTexture`),
 which come back empty for their owner to paint again on the renderer's
 `RESTORE_WEBGL` event. The game's are the baked backdrops (`art/bake.ts`: the
-battle arena, the Lab room and its station motifs), and `bakeLayers` repaints
+battle arena, the Lab room and its station motifs, the title screen's sky and
+map), and `bakeLayers` repaints
 each one from its hidden source layers on that event. So the test asserts both
 halves: that the cycle really does recover, and that every dynamic texture
 comes back with the pixels it had before -- a 4x4 grid read out of each one
@@ -851,7 +852,7 @@ Every count is exact and repeats run to run: each world's map is generated
 from a fixed seed (`MAP_SEED` plus the world number) and its measured pass is
 painted at a fixed moment on the scene clock (`MAP_PAINT_AT`), since the
 animated accents branch on the time. Left to chance, a world's count swings
-with whichever map it draws -- World 3's from about 11k to 17.8k ops -- so a
+with whichever map it draws -- World 9's from about 7.3k to 9.1k ops -- so a
 failure could be the luck of the map rather than a change in the code.
 
 `BUDGETS` is set from those counts with headroom, and the headroom has to cover

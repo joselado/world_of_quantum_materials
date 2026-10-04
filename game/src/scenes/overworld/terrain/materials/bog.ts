@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { blend } from '../../../../art/colors';
 import { LANE_PX } from '../../../../art/perspective';
-import { ellipseSteps, fillPolygon, fillDot } from '../../../../art/shapes';
+import { fillOval, fillPolygon, fillDot } from '../../../../art/shapes';
 import { gridH, TILE_SCALE } from '../../projection';
 import type { AccentTile } from '../types';
 
@@ -122,8 +122,8 @@ function drawMoment(g: Phaser.GameObjects.Graphics, tile: AccentTile, u: number,
     // halo is visibly taking away. Two nested washes rather than one: a
     // single flat ellipse has an edge, and light on water does not.
     g.fillStyle(blend(0xdff0e0, haze, air), 0.07 * burn * detail);
-    g.fillEllipse(cx, cy, 0.7 * u, 0.4 * u, ellipseSteps(0.7 * u, 0.4 * u));
-    g.fillEllipse(cx, cy, 0.4 * u, 0.24 * u, ellipseSteps(0.4 * u, 0.24 * u));
+    fillOval(g, cx, cy, 0.7 * u, 0.4 * u);
+    fillOval(g, cx, cy, 0.4 * u, 0.24 * u);
     g.fillStyle(blend(0xeaf8ec, haze, air * 0.5), 0.85 * burn * pulse * detail);
     fillDot(g, cx, cy, 0.085 * u);
   }
@@ -150,7 +150,7 @@ function drawReflection(g: Phaser.GameObjects.Graphics, tile: AccentTile, u: num
     const w = (0.34 - i * 0.07) * u;
     const h = (0.09 - i * 0.015) * u;
     g.fillStyle(tint, (0.3 - i * 0.07) * detail);
-    g.fillEllipse(cx + waver * 0.05 * u, cy + (i - 1) * 0.13 * u, w, h, ellipseSteps(w, h));
+    fillOval(g, cx + waver * 0.05 * u, cy + (i - 1) * 0.13 * u, w, h);
   }
 }
 

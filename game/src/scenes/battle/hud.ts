@@ -24,6 +24,7 @@ import { BOSS_FOOT, makeBossIcon } from '../../art/boss';
 import { makeModelIcon } from '../../art/modelOfYou';
 import { makeQuantumIcon } from '../../art/quantumAdapted';
 import { GROUND_DROP } from '../../art/attackShapes';
+import { ellipseSteps, fillRoundedRect, strokeRoundedRect } from '../../art/shapes';
 import { GOLD_ACCENT, PANEL_BG, REFERENCE_BLUE_GREY } from '../../ui/theme';
 import { fontScale } from '../../ui/text';
 import { CANVAS_W, CANVAS_H } from '../../config/screen';
@@ -300,9 +301,9 @@ export function drawNameplate(scene: Phaser.Scene, opts: NameplateOptions): Name
   const chipHeight = chipH();
   const chip = scene.add.graphics().setDepth(4);
   chip.fillStyle(PANEL_BG, 0.72);
-  chip.fillRoundedRect(opts.centerX - width / 2, y, width, chipHeight, 6);
+  fillRoundedRect(chip, opts.centerX - width / 2, y, width, chipHeight, 6);
   chip.lineStyle(1, opts.accent, 0.55);
-  chip.strokeRoundedRect(opts.centerX - width / 2, y, width, chipHeight, 6);
+  strokeRoundedRect(chip, opts.centerX - width / 2, y, width, chipHeight, 6);
 
   nameText.setPosition(opts.centerX, y + PLATE_PAD_Y);
   const barY = y + PLATE_PAD_Y + nameText.height + PLATE_ROW_GAP;
@@ -386,7 +387,10 @@ export function drawTurnPreview(
     // blue-grey ring for the opponent's -- keeps the row legible on whose
     // turn is whose even when the two sides happen to share the exact same
     // crystal color (same-material matchups, routine from world 9 onward).
+    // At a point count sized to the ring (art/shapes.ts's ellipseSteps)
+    // rather than Phaser's fixed hundred, which every frame strokes in full.
     const ring = scene.add.circle(0, 0, TURN_PREVIEW_RING_RADIUS);
+    ring.setIterations(1 / ellipseSteps(TURN_PREVIEW_RING_RADIUS * 2, TURN_PREVIEW_RING_RADIUS * 2));
     if (isPlayer) ring.setStrokeStyle(3, GOLD_ACCENT, 1);
     else ring.setStrokeStyle(1.5, REFERENCE_BLUE_GREY, 0.45);
     icon.addAt(ring, 0);

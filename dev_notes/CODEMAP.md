@@ -282,11 +282,17 @@ game/src/
                                   separate OVERHEAD_SKIES motifs read from the world stood in
     trees.ts                   The Mean Fields' tree sprite (world 1's `forest` material)
     shapes.ts                  ellipseSteps(w, h) -- how many points to draw an ellipse with,
-                                 bucketed by its on-screen size; fillDot(g, x, y, r) -- a filled
-                                 circle at that same point count, in place of Phaser's fixed
-                                 ~100-segment fillCircle; fillPolygon(g, pts) -- a filled convex
-                                 shape, two triangles for the four-point case rather than a
-                                 triangulated path (see "Ellipse tessellation" below)
+                                 bucketed by its on-screen size; fillOval(g, x, y, w, h) and
+                                 fillDot(g, x, y, r) -- a filled ellipse/circle at that point
+                                 count, in place of Phaser's fixed 32-point fillEllipse and
+                                 ~100-segment fillCircle; fillPolygon(g, pts) -- a filled
+                                 polygon: two triangles for the four-point case, the point
+                                 list's own stored triangulation (TriangulatedPoints.tris,
+                                 from triangulate(pts)) where it carries one; fillConvex(g, pts)
+                                 -- a convex shape as a fan; roundedRectPoints/fillRoundedRect/
+                                 strokeRoundedRect -- a rounded rect at a radius-sized corner
+                                 count (see "Ellipse tessellation" and "Filled shapes and the
+                                 triangulator" below)
     bake.ts                    bakeLayers(scene, key, layers, region) -- flattens painted-once
                                  Graphics into one DynamicTexture (painted at BAKE_SUPERSAMPLE and
                                  averaged down to 1:1, even-sized, on a whole pixel) shown by one
@@ -1238,11 +1244,16 @@ everything else by absence, so only two things in it carry meaning.
   everything from the sky through the last horizon veil (`BACKDROP_TEXTURE`),
   `HubScene.drawRoom` bakes the room's structure (`lab-room`), and `HubScene.addStationRow`
   bakes each station motif's line art in its own slot in the motif's container
-  (`lab-motif-<slot>-<n>`). What moves or is repainted stays live on either side of the image:
-  the battle's drifting haze and HUD-side vignette, the Lab's `roomGlow` and the door motif's
-  portal. `bakeLayers` refuses (in dev) a layer that blends other than normally or sits in a
-  translucent container, since neither flattens into the same picture (STYLE.md's cost rule
-  says why), and `scripts/component-check.mjs`'s context-loss test checks that every baked
+  (`lab-motif-<slot>-<n>`), and `TitleScene.create` bakes the title's sky together with its
+  Qumatuomi map (`title-backdrop`). What moves or is repainted stays live on either side of the
+  image: the battle's drifting haze and HUD-side vignette, the Lab's `roomGlow` and the door
+  motif's portal, the title's star network. `bakeLayers` refuses (in dev) a layer that blends
+  other than normally -- for a container, any child that does -- or that sits in a translucent
+  container, since neither flattens into the same picture (STYLE.md's cost rule says why). A
+  translucent container passed as a layer itself is fine: the bake draws it as the screen does,
+  its alpha reaching each child's fills one at a time, which is how the title's faint map is
+  baked -- over the opaque sky in the same texture, so every fill lands on what it lands on
+  live. `scripts/component-check.mjs`'s context-loss test checks that every baked
   texture comes back with its pixels. A baked texture lives exactly as long as the image showing
   it, so a scene that is not running holds none; each bake site takes a key of its own.
 - **Two renderers.** A machine with a GPU draws the game with WebGL; one without draws it with
@@ -2496,8 +2507,9 @@ on-screen size against a sub-pixel error budget (for an n-gon on a radius-r elli
 gap to the true curve is `r*(1 - cos(PI/n))`). The buckets are discrete deliberately: a count
 that slid continuously with distance would re-tessellate a silhouette every frame the player
 moves, and an edge that re-cuts itself each frame crawls. Every per-tile ellipse in the terrain
-pass goes through it -- `art/trees.ts`'s crowns, `materials/lava.ts`, `materials/consuming.ts`
-and `materials/charged.ts`'s strike pools -- and any new one should. (`materials/ice.ts` draws no
+pass is filled through `fillOval(g, x, y, w, h)`, which takes its point count from it -- `art/
+trees.ts`'s crowns, `materials/lava.ts`, `materials/bog.ts`, `materials/consuming.ts` and
+`materials/charged.ts`'s strike pools -- and any new one should. (`materials/ice.ts` draws no
 ellipses: a vortex's discs and rings are polygons of ground points projected one by one, at a
 fixed `CIRCLE_STEPS`, since a circle on the ground is not an ellipse on screen once it is wide
 enough for the projection to bend it.)
@@ -2506,13 +2518,33 @@ enough for the projection to bend it.)
 through `arc`, which the renderer expands into about a hundred segments whatever the radius is,
 so a two-pixel spark costs what a screen-filling disc costs. Every per-frame circle uses it --
 the bog's moments and counter-lights, the star network, the passive halos, and the attack and
-ultimate effects.
+ultimate effects. Phaser's `fillRoundedRect`/`strokeRoundedRect` build each corner from that
+same hundred-point `arc`, so a live rounded rect goes through `fillRoundedRect(g, ...)`/
+`strokeRoundedRect(g, ...)` instead, a quarter of `ellipseSteps`' count per corner: the battle
+nameplates (`scenes/battle/hud.ts`) and Landau's ladder (`art/landau.ts`). A `circle` shape
+(`Phaser.GameObjects.Arc`) takes a hundred points too unless told otherwise, so a live one
+sets `setIterations(1 / ellipseSteps(d, d))` -- the battle's turn-preview rings. Art that is
+baked (the Lab's station motifs) keeps Phaser's own calls, since it is drawn once.
 
 **Filled shapes and the triangulator.** Phaser runs every filled *path* through earcut on each
-frame the shape renders. `fillPolygon(g, pts)` short-circuits the four-point case -- every
-projected terrain tile, and the great majority of fills in a frame -- into two `fillTriangle`
-calls, which need no triangulation and reach the same pixels. Two further rules follow from the
-same machinery: a path that touches itself sends earcut down a recovery path quadratic in its
+frame the shape renders, so every fill in the paint pass says what it already knows about its
+own triangles. `fillPolygon(g, pts)` short-circuits the four-point case -- every projected
+terrain tile, and the great majority of fills in a frame -- into two `fillTriangle` calls. A
+traced tile outline and each of its contact-shadow strips carry their own triangulation
+(`terrain/paint.ts`'s `projectContour`, which attaches `TriangulatedPoints.tris`): worked out
+once in tile space by `triangulate(pts)` and kept per outline for as long as the plan holds it,
+it stays a triangulation of the projected shape because the ground projection carries straight
+lines to straight lines everywhere in front of the camera. An outline with a point behind the
+camera's plane (where `project` clamps depth to zero) takes the triangulator, and so does a
+shadow strip whose offset edges cross at a tight turn -- `triangulate` returns null for any
+polygon that crosses itself or that its triangles do not cover exactly, since only for a simple
+polygon does every triangulation fill the same pixels. `art/trees.ts`'s crown outline carries
+its triangulation the same way, one per point count. A shape that is convex by construction is
+a fan (`fillConvex`): every `fillOval`/`fillDot`, and `materials/deadFloor.ts`'s rubble, whose
+outline turns the same way at every lean. All of these apply under WebGL only; a Canvas frame
+fills the shape as a path, since the 2D context has no triangulator to save and antialiases a
+shared triangle edge from both sides, which leaves a hairline through any translucent fill
+split in two. Two further rules follow from the same machinery: a path that touches itself sends earcut down a recovery path quadratic in its
 point count, which is why the distant silhouette (`overworld/sky.ts`'s `fillSilhouette`) is
 painted as a strip of quads rather than as one outline whose crest and floor meet wherever a dip
 is swallowed; and a long vertical ramp is drawn as a few gradient-filled bands

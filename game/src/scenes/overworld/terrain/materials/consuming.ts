@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { blend } from '../../../../art/colors';
 import { HORIZON_Y, LANE_PX } from '../../../../art/perspective';
-import { ellipseSteps } from '../../../../art/shapes';
+import { fillOval } from '../../../../art/shapes';
 import { CAMERA_BACK_TILES, DRAW_DISTANCE_TILES, gridH, gridW, projectTile, TILE_SCALE } from '../../projection';
 import { hazeTarget } from '../../sky';
 import type { AccentTile, TerrainPlan, TerrainView } from '../types';
@@ -451,7 +451,7 @@ export function drawGroundNetwork(view: TerrainView) {
       const s = a.scale + (b.scale - a.scale) * t;
       const r = 0.055 * TILE_PX * s;
       fill(g, pulse, 0.85 * fade);
-      g.fillEllipse(x, y, r * 2.4, r * 1.4, ellipseSteps(r * 2.4, r * 1.4));
+      fillOval(g, x, y, r * 2.4, r * 1.4);
     });
   }
 
@@ -512,13 +512,13 @@ function drawNode(
     const haloW = r * 5.2;
     const haloH = r * 2.9;
     fill(g, color, (0.08 + 0.3 * glow + 0.06 * mirror) * fade);
-    g.fillEllipse(x, y, haloW, haloH, ellipseSteps(haloW, haloH));
+    fillOval(g, x, y, haloW, haloH);
   }
   fill(g, color, (0.7 + 0.3 * glow) * fade);
-  g.fillEllipse(x, y, r * 2, r * 1.1, ellipseSteps(r * 2, r * 1.1));
+  fillOval(g, x, y, r * 2, r * 1.1);
   if (glow > 0.25) {
     fill(g, SPARK_LIGHT, (glow - 0.25) * 0.9 * fade);
-    g.fillEllipse(x, y, r * 0.9, r * 0.5, ellipseSteps(r * 0.9, r * 0.5));
+    fillOval(g, x, y, r * 0.9, r * 0.5);
   }
 }
 
@@ -570,7 +570,7 @@ export function drawEventHorizon(view: TerrainView) {
     const px = n.sx + (x - n.sx) * t;
     const py = n.sy + (y + r * 0.2 - n.sy) * t;
     g.fillStyle(blend(player, SPARK_LIGHT, t * 0.6), (0.35 + 0.6 * t) * fade * reveal);
-    g.fillEllipse(px, py, 3 + 2 * t, 2 + 1.4 * t, ellipseSteps(3 + 2 * t, 2 + 1.4 * t));
+    fillOval(g, px, py, 3 + 2 * t, 2 + 1.4 * t);
   }
   drawHorizonDisc(g, hole, player, now);
 }
@@ -591,7 +591,7 @@ function drawHorizonDisc(g: Phaser.GameObjects.Graphics, hole: EventHorizon, pla
     [2.1, 1.35, 0.1],
   ].forEach(([fx, fy, a]) => {
     g.fillStyle(glowC, (a + 0.05 * mirror) * reveal);
-    g.fillEllipse(x, y, r * fx * 2, r * fy * 2, ellipseSteps(r * fx * 2, r * fy * 2));
+    fillOval(g, x, y, r * fx * 2, r * fy * 2);
   });
 
   // The far side of the disc, lensed up over the top of the shadow, and the
@@ -613,7 +613,7 @@ function drawHorizonDisc(g: Phaser.GameObjects.Graphics, hole: EventHorizon, pla
     g.fillCircle(x, y, r * f);
   });
   g.fillStyle(HOLE_RING, (0.12 + 0.08 * mirror) * reveal);
-  g.fillEllipse(x - r * 0.36, y - r * 0.42, r * 0.5, r * 0.26);
+  fillOval(g, x - r * 0.36, y - r * 0.42, r * 0.5, r * 0.26, 32);
 
   // The photon ring, and outside it the ring that is the player's own light
   // bent round the hole -- the reflection, brightening as they close.
@@ -638,7 +638,7 @@ function drawHorizonDisc(g: Phaser.GameObjects.Graphics, hole: EventHorizon, pla
     if (Math.hypot(mx - x, my - y) < r * 1.02) continue;
     const size = (1.2 + 2.2 * phase) * Math.max(0.5, r / 60);
     g.fillStyle(blend(player, SPARK_LIGHT, phase * 0.8), (0.3 + 0.7 * phase) * reveal);
-    g.fillEllipse(mx, my, size * 2, size * 1.3, ellipseSteps(size * 2, size * 1.3));
+    fillOval(g, mx, my, size * 2, size * 1.3);
   }
 }
 

@@ -59,7 +59,9 @@ export interface BakeRegion {
 // For the same reason nothing may fade the image afterwards: Phaser applies a
 // container's alpha to each fill of a Graphics on its own, so where two fills
 // overlap, fading their flattened result is not the same picture. A layer's
-// own alpha is baked in, fill by fill, and is fine.
+// own alpha is baked in, fill by fill, and is fine -- a translucent container
+// passed as a layer included, since the bake draws it the way the screen does,
+// its alpha reaching each child's fills one at a time.
 export function bakeLayers(
   scene: Phaser.Scene,
   key: string,
@@ -69,7 +71,7 @@ export function bakeLayers(
   const renderer = scene.sys.game.renderer;
   const webgl = renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer;
   const drawn = layers.filter((o) => (o as Phaser.GameObjects.Graphics).visible !== false) as Phaser.GameObjects.Graphics[];
-  if (import.meta.env.DEV && drawn.some((l) => l.blendMode !== Phaser.BlendModes.NORMAL)) {
+  if (import.meta.env.DEV && !drawn.every(blendsNormally)) {
     throw new Error(`bake ${key}: a layer with a non-normal blend mode cannot be flattened`);
   }
   const first = drawn[0];
@@ -154,6 +156,17 @@ export function bakeLayers(
     if (textures.exists(key) && textures.get(key) === target) textures.remove(key);
   });
   return image;
+}
+
+// A container carries no blend mode of its own unless one is set on it
+// (Phaser's SKIP_CHECK): each child draws with its own, so what has to blend
+// normally is everything inside it.
+function blendsNormally(o: Phaser.GameObjects.GameObject): boolean {
+  const layer = o as Phaser.GameObjects.Graphics;
+  if (o instanceof Phaser.GameObjects.Container && o.blendMode === Phaser.BlendModes.SKIP_CHECK) {
+    return o.list.every(blendsNormally);
+  }
+  return layer.blendMode === Phaser.BlendModes.NORMAL;
 }
 
 function evenCeil(v: number): number {

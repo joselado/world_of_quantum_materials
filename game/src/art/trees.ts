@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { blend } from './colors';
 import { LANE_PX } from './perspective';
-import { ellipseSteps, fillPolygon } from './shapes';
+import { ellipseSteps, fillOval, fillPolygon, triangulate } from './shapes';
+import type { TriangulatedPoints } from './shapes';
 import { TILE_SCALE } from '../scenes/overworld/projection';
 import type { AccentTile } from '../scenes/overworld/terrain/types';
 
@@ -102,10 +103,12 @@ function unionRadius(cos: number, sin: number): number {
 
 // One outline per point count the size buckets can ask for (art/shapes.ts),
 // so a distant crown is described by as few points as its own size warrants,
-// the same budget every other round shape here is held to.
-const CROWN_OUTLINES = new Map<number, { x: number; y: number }[]>();
+// the same budget every other round shape here is held to. Each carries its
+// own triangulation, which every crown drawn from it shares: a crown is the
+// outline scaled and moved, and that leaves its triangles its triangles.
+const CROWN_OUTLINES = new Map<number, TriangulatedPoints>();
 
-function crownOutline(steps: number): { x: number; y: number }[] {
+function crownOutline(steps: number): TriangulatedPoints {
   let pts = CROWN_OUTLINES.get(steps);
   if (pts) return pts;
   pts = [];
@@ -116,6 +119,7 @@ function crownOutline(steps: number): { x: number; y: number }[] {
     const r = unionRadius(cos, sin);
     pts.push({ x: cos * r, y: sin * r });
   }
+  pts.tris = triangulate(pts) ?? undefined;
   CROWN_OUTLINES.set(steps, pts);
   return pts;
 }
@@ -166,13 +170,14 @@ export function drawTree(g: Phaser.GameObjects.Graphics, tile: AccentTile, style
   // The three lobes as one shape (CROWN_OUTLINES). Sized off the widest lobe,
   // so the point count tracks what the crown actually spans on screen.
   const outline = crownOutline(ellipseSteps(0.55 * size, 0.35 * size));
-  const pts = new Array<{ x: number; y: number }>(outline.length);
+  const pts: TriangulatedPoints = new Array<{ x: number; y: number }>(outline.length);
   for (let i = 0; i < outline.length; i++) {
     pts[i] = { x: x + outline[i].x * size, y: crownY + outline[i].y * size };
   }
+  pts.tris = outline.tris;
   fillPolygon(g, pts);
 }
 
 function ellipse(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number) {
-  g.fillEllipse(x, y, w, h, ellipseSteps(w, h));
+  fillOval(g, x, y, w, h);
 }

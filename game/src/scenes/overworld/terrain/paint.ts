@@ -8,7 +8,8 @@ import { CAMERA_BACK_TILES, DRAW_DISTANCE_TILES, gridH, gridW, laneClipAt, proje
 import { drawDepthHaze, hazeTarget } from '../sky';
 import { groundColor } from './color';
 import { GROUND_MOTIFS_ENABLED, decorateTile } from './decoration';
-import { fillPolygon } from '../../../art/shapes';
+import { fillPolygon, triangulate } from '../../../art/shapes';
+import type { TriangulatedPoints } from '../../../art/shapes';
 import { TERRAIN_ACCENTS } from './materials';
 import { drawStormStrikes } from './materials/charged';
 import { drawEventHorizon, drawGroundNetwork } from './materials/consuming';
@@ -150,9 +151,35 @@ export function drawTerrain(view: TerrainView) {
 // camera position. Each call allocates its own array: Phaser's Graphics is
 // retained-mode, so the points handed to fillPoints are read again at flush
 // time and cannot be reused across draw calls within a frame.
-function projectContour(points: ContourPoint[], camX: number, camY: number): ProjectedPoint[] {
-  const out: ProjectedPoint[] = [];
-  for (const p of points) out.push(projectTile(p.x - camX, camY - p.y));
+//
+// The projected outline carries the outline's own triangulation, worked out
+// once in tile space and kept for as long as the plan holds the outline, so
+// fillPolygon fills it as the triangles it already is (art/shapes.ts). The
+// ground projection carries straight lines to straight lines everywhere in
+// front of the camera, so those triangles are a triangulation of the shape on
+// screen too. Not behind it: a point nearer than the camera's own plane is
+// clamped onto that plane (art/perspective.ts's project), which the triangles
+// do not survive, so an outline reaching there goes to the triangulator, as
+// does a shadow strip whose two offset edges cross at a tight turn, which has
+// no stored triangulation to give (art/shapes.ts's triangulate says why).
+const contourTris = new WeakMap<ContourPoint[], number[] | null>();
+
+function projectContour(points: ContourPoint[], camX: number, camY: number): TriangulatedPoints<ProjectedPoint> {
+  const out: TriangulatedPoints<ProjectedPoint> = [];
+  let clamped = false;
+  for (const p of points) {
+    const depth = camY - p.y;
+    if (depth + CAMERA_BACK_TILES < 0) clamped = true;
+    out.push(projectTile(p.x - camX, depth));
+  }
+  if (!clamped && points.length > 4) {
+    let tris = contourTris.get(points);
+    if (tris === undefined) {
+      tris = triangulate(points);
+      contourTris.set(points, tris);
+    }
+    if (tris) out.tris = tris;
+  }
   return out;
 }
 

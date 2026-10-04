@@ -35,8 +35,8 @@
 //
 // Every map is seeded (MAP_SEED), so a world's count is the same on every run
 // and a failure is a change in the code, never the luck of the map. Left to
-// Math.random a world's count swings with the map it happens to draw -- World 3
-// between about 11k and 17.8k ops -- and a check that fails on the draw of a
+// Math.random a world's count swings with the map it happens to draw -- World 9
+// between about 7.3k and 9.1k ops -- and a check that fails on the draw of a
 // map is a check people learn to rerun rather than read.
 //
 // Updating the budgets: BUDGETS below is a ceiling per world, set from the
@@ -70,8 +70,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // world properties rather than per-tile ones, so a world that gains a motif
 // without a draw-distance falloff blows through these immediately.
 const BUDGETS = {
-  1: { ops: 21000, objects: 500 },
-  2: { ops: 10000, objects: 500 },
+  1: { ops: 16000, objects: 500 },
+  2: { ops: 8000, objects: 500 },
   // World 3 draws more than its siblings by design: its impassable bulk is a
   // rubble field, and it is a rubble field because measured against every
   // other world's surround (local contrast 0.8-2.1) the flat speckle it used
@@ -79,29 +79,32 @@ const BUDGETS = {
   // ground. Giving it a surface costs fills. The piece count thins with
   // distance, so this is not the no-falloff effect this budget exists to
   // catch, and the relative-cost check below confirms it is not an outlier.
-  // It also has the widest spread of any world, 11.1k-17.8k ops across
-  // seeded maps, since how much rubble a frame holds depends on how much of
-  // the map in view is impassable; the ceiling sits above the top of that.
-  3: { ops: 19500, objects: 500 },
-  4: { ops: 13000, objects: 500 },
-  5: { ops: 16000, objects: 500 },
+  // It also has a wide spread, 7.3k-8.9k ops across eight seeded maps, since
+  // how much rubble a frame holds depends on how much of the map in view is
+  // impassable; the ceiling sits above the top of that.
+  3: { ops: 10000, objects: 500 },
+  4: { ops: 11500, objects: 500 },
+  5: { ops: 14000, objects: 500 },
   // World 6's surround is two full-tile washes rather than a scatter of
   // sprites: a boulder field with relief (faces, top, facet, seams) on the
   // rock side and a sea striped by its wave on the other
   // (terrain/materials/coast.ts). Both thin with depth -- the strips drop
   // from four to one as the detail pass fades, and every line goes with it
   // -- so this is not the no-falloff effect the budget exists to catch. It
-  // measures 10.2k-10.6k across seeded maps; the ceiling holds the same
+  // measures 8.9k-9.7k across eight seeded maps; the ceiling holds the same
   // headroom the others do.
-  6: { ops: 14000, objects: 500 },
-  7: { ops: 11000, objects: 500 },
-  8: { ops: 15000, objects: 500 },
-  9: { ops: 15000, objects: 500 },
+  6: { ops: 13000, objects: 500 },
+  7: { ops: 8500, objects: 500 },
+  8: { ops: 12500, objects: 500 },
+  // World 9 has the widest spread of any world, 7.3k-9.1k ops across eight
+  // seeded maps: its lava cores and crusts sit on the impassable ground, so
+  // the count follows how much of the map in view is not road.
+  9: { ops: 11500, objects: 500 },
   // World 10's surround is a network drawn node by node and link by link
   // (terrain/materials/consuming.ts), plus the event horizon behind the pass.
   // It thins with depth and shares line/fill styles across a row, and
-  // measures 13.4k-14.8k across seeded maps.
-  10: { ops: 20000, objects: 500 },
+  // measures 10.0k-10.8k across eight seeded maps.
+  10: { ops: 15000, objects: 500 },
 };
 
 // The seed each world's map is generated from: MAP_SEED + the world number;

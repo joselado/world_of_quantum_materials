@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { clearSave, hasSave, loadSave } from '../data/save';
 import { music } from '../audio/music';
 import { CANVAS_W, CANVAS_H } from '../art/perspective';
+import { bakeLayers } from '../art/bake';
 import { killTweensDeep, makeCrystal } from '../art/crystals';
 import { buildQumatuomiMap } from '../art/qumatuomiMap';
 import { drawStarNetwork } from '../art/stars';
@@ -166,9 +167,9 @@ export class TitleScene extends Phaser.Scene {
 
     music.play('overworld:1');
 
-    const g = this.add.graphics();
-    g.fillGradientStyle(TITLE_SKY, TITLE_SKY, 0x241a44, 0x241a44, 1);
-    g.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    const sky = this.add.graphics();
+    sky.fillGradientStyle(TITLE_SKY, TITLE_SKY, 0x241a44, 0x241a44, 1);
+    sky.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
     // The star network at the top -- the machine already lurking over the
     // title, before the game has said a word about it. update() below
@@ -179,7 +180,18 @@ export class TitleScene extends Phaser.Scene {
     this.starsG.setX((CANVAS_W * (1 - stars.scale)) / 2);
     this.starsG.setAlpha(stars.alpha);
 
-    this.addTitleMap();
+    // The sky and the map never change while this screen is up, and the map
+    // is the most expensive thing the game draws anywhere -- thousands of
+    // region fills and texture marks re-tessellated every frame -- so both
+    // are baked into one texture (art/bake.ts). The map's container is
+    // translucent, which fades each of its fills separately; baked over the
+    // opaque sky in the same texture, every fill is composited over exactly
+    // what it is composited over live, so the picture is the same one. The
+    // bake takes the sky's slot, under the star network, which in every
+    // TITLE_LAYOUT stays in the band above the map's top coast, so the two
+    // never overlap and their order between them shows nowhere.
+    const map = this.addTitleMap();
+    bakeLayers(this, 'title-backdrop', [sky, map], { x: 0, y: 0, w: CANVAS_W, h: CANVAS_H });
     this.redrawContent(registry);
 
     // Once, so a held or repeated SPACE can't queue the Hub twice; a press
@@ -202,7 +214,7 @@ export class TitleScene extends Phaser.Scene {
   // worlds regardless of save state, so no mode switch ever needs to rebuild
   // it) and kept beneath root in the display list, so the content stack
   // always draws over it where the two meet.
-  private addTitleMap() {
+  private addTitleMap(): Phaser.GameObjects.Container {
     const cfg = TITLE_MAP[TITLE_LAYOUT];
     const build = buildQumatuomiMap(this, {
       width: cfg.width,
@@ -216,6 +228,7 @@ export class TitleScene extends Phaser.Scene {
       build.container.setPosition(CANVAS_W / 2, CANVAS_H - build.height / 2 - 6);
     }
     this.mapReserve = cfg.reserveFrac > 0 ? Math.round(build.height * cfg.reserveFrac) + 12 : 0;
+    return build.container;
   }
 
   // Loads one mode's save slot into the registry wholesale -- every field,

@@ -92,13 +92,18 @@ What this means in practice:
   effect recomputed every frame is what ends up being cut.
 - **Know what a Phaser draw call costs before reaching for it.** Phaser
   re-tessellates a Graphics object's whole command list on every frame it
-  renders, and three of its convenience calls carry a price their signature
+  renders, and four of its convenience calls carry a price their signature
   does not show:
   - **A filled path runs through a general polygon triangulator**, so a shape
     whose triangles are already known should say so. `art/shapes.ts`'s
     `fillPolygon` fills a four-point convex shape (every projected tile) as two
-    triangles instead, and `drawSilhouette`-style ribbons are drawn as a strip
-    of quads.
+    triangles, and a shape that is only ever moved, scaled or projected after
+    it is built (a traced tile outline, a tree crown) as the triangulation it
+    carries from `triangulate`; `fillConvex` fans a convex one; and
+    `drawSilhouette`-style ribbons are drawn as a strip of quads. These hold
+    under WebGL; under Canvas the shape stays a path, since splitting a
+    translucent fill into triangles there leaves a hairline along every shared
+    edge.
   - **A path that touches itself is far worse than one that does not** -- the
     triangulator drops to a recovery path quadratic in the point count. An
     outline whose two sides can meet (a crest line clamped against its own
@@ -106,8 +111,14 @@ What this means in practice:
   - **`fillCircle` tessellates to about a hundred segments whatever its
     radius.** Use `art/shapes.ts`'s `fillDot`, which sizes the count off the
     radius the way `ellipseSteps` does for every other round shape.
-    `fillEllipse`/`strokeEllipse` without a `smoothness` argument take 32
-    segments at any size, so pass `ellipseSteps` there too.
+    `fillEllipse` takes 32 segments at any size, so a filled ellipse is
+    `fillOval`, and `strokeEllipse` takes `ellipseSteps` as its `smoothness`.
+  - **`fillRoundedRect`/`strokeRoundedRect` build each corner from that same
+    hundred-point arc**, and a `circle` shape takes a hundred points too. A
+    live rounded rect goes through `art/shapes.ts`'s `fillRoundedRect`/
+    `strokeRoundedRect`, and a live circle shape sets its iterations from
+    `ellipseSteps`. Two nameplates drawn at Phaser's count cost a battle as
+    much render time as everything else on its screen together.
 - **A Graphics drawn once is still paid for on every frame.** The
   re-tessellation above does not care whether the command list ever changes,
   and on a machine without a GPU every stacked translucent layer is also
@@ -115,10 +126,14 @@ What this means in practice:
   baked (`art/bake.ts`'s `bakeLayers`): flattened into one texture by the same
   renderer, supersampled to stand in for the canvas's antialiasing, and shown
   as a single image in the layers' own place. The battle backdrop, the Lab
-  room and the Lab's station motifs are baked. A bake is only the same picture
-  under two conditions, both of which a candidate has to meet: every layer
-  blends normally, and nothing fades the result afterwards (a translucent
-  parent container fades each fill separately, a flattened image as one). A
+  room, the Lab's station motifs and the title screen's sky and map are baked.
+  A bake is only the same picture under two conditions, both of which a
+  candidate has to meet: every layer blends normally, and nothing fades the
+  result afterwards (a translucent parent container fades each fill
+  separately, a flattened image as one). A translucent layer is not a fade
+  afterwards: baked over the opaque art beneath it in the same texture, each
+  of its fills lands on what it lands on live, which is how the title's faint
+  map is baked together with its sky. A
   camera zooming out on a bake resamples it, which softens its finest lines
   slightly -- the battle's Ultimate pull-back to 0.72 costs about 8% of the
   fine detail and holds steady through the zoom, which was judged worth the
@@ -201,7 +216,10 @@ under one figure reads as floating even when neither is wrong on its own.
     the showcase it is a "world full of places" branding image, not a reflection of the
     player's own save. Held at that alpha because it sits *under* the title, buttons and mode
     picker rather than beside them: it is there to be recognised on a second look, and text
-    legibility wins wherever the two compete.
+    legibility wins wherever the two compete. It is baked into one texture together with the
+    gradient beneath it (the cost rule's "painted once" bullet); the star network stays live
+    above that image, and keeps to the band above the map's top coast, so the two never
+    overlap.
 - Title text reads "WORLD OF QUANTUM MATERIALS" (`30px` bold, white), the screen's visual
   anchor -- big enough and high enough in the stack that the showcase and mode picker below
   read as framing it rather than the other way around. Its font size is capped at the

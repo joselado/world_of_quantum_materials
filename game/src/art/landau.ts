@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { shade } from './colors';
+import { fillRoundedRect } from './shapes';
 
 // Landau's avatar -- world 4's guardian (Landau quantization: a perpendicular
 // magnetic field turns a two-dimensional electron gas into a shifted harmonic
@@ -72,7 +73,7 @@ export function makeLandauAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObj
   const ladder = scene.add.graphics();
   for (let n = 0; n < rungCount; n++) {
     ladder.fillStyle(shade(rungColor, -n * 9), 1);
-    ladder.fillRoundedRect(-halfW, rungY(n) - rungH / 2, halfW * 2, rungH, rungH / 2);
+    fillRoundedRect(ladder, -halfW, rungY(n) - rungH / 2, halfW * 2, rungH, rungH / 2);
   }
   sway.add(ladder);
 
