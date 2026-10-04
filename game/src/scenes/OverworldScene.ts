@@ -49,7 +49,7 @@ import {
   allCrystals,
   isHybridMaterial,
 } from '../data/materials';
-import { wildHpForWorld, MAX_STAT } from '../data/balance';
+import { wildHpForWorld, MAX_STAT, DEFAULT_EPOCH } from '../data/balance';
 import { PASSIVES, PASSIVE_OWNERS, PASSIVE_MAX_SLOTS, passiveSlotsUsed } from '../data/passives';
 import type { ActivePassivesByOwner, PassiveSlotsByOwner } from '../data/passives';
 import { pickTokenValue, tokenColorForValue } from '../data/tokens';
@@ -1227,6 +1227,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       state.set('unlockedMoves', [...PLAYER_MATERIAL.moves]);
       state.set('playerHp', wildHpForWorld(this.world));
       state.set('rivalDefeated', {});
+      state.set('epoch', DEFAULT_EPOCH);
       state.set('discoveredMaterials', []);
       state.set('playerStats', { ...DEFAULT_STATS });
       state.set('visitedWorlds', []);

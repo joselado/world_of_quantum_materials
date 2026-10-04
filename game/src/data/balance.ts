@@ -28,7 +28,7 @@ export const MAX_STAT = 100;
 export const DEFAULT_STATS: Stats = { quantumness: BASE_STAT, velocity: BASE_STAT, correlation: BASE_STAT };
 
 // World 1's phonon-only opponent rule (DESIGN.md §4, BattleScene's
-// `opponentMoveId`): the restriction holds only while *every* one of the
+// `opponentAction`): the restriction holds only while *every* one of the
 // player's three stats is still strictly below this. It is a training-wheel
 // for a player who has not yet met the quasiparticle-mismatch rule, so it
 // comes off as soon as they have started building at all -- a few points
@@ -149,6 +149,80 @@ export function superpositionEnemyStats(difficultyMultiplier = 1): Stats {
   const stat = SUPERPOSITION_BASE_ENEMY_STAT * difficultyMultiplier;
   return { quantumness: stat, velocity: stat, correlation: stat };
 }
+
+// --- Epochs (DESIGN.md §2/§3, the map below World 10's cliff) ---------------
+
+// The post-game's own axis, independent of the difficulty tier above and
+// stacked on it: an epoch is one full pass over the ten worlds, the way a
+// training epoch is one full pass over a training set. Epoch 1 is the game
+// as every other constant in this file is written; the cliff's map
+// (scenes/panels/overlook.ts) begins the next one once all ten rivals have
+// fallen, which stands every one of them back up. Stored in the save and the
+// registry as `epoch`.
+export type Epoch = 1 | 2 | 3;
+export const MAX_EPOCH: Epoch = 3;
+export const DEFAULT_EPOCH: Epoch = 1;
+
+// Anything read back from a save or the registry, pinned to a real epoch.
+export function clampEpoch(value: unknown): Epoch {
+  const n = typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : DEFAULT_EPOCH;
+  return Math.min(MAX_EPOCH, Math.max(DEFAULT_EPOCH, n)) as Epoch;
+}
+
+// What an epoch multiplies every opponent's Energy, Momentum and Lifetime
+// by, wild and rival alike, on top of the difficulty tier's own multiplier
+// (the two are multiplied together and handed to enemyStatsForWorld /
+// superpositionEnemyStats as one number). A multiplier rather than a flat
+// bonus because the player's max HP is the world's own (wildHpForWorld, 23 in
+// World 1 against 43 in World 10): a flat bonus would flatten the per-world
+// climb and leave World 1, where the player's bar is shortest, as the
+// deadliest world of the epoch. Scaling the whole curve keeps the ladder --
+// an epoch's early worlds stay the gentle ones, so a player who has just
+// begun it can always earn there -- and puts its World 10 well past where the
+// previous epoch ended (`npm run balance-sim`-verified, like the tiers).
+const EPOCH_STAT_MULTIPLIERS: readonly number[] = [1, 3, 7];
+export function epochStatMultiplier(epoch: Epoch): number {
+  return EPOCH_STAT_MULTIPLIERS[epoch - 1];
+}
+
+// What an epoch multiplies every battle stake by (battleStakeForWorld
+// below). A stat point's price climbs with the stat (statUpgradeCost), so
+// the total to reach a stat grows as its square; stakes that stayed at Epoch
+// 1's would turn the stats a later epoch asks for into hundreds of fights.
+// These grow more slowly than the square of the stat multiplier, so each
+// epoch still asks for more fights than the one before it.
+const EPOCH_STAKE_MULTIPLIERS: readonly number[] = [1, 5, 20];
+export function epochStakeMultiplier(epoch: Epoch): number {
+  return EPOCH_STAKE_MULTIPLIERS[epoch - 1];
+}
+
+// Landau's Analytic moves resolve at one of two strengths: the right-answer
+// multiplier or the wrong-answer one, steeper than the pre-battle quiz's
+// 1.5/0.6 (OverworldScene) because they are a per-use gamble rather than a
+// one-time roll for the whole fight. The player's side picks between them by
+// answering (BattleScene.showAnalyticQuestion); a rival's side by a roll.
+export const ANALYTIC_CORRECT_MULTIPLIER = 2;
+export const ANALYTIC_WRONG_MULTIPLIER = 0.5;
+
+// From Epoch 2 on every rival throws the two Analytic moves beside its own
+// (BattleScene.opponentAction), and this is how often one lands at full
+// power -- ANALYTIC_CORRECT_MULTIPLIER, against ANALYTIC_WRONG_MULTIPLIER the
+// rest of the time. Zero at Epoch 1, where no rival holds them at all.
+const RIVAL_ANALYTIC_FULL_POWER_CHANCE: readonly number[] = [0, 0.5, 1];
+export function rivalAnalyticChance(epoch: Epoch): number {
+  return RIVAL_ANALYTIC_FULL_POWER_CHANCE[epoch - 1];
+}
+export function rivalsThrowAnalytic(epoch: Epoch): boolean {
+  return epoch >= 2;
+}
+
+// At the last epoch the finale's third stage, The Quantum Adapted, also casts
+// Skłodowska-Curie's Ultimates: on each of its slots it throws one with this
+// chance, carried by a quasiparticle the player's lattice cannot host, and an
+// opponent's Ultimate never fizzles. A fixed chance per slot rather than two
+// more entries in its pool, whose size depends on the player's type.
+export const QUANTUM_ULTIMATE_EPOCH: Epoch = 3;
+export const QUANTUM_ULTIMATE_CHANCE = 0.15;
 
 // Correlation prices the same as Quantumness/Velocity -- all three share the
 // same "full range stays meaningful, then plateaus" shape (the Energy and
@@ -301,10 +375,11 @@ export function feynmanLevelCost(move: Move, level: 1 | 2 | 3): number {
 // rounded to the nearest 10 for a clean progression. A rival fight pays out
 // double this, win or lose -- see the call site, which derives it from this
 // same function rather than a separate table, so the two can't drift apart.
-export function battleStakeForWorld(world: number): number {
+// The epoch multiplies the whole thing (epochStakeMultiplier above).
+export function battleStakeForWorld(world: number, epoch: Epoch = DEFAULT_EPOCH): number {
   const clamped = Math.min(10, Math.max(1, world));
   const raw = 50 + ((200 - 50) * (clamped - 1)) / 9;
-  return Math.round(raw / 10) * 10;
+  return Math.round(raw / 10) * 10 * epochStakeMultiplier(epoch);
 }
 
 // --- Franklin's passives (DESIGN.md §5, World 9) ----------------------------

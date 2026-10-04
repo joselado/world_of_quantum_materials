@@ -48,6 +48,9 @@ import {
   allCrystals,
   compatibleMoves,
   ORDINARY_MOVE_IDS,
+  GOLEM_MOVE_IDS,
+  quasiparticleLabel,
+  moveShapeName,
 } from '../data/materials';
 import {
   battleStakeForWorld,
@@ -74,7 +77,17 @@ import {
   MAX_MULTI_HIT,
   DIFFICULTY_MULTIPLIERS,
   superpositionEnemyStats,
+  clampEpoch,
+  epochStatMultiplier,
+  rivalsThrowAnalytic,
+  rivalAnalyticChance,
+  QUANTUM_ULTIMATE_EPOCH,
+  QUANTUM_ULTIMATE_CHANCE,
+  ANALYTIC_CORRECT_MULTIPLIER,
+  ANALYTIC_WRONG_MULTIPLIER,
+  DEFAULT_EPOCH,
 } from '../data/balance';
+import type { Epoch } from '../data/balance';
 import type { KondoCloud, ScreeningChannel } from '../data/materials';
 import { DEFAULT_DIFFICULTY_TIER, DEFAULT_TOUCH_CONTROLS, touchControlsActive, storyLength, storyScreensEnabled } from '../data/settings';
 import { FINALE_STAGES, finaleStageFor, finaleVictoryLineFor, finaleDefeatLineFor } from '../data/story';
@@ -288,14 +301,6 @@ const R_MATERIALS: Record<OffPathKind, ArenaMaterial | null> = {
   consuming: { scale: 0.55, core: 0, spacing: 0.7 },
 };
 
-// Correct/wrong multipliers for Landau's two quiz-gated Analytic moves (§5) --
-// deliberately steeper than the pre-battle quiz's QUIZ_CORRECT_MULTIPLIER/
-// QUIZ_WRONG_MULTIPLIER (OverworldScene.ts, 1.5/0.6): those apply to every
-// attack for a whole fight as a one-time roll, these are a per-use gamble
-// the player opts into by picking one of these two moves specifically.
-const ANALYTIC_CORRECT_MULTIPLIER = 2;
-const ANALYTIC_WRONG_MULTIPLIER = 0.5;
-
 // How long the end-of-battle summary stays un-dismissable, so that the input
 // which ended the fight cannot also be the input that leaves the screen (see
 // endBattle). Long enough to swallow a click and its echo, short enough that
@@ -480,6 +485,18 @@ interface BattleInitData {
   locale?: BattleLocale;
 }
 
+// What the opponent does with one of its slots (opponentAction). An ordinary
+// move is its id alone, at bonus 1. One of the two quiz-gated kinds, which a
+// rival throws from Epoch 2 on, also carries the quasiparticle it is tuned
+// to and the name that tuning gives it -- the opponent's counterpart of the
+// player's saved tuning -- and the strength it resolved at.
+interface OpponentAction {
+  moveId: string;
+  bonusMultiplier: number;
+  carrying?: MoveClass;
+  name?: string;
+}
+
 interface MoveSection {
   label: string;
   ids: string[];
@@ -496,6 +513,10 @@ export class BattleScene extends Phaser.Scene {
   private locale?: BattleLocale;
   private attackMultiplier = 1;
   private isRival = false;
+  // Which pass over the worlds this run is on (data/balance.ts's Epoch),
+  // read off the registry in create(): scales the opponent's stats and the
+  // stake, and decides whether a rival throws the quiz-gated moves.
+  private epoch: Epoch = DEFAULT_EPOCH;
   private playerMaterial!: Material;
   private playerStats!: Stats;
   private enemyStats!: Stats;
@@ -545,7 +566,7 @@ export class BattleScene extends Phaser.Scene {
   // other fight, in which case opponentView() below falls back to the plain
   // static `this.wild` the same way every read here always did. Only its
   // type/name/color/variant are ever read off this -- what it throws is
-  // `finalePool` below, see opponentMoveId; HP is never read off either
+  // `finalePool` below, see opponentAction; HP is never read off either
   // `Material` at all (see `opponentMaxHp`'s own comment above).
   private adaptedForm: Material | null = null;
   // World 10's finale is three fights in one scene (DESIGN.md §6): The
@@ -554,7 +575,7 @@ export class BattleScene extends Phaser.Scene {
   // other fight; 1 from create() for that one, stepped by standFinaleForm.
   // `finalePool` is what the standing stage throws: the Adapted's own
   // authored moves, then the player's own basic moves, then every basic
-  // move (opponentMoveId). `battleOver` and `lastOpponentMoveId` are read by
+  // move (opponentAction). `battleOver` and `lastOpponentMoveId` are read by
   // scripts/component-check.mjs, which cannot take "a bar hit zero" for
   // "the fight ended" when a bar refills mid-scene. All four are
   // battle-ephemeral and reset in create() like every field above.
@@ -701,9 +722,13 @@ export class BattleScene extends Phaser.Scene {
     const encounterFactor = this.isRival ? 1 : rollEncounterFactor();
     const difficultyTier = (this.game.registry.get('difficultyTier') as DifficultyTier) ?? DEFAULT_DIFFICULTY_TIER;
     const superposition = !!this.game.registry.get('superpositionMode');
+    // The epoch (data/balance.ts) is a second multiplier on the same curve,
+    // stacked on the tier's.
+    this.epoch = clampEpoch(this.game.registry.get('epoch'));
+    const statMultiplier = DIFFICULTY_MULTIPLIERS[difficultyTier] * epochStatMultiplier(this.epoch);
     const baseEnemyStats = superposition
-      ? superpositionEnemyStats(DIFFICULTY_MULTIPLIERS[difficultyTier])
-      : enemyStatsForWorld(this.world, DIFFICULTY_MULTIPLIERS[difficultyTier]);
+      ? superpositionEnemyStats(statMultiplier)
+      : enemyStatsForWorld(this.world, statMultiplier);
     // The rolled stats stay fractional, unlike the rolled HP below. Nothing
     // ever displays an opponent's stat as a number (they are felt through
     // damage, turn order and hits per round), so there is nothing for a whole
@@ -2989,7 +3014,7 @@ export class BattleScene extends Phaser.Scene {
   // menu goes live (runNextSlot), never inside beginRound, which runs lazily
   // inside playerAttack after the pick is already made: rolled there, the
   // tags the player just read would be stale. What it throws is unaffected
-  // (opponentMoveId reads the player's type, not this one). The plate is not
+  // (opponentAction reads the player's type, not this one). The plate is not
   // rebuilt: the name it carries does not change.
   private rollQuantumForm() {
     const picked = this.sampleEnvironment();
@@ -3164,7 +3189,21 @@ export class BattleScene extends Phaser.Scene {
   // of the classes, so that set is never empty in practice; it falls back
   // to the whole pool if it were. The player's Anderson impurity is not
   // read here, as it is not read for the defender anywhere.
-  private opponentMoveId(): string {
+  //
+  // From Epoch 2 on a rival also holds Landau's two Analytic moves beside
+  // that pool (every rival fight but the finale's second stage, whose record
+  // of the player is their basic moves and nothing else): the roll is uniform
+  // over the pool and the two together. An opponent's Analytic move has no
+  // question to answer, so it lands at full power with the epoch's own chance
+  // (rivalAnalyticChance) and at the wrong-answer strength otherwise, and it
+  // is tuned the way the player's is: it carries the quasiparticle of one of
+  // the moves in that same pool, rolled per cast, so a golem's Lance is its
+  // own world's excitation, World 1's phonon-only rule still holds, and the
+  // last stage's still fails to be hosted. At the last epoch The Quantum
+  // Adapted also casts Skłodowska-Curie's Ultimates, with a fixed chance per
+  // slot (QUANTUM_ULTIMATE_CHANCE), tuned the same way; an opponent's
+  // Ultimate never fizzles.
+  private opponentAction(): OpponentAction {
     const moves = this.finaleStage ? this.finalePool : this.wild.moves;
     const phononOnly =
       this.world === 1 && Object.values(this.playerStats).every((v) => v < PHONON_ONLY_STAT_CEILING);
@@ -3173,9 +3212,34 @@ export class BattleScene extends Phaser.Scene {
       const vulnerable = moves.filter((id) => !canHost(this.playerMaterial.type, MOVES[id].class));
       if (vulnerable.length > 0) pool = vulnerable;
     }
-    const id = Phaser.Utils.Array.GetRandom(pool.length > 0 ? pool : moves);
-    this.lastOpponentMoveId = id;
-    return id;
+    if (pool.length === 0) pool = moves;
+
+    // A quiz-gated move tuned to the quasiparticle of one of the pool's own
+    // moves, and named for it: decohered when that move is a golem's.
+    const tuned = (moveId: string, bonusMultiplier: number): OpponentAction => {
+      const source = Phaser.Utils.Array.GetRandom(pool);
+      const carrying = MOVES[source].class;
+      const decohered = GOLEM_MOVE_IDS.includes(source) ? 'Decohered ' : '';
+      return { moveId, bonusMultiplier, carrying, name: `${decohered}${quasiparticleLabel(carrying)} ${moveShapeName(moveId)}` };
+    };
+
+    let action: OpponentAction;
+    if (this.finaleStage === 3 && this.epoch >= QUANTUM_ULTIMATE_EPOCH && Math.random() < QUANTUM_ULTIMATE_CHANCE) {
+      action = tuned(Phaser.Utils.Array.GetRandom(ULTIMATE_MOVE_IDS), 1);
+    } else if (this.isRival && this.finaleStage !== 2 && rivalsThrowAnalytic(this.epoch)) {
+      const roll = Phaser.Math.Between(0, pool.length + ANALYTIC_MOVE_IDS.length - 1);
+      action =
+        roll < pool.length
+          ? { moveId: pool[roll], bonusMultiplier: 1 }
+          : tuned(
+              ANALYTIC_MOVE_IDS[roll - pool.length],
+              Math.random() < rivalAnalyticChance(this.epoch) ? ANALYTIC_CORRECT_MULTIPLIER : ANALYTIC_WRONG_MULTIPLIER
+            );
+    } else {
+      action = { moveId: Phaser.Utils.Array.GetRandom(pool), bonusMultiplier: 1 };
+    }
+    this.lastOpponentMoveId = action.moveId;
+    return action;
   }
 
   // Lays out the round about to be played: the faster side gets `fasterHits`
@@ -3245,7 +3309,8 @@ export class BattleScene extends Phaser.Scene {
     if (!isPlayer) {
       // The committed move is left where it is: it belongs to the player's
       // own next slot, which a faster opponent's swings run ahead of.
-      this.resolveHit(false, this.opponentMoveId(), onDone, 1, tickStatus);
+      const action = this.opponentAction();
+      this.resolveHit(false, action.moveId, onDone, action.bonusMultiplier, tickStatus, action);
       return;
     }
     const pending = this.pendingPlayerMove!;
@@ -3344,7 +3409,14 @@ export class BattleScene extends Phaser.Scene {
   // self-buff, not an attack, routed to `resolveSelfBuff` below before any of
   // the attack-only terms (mismatch, crit, damage) are computed at all, and
   // it takes hold on whichever slot it is cast on.
-  private resolveHit(isPlayer: boolean, moveId: string, onDone: () => void, bonusMultiplier = 1, tickStatus = true) {
+  private resolveHit(
+    isPlayer: boolean,
+    moveId: string,
+    onDone: () => void,
+    bonusMultiplier = 1,
+    tickStatus = true,
+    opponentTuning?: OpponentAction
+  ) {
     const move = MOVES[moveId];
     if (KONDO_MOVE_IDS.includes(moveId)) {
       this.resolveSelfBuff(isPlayer, move, onDone);
@@ -3374,7 +3446,7 @@ export class BattleScene extends Phaser.Scene {
     // whichever side has it active as the defender -- a defect-broadened
     // diffraction halo partially shrugging off a hit that would otherwise
     // land unmitigated.
-    const effectiveClass = isPlayer ? getTunedMoveClass(this.game.registry, moveId) : move.class;
+    const effectiveClass = isPlayer ? getTunedMoveClass(this.game.registry, moveId) : opponentTuning?.carrying ?? move.class;
     const mismatch = !canHost(defenderType, effectiveClass);
     const mismatchMultiplier = this.activePassives(defenderIsPlayer).has('edgeCurrent')
       ? EDGE_CURRENT_MISMATCH_MULT
@@ -3478,7 +3550,7 @@ export class BattleScene extends Phaser.Scene {
       // player's own save state -- an opponent's own use of a move id never
       // carries either, so its side of the log reads the move's static name
       // straight off MOVES (the same read resolveSelfBuff makes).
-      const displayName = isPlayer ? moveDisplayName(this.game.registry, moveId) : move.name;
+      const displayName = isPlayer ? moveDisplayName(this.game.registry, moveId) : opponentTuning?.name ?? move.name;
       // The attacker's own Kondo cloud (§5) ticks down regardless of whether
       // this particular hit lands -- it's the attacker's own technique, not
       // something that depends on the defender. Gated by `tickStatus` (see
@@ -3496,6 +3568,14 @@ export class BattleScene extends Phaser.Scene {
       let held = this.applyDamage(hitPlayer, dmg, floor);
 
       const mismatchText = mismatch ? ' No natural defense against this!' : '';
+      // A rival's Analytic move has no question on screen to show how it
+      // resolved, so its log line says which of the two strengths it took.
+      const analyticText =
+        !isPlayer && ANALYTIC_MOVE_IDS.includes(moveId)
+          ? bonusMultiplier >= ANALYTIC_CORRECT_MULTIPLIER
+            ? ' It lands at full power!'
+            : ' It lands scattered, at half power.'
+          : '';
       const critText = crit ? ' A coherent critical hit!' : '';
 
       // Franklin's Satellite Reflection (§5): a crit from a side with it
@@ -3524,7 +3604,7 @@ export class BattleScene extends Phaser.Scene {
           ? `${whose} ${displayName} fizzles out. The pattern never locked!`
           : reflected
           ? `${who} used ${displayName}! ${PASSIVES.fullReflection.name} sends it straight back for ${dmg}!${buffText}${heldText}`
-          : `${who} used ${displayName}! (${dmg} dmg)${mismatchText}${critText}${buffText}${echoText}${heldText}`
+          : `${who} used ${displayName}! (${dmg} dmg)${analyticText}${mismatchText}${critText}${buffText}${echoText}${heldText}`
       );
     };
 
@@ -4030,7 +4110,7 @@ export class BattleScene extends Phaser.Scene {
     this.moveMenu?.destroy(true);
     this.moveMenu = undefined;
 
-    const stake = this.isRival ? 2 * battleStakeForWorld(this.world) : battleStakeForWorld(this.world);
+    const stake = (this.isRival ? 2 : 1) * battleStakeForWorld(this.world, this.epoch);
     const tokens = (this.game.registry.get('qumatessence') as number) || 0;
     const newTokens = won ? tokens + stake : Math.max(0, tokens - stake);
     this.game.registry.set('qumatessence', newTokens);
