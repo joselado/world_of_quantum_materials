@@ -2584,12 +2584,13 @@ world are shaped, since world N's start is world N-1's exit.
   painted as much as a bright rim does) and scanning several seconds of frames
   for any pixel that differs from it, so the full idle extent is included. At
   its current anchor the golem paints 76-241 vertically and 570-717
-  horizontally. Its nameplate floats off `BOSS_HEAD_RISE` and the move menu's
-  own ceiling (`MENU_MIN_TOP`, below) is `BOSS_OPPONENT_POS.y + BOSS_FOOT_DROP +
-  7`, so moving the boss can never silently leave either one overlapping it.
+  horizontally, below the boss banner on the top rail ("Battle HUD frame and
+  nameplates" below), and the move menu's own ceiling (`MENU_MIN_TOP`, below) is
+  `BOSS_OPPONENT_POS.y + BOSS_FOOT_DROP + 7`, so moving the boss can never
+  silently leave the menu overlapping it.
 - **The finale's two later forms** stand at the same anchor with the same
   `footDrop`, each in its own builder file, and each has its own measured pair
-  in `hud.ts` that `BattleScene.opponentExtent` hands to the plate and the aura:
+  in `hud.ts` that `BattleScene.opponentExtent` hands to the aura:
   `art/modelOfYou.ts`'s `makeModelOfYou` (`MODEL_HEAD_RISE = 97`/`MODEL_FOOT_DROP
   = 60`) is the Devouring Mirror's reflection righted -- the network drawn by
   `consuming.ts`'s `drawNetDisc`, clipped by a geometry mask to the player's own
@@ -2599,17 +2600,16 @@ world are shaped, since world N's start is world N-1's exit.
   anchor the caller passes and reclaimed on the container's DESTROY.
   `art/quantumAdapted.ts`'s `makeQuantumAdapted` is built at three times the
   golem's size (`BattleScene`'s `QUANTUM_SIZE_SCALE`, so `SMOKE_HEAD_RISE = 230`/
-  `SMOKE_FOOT_DROP = 75` in arena units; its plate anchors lower, at
-  `SMOKE_PLATE_RISE = 150`, in the cloud's thin crown -- off the painted top there
-  is no room under `TOP_RAIL` at the stage's zoom and the name would collapse to
-  the plate's smallest size) and the arena is held pulled back to
+  `SMOKE_FOOT_DROP = 75` in arena units -- its thin crown reaches up under the boss
+  banner, which is drawn over it) and the arena is held pulled back to
   `QUANTUM_ARENA_ZOOM = 0.7` for the whole stage -- just above
   `ARENA_ZOOM_FLOOR`, the zoom at which the painted overscan still covers the
   viewport -- so the cloud fills the field's upper right with the player's own
   crystal small beneath it, the David-and-Goliath frame the last stage wants.
-  The HUD camera is split off as for an Ultimate and kept; both nameplates are
+  The HUD camera is split off as for an Ultimate and kept; the player's nameplate is
   laid out through `BattleScene.hudPoint` (the arena point's place on the HUD
-  at the rest zoom, since the main camera zooms about the field's centre), and
+  at the rest zoom, since the main camera zooms about the field's centre), the
+  boss banner stays on the top rail at any zoom, and
   an Ultimate cast in that stage pulls back no further than the floor. The stage
   brings its own sky with it: a second star network (`art/stars.ts`'s
   `drawStarCanopy`, a jittered triangular lattice with holes and hash-thinned
@@ -2643,10 +2643,11 @@ world are shaped, since world N's start is world N-1's exit.
   makes it read as one composition**: a combatant's own readouts travel with the
   combatant, and everything else is seated on a shared margin frame. The frame is
   one set of rails (`LEFT_RAIL = 16`, `RIGHT_RAIL = 838`, `TOP_RAIL = 10`,
-  `BOTTOM_RAIL = 464`) that the turn-order widget, the move menu and the combat
-  log all sit on, rather than each corner carrying its own margin.
-- **Nameplates.** Both sides get the same floating name-over-bar plate
-  (`drawNameplate`), never a screen-corner HP row: a bottom-anchored stack of
+  `BOTTOM_RAIL = 464`) that the turn-order widget, the move menu, the combat
+  log and a rival's boss banner all sit on, rather than each corner carrying its
+  own margin.
+- **Nameplates.** The player and every wild get the same floating name-over-bar
+  plate (`drawNameplate`), never a screen-corner HP row: a bottom-anchored stack of
   the optional quiz-result note, the name, the HP bar, the status pill and the
   passive pill, whose bottom edge sits `8`px above that crystal's own painted
   head (its `*_HEAD_RISE` above), clamped so a tall stack rides down onto the top
@@ -2654,16 +2655,37 @@ world are shaped, since world N's start is world N-1's exit.
   translucent chip sized to the name it actually holds (floored at the bar's own
   width, capped by the rails), so a short name gets a small plate rather than
   every plate stretching into a banner. The name shrinks in whole-px steps
-  (floor `9`) when the head above it leaves too little room -- which only bites
-  for a long rival name at a large text-size preset, where the golem's head
-  reaches highest. HP bars are `140x10` with a dark stroked track behind a
-  `134x6` fill, so a bar at full health still reads as a gauge. Because the chip
-  is fitted to the name's rendered width and the bar sits under its measured
-  height, the plate is a one-shot layout: a side that reshapes mid-battle
-  (World 10's Adapted) rebuilds its plate whole via the `destroy()` the plate
-  hands back rather than patching the old one in place.
+  (floor `9`) when the head above it leaves too little room. HP bars are
+  `140x10` with a dark stroked track behind a `134x6` fill, so a bar at full
+  health still reads as a gauge.
+- **A rival carries a boss banner instead** (`drawBossBar`), the one combatant
+  readout seated on the frame: a boss's bar is the stake of the whole fight
+  rather than a label on a body, and a bar the width of the screen is what makes
+  it read that way. One chip on the top rail, running from `20`px past the turn
+  row's last ring to `RIGHT_RAIL` (about `620`px), filled `PANEL_BG` and stroked
+  in the rival's red (`BOSS_RED`, `#ff8f8f`, the same red its name has over the
+  golem at the goal and in the map menu). Inside it, the name in that red, bold,
+  left-aligned, at `15`px times the text-size preset (capped at `1.5`, as the
+  plates are) and shrunk in whole-px steps to stay on one line; the longest
+  rival names shrink at the larger presets. The name keeps its own case, since
+  a formula in it (Bi₂Te₃) is notation. Under the name, a `22`px dark stroked
+  track across the chip's full inner width, with a `16`px crimson fill
+  (`0xc62828`) inset `3`px on every side, a lighter band (`0xff6b6b` at `0.55`)
+  over the fill's top third so the bar reads as a lit gauge, and thin dark marks
+  at each quarter so a hit on a bar this long still shows how much it took.
+  Under the chip, the status pill sits at the left edge and the passive pill
+  right-aligned at the right edge. The banner is top-anchored, so a pill
+  appearing mid-fight moves nothing and no room is reserved for one. Every
+  rival form gets it, the finale's three stages included, so the tallest of
+  them never needs room above its head for a plate.
+- Both builders hand back the same `Nameplate`: its `setHp` owns the fill's
+  width, and because the name and the chip are fitted to each other and the
+  bar sits under the name's measured height, it is a one-shot layout: a side
+  that reshapes mid-battle (World 10's Adapted) rebuilds it whole via the
+  `destroy()` it hands back rather than patching the old one in place.
 - **Gold means "the player."** The player's plate chip is stroked gold
-  (`GOLD_ACCENT`), the opponent's dim blue-grey (`REFERENCE_BLUE_GREY`) --
+  (`GOLD_ACCENT`), a wild's dim blue-grey (`REFERENCE_BLUE_GREY`) and a rival's
+  banner its red --
   the same code the turn-order rings and the move menu's own gold chrome
   already use, carried across every piece of chrome so a glance at any of it
   says whose it is.
@@ -2691,8 +2713,9 @@ world are shaped, since world N's start is world N-1's exit.
   idle-bob tween for free.
 - Kondo's five self-buff clouds (DESIGN.md §4) present as two pieces for as long
   as a cloud is active. The bookkeeping is a plain text pill (`playerStatusLabel`/
-  `opponentStatusLabel`) sitting as the next row down that side's own floating nameplate
-  (see "Battle HUD frame and nameplates" above), reading `"<Cloud> (<turns left>)"`
+  `opponentStatusLabel`) sitting as the next row down that side's own floating nameplate,
+  or at the left under a rival's boss banner (see "Battle HUD frame and nameplates"
+  above), reading `"<Cloud> (<turns left>)"`
   (e.g. `"Spin Screening (3)"`) in Kondo's own rust-orange
   (`#ff8f6a`, matching his guardian label/panel stroke and the `'screening'` attack-effect
   color below) over the same translucent-black tag background every HP-bar name label
@@ -2724,9 +2747,9 @@ world are shaped, since world N's start is world N-1's exit.
   coming back at a fresh orientation -- patches of order forming and dissolving at every
   scale at once. Each aura's bright structure stays at or
   under its crystal's own measured painted extent (sized off hud.ts's
-  `*_HEAD_RISE`/`BOSS_FOOT_DROP` offsets; the boss golem's is centered on its body's
-  measured midpoint, since its anchor is a ground reference), so the nameplate stack above
-  never sits inside it, and additive alphas are kept low so every silhouette survives the
+  `*_HEAD_RISE`/`BOSS_FOOT_DROP` offsets; a rival's is centered on its body's
+  measured midpoint and spans head to feet, since its anchor is a ground reference), so a
+  nameplate stack above never sits inside it, and additive alphas are kept low so every silhouette survives the
   greyscale squint test.
 - Franklin's active passives (DESIGN.md §5, up to three one-slot ones at once) get their own pill as the
   last row of the same nameplate stack, directly below that side's status pill, same
@@ -2799,7 +2822,8 @@ world are shaped, since world N's start is world N-1's exit.
 ## Turn-order preview (`BattleScene.drawTurnPreview`)
 
 - A small widget docked on the frame's top-left rails (`TURN_PREVIEW_X = 16`,
-  `TURN_PREVIEW_Y = 10`), clear of both nameplates and the log text further down: a bold dim
+  `TURN_PREVIEW_Y = 10`), clear of both nameplates (and of a rival's boss banner, which
+  starts past its last ring) and the log text further down: a bold dim
   blue-grey (`#8fa0c9`) "TURNS" label over the usual translucent-black
   tag background, with a row of five 32px crystal icons (`makeCrystal`, 36px spacing) below
   it, one per predicted hit: the player's own current crystal or the opponent's, each using

@@ -123,8 +123,6 @@ import {
   MODEL_FOOT_DROP,
   SMOKE_HEAD_RISE,
   SMOKE_FOOT_DROP,
-  SMOKE_PLATE_RISE,
-  HP_BAR_FILL_W,
   MENU_WIDTH,
   MENU_X,
   MENU_BOTTOM,
@@ -137,6 +135,7 @@ import {
   LOG_WRAP_WIDTH_VICTORY,
   STATUS_PILL_COLOR,
   drawNameplate,
+  drawBossBar,
   drawTurnPreview,
   type Nameplate,
   type OpponentIcon,
@@ -543,12 +542,10 @@ export class BattleScene extends Phaser.Scene {
   // anchored to an arena object goes through hudPoint() so it sits over the
   // object at whichever rest zoom is in force.
   private arenaZoom = 1;
-  private opponentHpBar!: Phaser.GameObjects.Rectangle;
-  private playerHpBar!: Phaser.GameObjects.Rectangle;
   private opponentCrystal!: Phaser.GameObjects.Container;
-  // The opponent's own nameplate, held (rather than just its hp bar and
-  // status label) so `drawOpponentPlate` can tear the whole fitted layout
-  // down and rebuild it when World 10's rival reshapes mid-fight.
+  // The opponent's own nameplate (a rival's boss banner), held whole so
+  // `drawOpponentPlate` can tear the fitted layout down and rebuild it when
+  // World 10's rival reshapes mid-fight, and so updateBars can set its bar.
   private opponentPlate?: Nameplate;
   // The player's plate, held the same way: rebuilt whole when the arena's
   // rest zoom changes under it (settleArenaZoom).
@@ -2614,18 +2611,17 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private updateBars() {
-    this.opponentHpBar.width = Math.max(0, (this.opponentHp / this.opponentMaxHp) * HP_BAR_FILL_W);
-    this.playerHpBar.width = Math.max(0, (this.playerHp / this.playerMaxHp) * HP_BAR_FILL_W);
+    this.opponentPlate?.setHp(this.opponentHp / this.opponentMaxHp);
+    this.playerPlate?.setHp(this.playerHp / this.playerMaxHp);
   }
 
-  // The opponent's floating name-over-bar plate -- the same one the player
-  // gets in create(), centered on whichever position this fight placed the
-  // opponent at and floating just above its own painted head. A rival's name
-  // runs much longer on average than an ordinary wild's, so its label starts
-  // a size smaller; the plate's own shrink-to-fit takes it the rest of the
-  // way when the boss golem's head leaves little room above it. No wild ever
-  // casts a Kondo move (KONDO_MOVE_IDS), so this side reserves no room for a
-  // status pill, and no opponent ever carries a passive.
+  // The opponent's readout. A wild gets the floating name-over-bar plate the
+  // player gets in create(), centered on the opponent and floating just above
+  // its own painted head; no wild ever casts a Kondo move (KONDO_MOVE_IDS), so
+  // that plate reserves no room for a status pill. A rival gets the boss
+  // banner across the top rail instead (hud.ts's drawBossBar), whatever form
+  // stands, so the finale's tallest forms never have a plate to fit over
+  // their heads.
   //
   // Its own method rather than inline in create() because the plate is a
   // one-shot fitted layout (see `Nameplate.destroy`) and World 10's rival
@@ -2635,17 +2631,27 @@ export class BattleScene extends Phaser.Scene {
   // whichever identity is current with no argument to keep in step.
   private drawOpponentPlate() {
     this.opponentPlate?.destroy();
-    const head = this.hudPoint(this.opponentPos.x, this.opponentPos.y - this.opponentExtent().plateRise);
-    this.opponentPlate = drawNameplate(this, {
-      centerX: head.x,
-      headTop: head.y,
-      name: this.opponentView().name,
-      namePx: Math.round((this.isRival ? 11 : 14) * Math.min(fontScale(this), 1.5)),
-      accent: REFERENCE_BLUE_GREY,
-      reserveStatus: false,
-      passiveText: passivePillText(this.opponentActivePassives),
-    });
-    this.opponentHpBar = this.opponentPlate.hpFill;
+    const plateScale = Math.min(fontScale(this), 1.5);
+    const passiveText = passivePillText(this.opponentActivePassives);
+    if (this.isRival) {
+      this.opponentPlate = drawBossBar(this, {
+        name: this.opponentView().name,
+        namePx: Math.round(15 * plateScale),
+        pillPx: Math.round(14 * plateScale * 0.8),
+        passiveText,
+      });
+    } else {
+      const head = this.hudPoint(this.opponentPos.x, this.opponentPos.y - this.opponentExtent().headRise);
+      this.opponentPlate = drawNameplate(this, {
+        centerX: head.x,
+        headTop: head.y,
+        name: this.opponentView().name,
+        namePx: Math.round(14 * plateScale),
+        accent: REFERENCE_BLUE_GREY,
+        reserveStatus: false,
+        passiveText,
+      });
+    }
     this.opponentStatusLabel = this.opponentPlate.statusLabel;
   }
 
@@ -2676,7 +2682,6 @@ export class BattleScene extends Phaser.Scene {
               px: Math.round(12 * Math.min(fontScale(this), 1.5)),
             },
     });
-    this.playerHpBar = this.playerPlate.hpFill;
     this.playerStatusLabel = this.playerPlate.statusLabel;
   }
 
@@ -2853,15 +2858,13 @@ export class BattleScene extends Phaser.Scene {
 
   // How far the standing opponent's painted art reaches above and below its
   // anchor (hud.ts's measured *_HEAD_RISE/*_FOOT_DROP pairs), for the aura
-  // sized to its body, and where its plate anchors (`plateRise`, the head
-  // for every figure but the cloud, whose plate sits in its thin crown --
-  // hud.ts's SMOKE_PLATE_RISE): an ordinary wild, the rival golem, or the
-  // finale's record or cloud.
-  private opponentExtent(): { headRise: number; footDrop: number; plateRise: number } {
-    if (!this.isRival) return { headRise: WILD_HEAD_RISE, footDrop: 0, plateRise: WILD_HEAD_RISE };
-    if (this.finaleStage === 2) return { headRise: MODEL_HEAD_RISE, footDrop: MODEL_FOOT_DROP, plateRise: MODEL_HEAD_RISE };
-    if (this.finaleStage === 3) return { headRise: SMOKE_HEAD_RISE, footDrop: SMOKE_FOOT_DROP, plateRise: SMOKE_PLATE_RISE };
-    return { headRise: BOSS_HEAD_RISE, footDrop: BOSS_FOOT_DROP, plateRise: BOSS_HEAD_RISE };
+  // sized to its body and a wild's plate over its head: an ordinary wild,
+  // the rival golem, or the finale's record or cloud.
+  private opponentExtent(): { headRise: number; footDrop: number } {
+    if (!this.isRival) return { headRise: WILD_HEAD_RISE, footDrop: 0 };
+    if (this.finaleStage === 2) return { headRise: MODEL_HEAD_RISE, footDrop: MODEL_FOOT_DROP };
+    if (this.finaleStage === 3) return { headRise: SMOKE_HEAD_RISE, footDrop: SMOKE_FOOT_DROP };
+    return { headRise: BOSS_HEAD_RISE, footDrop: BOSS_FOOT_DROP };
   }
 
   // Which figure the turn row's opponent icons carry (hud.ts's
@@ -3785,17 +3788,10 @@ export class BattleScene extends Phaser.Scene {
       if (isPlayer) {
         aura = addScreeningAura(this, this.playerCrystal, status.kind, PLAYER_HEAD_RISE + 5);
       } else if (this.isRival) {
-        // An opponent's status pill hangs below its nameplate rather than
-        // inside the stack (drawOpponentPlate passes `reserveStatus: false`,
-        // so the stack's own height doesn't account for it), which puts the
-        // pill over the head the aura would otherwise reach. The golem is
-        // the only body tall enough for the two to meet, so its aura stops
-        // short of the head by the pill's own measured height -- measured
-        // rather than a literal, since the text-size preset sets it.
+        // A rival's form spans head to feet off a ground anchor, so its aura
+        // is centered on the body's measured midpoint and reaches its head.
         const { headRise, footDrop } = this.opponentExtent();
-        const top = headRise - (this.opponentStatusLabel.height + 4);
-        const r = (top + footDrop) / 2;
-        aura = addScreeningAura(this, this.opponentCrystal, status.kind, r, -(top - footDrop) / 2);
+        aura = addScreeningAura(this, this.opponentCrystal, status.kind, (headRise + footDrop) / 2, -(headRise - footDrop) / 2);
       } else {
         aura = addScreeningAura(this, this.opponentCrystal, status.kind, WILD_HEAD_RISE + 5);
       }

@@ -5,7 +5,7 @@ import { killTweensDeep } from '../../art/crystals';
 import { buildQumatuomiMap } from '../../art/qumatuomiMap';
 import { CANVAS_W, CANVAS_H } from '../../art/perspective';
 import { fontScale } from '../../ui/text';
-import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
+import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX, BOSS_RED_HEX } from '../../ui/theme';
 import { WORLD_RIVALS, worldName } from '../../data/materials';
 import { getEpoch, getEpochUnlocked, allRivalsFallen, canBeginNextEpoch, beginNextEpoch } from '../../data/epochs';
 import {
@@ -210,7 +210,7 @@ export function showOverlookPanel(scene: GuardianPanelHost, selected?: number, p
     const nameText = scene.add
       .text(columns.rightColCenterX, detailTop, discovered ? rival : '???', {
         fontSize: `${Math.round(13 * Math.min(fontScale(scene), DETAIL_NAME_CAP))}px`,
-        color: fallen ? '#cfd8ff' : '#ff8f8f',
+        color: fallen ? '#cfd8ff' : BOSS_RED_HEX,
         fontStyle: 'bold',
         align: 'center',
         wordWrap: { width: columns.rightColW },

@@ -86,7 +86,7 @@ import { PASS_HALF_WIDTH, passZoneRows, reachableGround, scaleOfGrid, worldScale
 import type { CorridorRow, WorldScale } from '../world/generators/shared';
 import { fontPx, fontScale, fitProseToBudget } from '../ui/text';
 import { installFullscreenKey } from '../ui/fullscreen';
-import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX, TUTORIAL_CYAN, STORY_LAVENDER } from '../ui/theme';
+import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX, TUTORIAL_CYAN, STORY_LAVENDER, BOSS_RED_HEX } from '../ui/theme';
 import { music } from '../audio/music';
 import { renderGuardianHeader } from './panels/guardianHeader';
 import { showNoetherShop } from './panels/noether';
@@ -2291,7 +2291,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       .text(0, 0, boss.name, {
         fontSize: fontPx(this, 12),
         fontStyle: 'bold',
-        color: '#ff8f8f',
+        color: BOSS_RED_HEX,
         backgroundColor: 'rgba(0,0,0,0.5)',
         padding: { x: 4, y: 2 },
         align: 'center',

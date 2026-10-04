@@ -22,6 +22,11 @@ export const GOLD_ACCENT_HEX = '#ffe066';
 export const REFERENCE_BLUE_GREY = 0x8fa0c9;
 export const REFERENCE_BLUE_GREY_HEX = '#8fa0c9';
 
+// A standing rival's red: its name over the golem at the world's goal, in the
+// map menu's rival list, and on its boss banner in battle.
+export const BOSS_RED = 0xff8f8f;
+export const BOSS_RED_HEX = '#ff8f8f';
+
 // Tutorial panel/icon stroke.
 export const TUTORIAL_CYAN = 0x5ad9ff;
 export const TUTORIAL_CYAN_HEX = '#5ad9ff';

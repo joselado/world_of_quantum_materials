@@ -1,6 +1,6 @@
 // Battle-screen layout: where every fixed piece of the arena and its HUD
-// sits, plus the two HUD pieces that are pure geometry (the floating
-// nameplates and the turn-order preview row).
+// sits, plus the HUD pieces that are pure geometry (the floating
+// nameplates, a rival's boss banner and the turn-order preview row).
 //
 // Split out of BattleScene so "where things are drawn" lives apart from
 // "what a battle does" -- everything here is a plain function taking the
@@ -16,7 +16,10 @@
 // log) seated on a shared margin frame. That split -- a combatant's own
 // readouts travel with the combatant, everything else sits on the frame --
 // is what keeps the screen reading as one composition instead of a corner
-// each.
+// each. A rival is the one exception: its name and bar are a banner across
+// the top rail rather than a plate over its head, since a boss's bar is the
+// stake of the whole fight rather than a label on a body, and a bar the width
+// of the screen is what makes it read as one.
 import Phaser from 'phaser';
 import { makeCrystal } from '../../art/crystals';
 import type { DopantLook } from '../../art/crystals';
@@ -25,7 +28,7 @@ import { makeModelIcon } from '../../art/modelOfYou';
 import { makeQuantumIcon } from '../../art/quantumAdapted';
 import { GROUND_DROP } from '../../art/attackShapes';
 import { ellipseSteps, fillRoundedRect, strokeRoundedRect } from '../../art/shapes';
-import { GOLD_ACCENT, PANEL_BG, REFERENCE_BLUE_GREY } from '../../ui/theme';
+import { BOSS_RED, BOSS_RED_HEX, GOLD_ACCENT, PANEL_BG, REFERENCE_BLUE_GREY } from '../../ui/theme';
 import { fontScale } from '../../ui/text';
 import { CANVAS_W, CANVAS_H } from '../../config/screen';
 import type { Material } from '../../data/types';
@@ -104,12 +107,6 @@ export const MODEL_HEAD_RISE = 97;
 export const MODEL_FOOT_DROP = 60;
 export const SMOKE_HEAD_RISE = 230;
 export const SMOKE_FOOT_DROP = 75;
-// Where the cloud's nameplate anchors, well below its painted top: the cloud
-// has no head to clear, its crown is thin smoke, and a plate pushed up off the
-// full SMOKE_HEAD_RISE at the stage's pulled-back zoom has no room left under
-// TOP_RAIL and collapses to the smallest name in the game. So the plate sits
-// in the crown instead, at full size, with the dense body of the cloud below it.
-export const SMOKE_PLATE_RISE = 150;
 
 // Which figure the opponent's icons in the turn row carry: an ordinary
 // crystal, the rival golem, the finale's record in the player's own shape,
@@ -156,6 +153,23 @@ export const TURN_PREVIEW_ICON_SPACING = 36;
 // spacing so adjacent rings meet edge-to-edge without overlapping.
 export const TURN_PREVIEW_RING_RADIUS = TURN_PREVIEW_ICON_SPACING / 2;
 
+// A rival's boss banner: one chip on the top rail running from just past the
+// turn-order row's last ring to the right rail, so the two share the rail
+// rather than the banner pushing the row off it. Its bar runs the chip's full
+// inner width, several times a nameplate's, and its fill sits inset by the
+// same margin on every side of its track.
+const BOSS_BAR_LEFT =
+  TURN_PREVIEW_X + (TURN_PREVIEW_LENGTH - 1) * TURN_PREVIEW_ICON_SPACING + TURN_PREVIEW_ICON_SIZE / 2 + TURN_PREVIEW_RING_RADIUS + 20;
+const BOSS_PAD_X = 12;
+const BOSS_PAD_Y = 5;
+const BOSS_ROW_GAP = 4;
+const BOSS_BAR_H = 22;
+const BOSS_FILL_H = 16;
+const BOSS_HP_FILL = 0xc62828;
+// A lighter band along the fill's top third, so the bar reads as a lit
+// gauge rather than a flat strip at this thickness.
+const BOSS_HP_SHINE = 0xff6b6b;
+
 // Combat log: bottom-left on the rails, filling the band the player's own
 // cluster leaves free below its ground shadow. Its band is bounded on both
 // sides (LOG_MIN_TOP..BOTTOM_RAIL) and its text shrinks to fit that band
@@ -174,9 +188,12 @@ export interface Nameplate {
   hpFill: Phaser.GameObjects.Rectangle;
   statusLabel: Phaser.GameObjects.Text;
   top: number;
+  // Sets the bar to a fraction of full health. The plate owns the fill's
+  // full width, which a nameplate and a boss banner draw at different sizes.
+  setHp: (fraction: number) => void;
   // Tears down every object this plate drew. The plate is a one-shot fitted
-  // layout -- the chip is sized to the name's *rendered* width and the bar
-  // sits under the name's measured height -- so a side whose name changes
+  // layout -- the name and its chip are fitted to each other's *rendered*
+  // width and the bar sits under the name's measured height -- so a side whose name changes
   // mid-battle (World 10's rival, BattleScene.transmuteAdapted) rebuilds its
   // plate whole through this rather than retitling the label in place, which
   // would leave a long new name overflowing a chip fitted to the old one.
@@ -212,11 +229,10 @@ export interface NameplateOptions {
 // One floating name-over-bar plate, laid out as a bottom-anchored stack
 // (note, name, bar, status pill, passive pill) whose bottom edge sits just
 // above the crystal's own painted head, clamped so a tall stack rides down
-// onto the top rail instead of off the top of the field. Both sides build
-// theirs from this same function -- the plate is a combatant's own readout,
-// so it travels with the combatant rather than living in a screen corner,
-// and the boss golem (whose head already reaches into the top of the field)
-// gets the same plate simply pushed up against the rail.
+// onto the top rail instead of off the top of the field. The player and every
+// wild build theirs from this same function -- the plate is a combatant's own
+// readout, so it travels with the combatant rather than living in a screen
+// corner. A rival carries the boss banner instead (drawBossBar below).
 export function drawNameplate(scene: Phaser.Scene, opts: NameplateOptions): Nameplate {
   const maxWidth = Math.min(PLATE_MAX_W, 2 * Math.min(opts.centerX - LEFT_RAIL, RIGHT_RAIL - opts.centerX));
   const wrapW = maxWidth - PLATE_PAD_X * 2;
@@ -325,7 +341,102 @@ export function drawNameplate(scene: Phaser.Scene, opts: NameplateOptions): Name
   [note, nameText, track, hpFill, statusLabel, passive].forEach((obj) => obj?.setDepth(5));
 
   const parts = [note, nameText, chip, track, hpFill, statusLabel, passive];
-  return { hpFill, statusLabel, top, destroy: () => parts.forEach((obj) => obj?.destroy()) };
+  return {
+    hpFill,
+    statusLabel,
+    top,
+    setHp: (fraction) => {
+      hpFill.width = Math.max(0, fraction * HP_BAR_FILL_W);
+    },
+    destroy: () => parts.forEach((obj) => obj?.destroy()),
+  };
+}
+
+export interface BossBarOptions {
+  name: string;
+  namePx: number;
+  // The status and passive pills' size, the same the nameplates' pills take.
+  pillPx: number;
+  passiveText: string;
+}
+
+// A rival's boss banner on the frame's top rail: its name over one long bar
+// on a chip stroked in the rival's red, and under the chip a row carrying the
+// status pill at the left and the passive pill at the right. Top-anchored, so
+// a status pill appearing mid-fight moves nothing, and so no room is reserved
+// for one. The name stays on one line, shrinking in whole-px steps when it
+// runs wider than the chip (the longest rival names do at the larger presets),
+// and keeps its own case: a formula in it (Bi₂Te₃) is notation.
+export function drawBossBar(scene: Phaser.Scene, opts: BossBarOptions): Nameplate {
+  const width = RIGHT_RAIL - BOSS_BAR_LEFT;
+  const innerW = width - BOSS_PAD_X * 2;
+  const innerX = BOSS_BAR_LEFT + BOSS_PAD_X;
+  const top = TOP_RAIL;
+
+  const nameText = scene.add
+    .text(innerX, top + BOSS_PAD_Y, opts.name, { fontSize: `${opts.namePx}px`, fontStyle: 'bold', color: BOSS_RED_HEX })
+    .setOrigin(0, 0);
+  let namePx = opts.namePx;
+  while (namePx > PLATE_MIN_NAME_PX && nameText.width > innerW) {
+    namePx -= 1;
+    nameText.setFontSize(`${namePx}px`);
+  }
+
+  const barY = top + BOSS_PAD_Y + nameText.height + BOSS_ROW_GAP;
+  const chipH = BOSS_PAD_Y * 2 + nameText.height + BOSS_ROW_GAP + BOSS_BAR_H;
+  const chip = scene.add.graphics().setDepth(4);
+  chip.fillStyle(PANEL_BG, 0.72);
+  fillRoundedRect(chip, BOSS_BAR_LEFT, top, width, chipH, 6);
+  chip.lineStyle(1, BOSS_RED, 0.6);
+  strokeRoundedRect(chip, BOSS_BAR_LEFT, top, width, chipH, 6);
+
+  const inset = (BOSS_BAR_H - BOSS_FILL_H) / 2;
+  const fillW = innerW - inset * 2;
+  const track = scene.add.rectangle(innerX, barY, innerW, BOSS_BAR_H, 0x0b1020, 0.85).setOrigin(0, 0);
+  track.setStrokeStyle(1, BOSS_RED, 0.5);
+  const hpFill = scene.add.rectangle(innerX + inset, barY + inset, fillW, BOSS_FILL_H, BOSS_HP_FILL).setOrigin(0, 0);
+  const shine = scene.add
+    .rectangle(innerX + inset, barY + inset, fillW, Math.round(BOSS_FILL_H / 3), BOSS_HP_SHINE, 0.55)
+    .setOrigin(0, 0);
+  // Quarter marks over the fill, so a bar this long still says how much of
+  // it a hit took.
+  const ticks = scene.add.graphics();
+  ticks.lineStyle(1, 0x0b1020, 0.7);
+  for (let q = 1; q < 4; q++) {
+    const x = Math.round(innerX + inset + (fillW * q) / 4) + 0.5;
+    ticks.lineBetween(x, barY + inset, x, barY + inset + BOSS_FILL_H);
+  }
+
+  const rowY = top + chipH + 2;
+  const statusLabel = scene.add
+    .text(BOSS_BAR_LEFT, rowY, '', { fontSize: `${opts.pillPx}px`, color: STATUS_PILL_COLOR, padding: { x: 4, y: 1 } })
+    .setOrigin(0, 0);
+  const passive = opts.passiveText
+    ? scene.add
+        .text(RIGHT_RAIL, rowY, opts.passiveText, {
+          fontSize: `${opts.pillPx}px`,
+          color: PASSIVE_PILL_COLOR,
+          backgroundColor: 'rgba(0,0,0,0.35)',
+          padding: { x: 4, y: 1 },
+          align: 'right',
+          wordWrap: { width: width / 2 },
+        })
+        .setOrigin(1, 0)
+    : null;
+
+  [nameText, track, hpFill, shine, ticks, statusLabel, passive].forEach((obj) => obj?.setDepth(5));
+
+  const parts = [nameText, chip, track, hpFill, shine, ticks, statusLabel, passive];
+  return {
+    hpFill,
+    statusLabel,
+    top,
+    setHp: (fraction) => {
+      hpFill.width = Math.max(0, fraction * fillW);
+      shine.width = hpFill.width;
+    },
+    destroy: () => parts.forEach((obj) => obj?.destroy()),
+  };
 }
 
 // The row of upcoming-hit icons under the "Turns" label, rebuilt whole

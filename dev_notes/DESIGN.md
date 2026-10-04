@@ -1692,7 +1692,7 @@ it too, rather than reverting to the plain `makeCrystal` an ordinary wild encoun
 greeting uses, and the fight itself carries it on: `BattleScene` renders a rival's
 opponent crystal at `BOSS_CRYSTAL_SIZE` (bigger than an ordinary wild encounter's),
 at its own spot left of and below the usual opponent one so the taller, wider
-silhouette clears both the opponent HP bar above it and the move menu below, instead
+silhouette clears both the boss banner on the top rail above it and the move menu below, instead
 of the plain `makeCrystal` every wild battle uses. A rival's spot is a *ground*
 reference rather than a body centre: the golem is placed by its feet, so they meet
 the arena floor exactly and its contact shadow, the arena's own floor shadow and any

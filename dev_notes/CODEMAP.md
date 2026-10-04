@@ -171,9 +171,12 @@ game/src/
                                  the player, the golem and the finale's two later forms
                                  (MODEL_*/SMOKE_*), BOSS_GROUND_LIFT, the OpponentIcon kind
                                  drawTurnPreview dispatches the opponent's icon on, HP-bar
-                                 dims, MENU_*, TURN_PREVIEW_*, LOG_*), plus the two HUD pieces that
+                                 dims, MENU_*, TURN_PREVIEW_*, LOG_*), plus the HUD pieces that
                                  are pure geometry: drawNameplate (one floating name-over-bar plate,
-                                 both sides) and drawTurnPreview (the "TURNS" icon row). Plain
+                                 the player and every wild), drawBossBar (a rival's wide name-over-bar
+                                 banner on the top rail; both return the same Nameplate shape, whose
+                                 setHp owns the fill's width) and drawTurnPreview (the "TURNS" icon
+                                 row). Plain
                                  functions taking the scene, holding no battle state, the same shape
                                  panels/hubStations.ts uses. The move menu stays in BattleScene --
                                  it reads/writes that scene's paging + turn-lock state and wires up
@@ -915,7 +918,7 @@ game/src/
     crispText.ts                  installCrispText() -- every Phaser Text drawn with its top-left
                                    corner on a whole pixel, in both renderers (see "Text on whole
                                    pixels" below)
-    theme.ts                      PANEL_BG/GOLD_ACCENT(_HEX)/REFERENCE_BLUE_GREY(_HEX)/
+    theme.ts                      PANEL_BG/GOLD_ACCENT(_HEX)/REFERENCE_BLUE_GREY(_HEX)/BOSS_RED(_HEX)/
                                    TUTORIAL_CYAN(_HEX)/STORY_LAVENDER(_HEX) -- colors reused for a shared
                                    UI role (a panel background, an "active" accent, etc.) across
                                    multiple scene/panel files. A guardian's own identity color
@@ -1575,14 +1578,15 @@ it. Both return a log-line clause (`STATUS_INFO[kind].applyText`/`.expireText`, 
 hit's own message, the same "stack a clause onto the existing line" pattern
 `mismatchText`/`critText` already use. `setStatus` also calls `renderStatusLabel`, which updates a small
 always-present-but-usually-empty `Text` pill (`playerStatusLabel`/`opponentStatusLabel`,
-positioned just under each side's HP bar) to `"<Label> (<turnsLeft>)"` or clears it to `''` when
+positioned just under each side's HP bar -- for a rival, at the left under its boss banner) to
+`"<Label> (<turnsLeft>)"` or clears it to `''` when
 there's no active cloud, and `syncScreeningAura(isPlayer)`, which keeps that side's persistent
 aura (`art/screeningAuras.ts`, `playerScreeningAura`/`opponentScreeningAura`) in step with its
 status: the old aura (if any) fades out and is reclaimed (`removeScreeningAura`, tweens
 included), and the current cloud's fades in mounted inside that side's crystal container
 (`addScreeningAura`), sized off hud.ts's measured `*_HEAD_RISE`/`BOSS_FOOT_DROP` offsets --
-the boss golem's is centered on its body's measured midpoint, since its anchor is a ground
-reference. Because `setStatus` is the single mutation path for apply/replace/expire, the aura
+a rival's is centered on its body's measured midpoint and spans head to feet, since its anchor
+is a ground reference. Because `setStatus` is the single mutation path for apply/replace/expire, the aura
 can never outlive its buff; the two aura fields are battle-ephemeral like the statuses
 themselves and reset (dropped, not destroyed -- scene teardown already reclaimed the objects)
 in `create()`, and `transmuteAdapted` drops the opponent's aura reference before destroying
@@ -1602,12 +1606,13 @@ on or off for the battle. Each side's active passives get their
 own pill too, built inside `scenes/battle/hud.ts`'s `drawNameplate` from its `passiveText`
 option and laid out as the last row of that plate's bottom-anchored stack, directly below the
 side's status pill (its height counts toward the stack height the plate shrinks its name down
-to fit into the room above the crystal's head) -- since the
+to fit into the room above the crystal's head); a rival's `drawBossBar` takes the same option
+and right-aligns the pill under its banner, opposite the status pill -- since the
 set never changes mid-battle there's no tick-down render function like `renderStatusLabel`,
 the pill's text (`passivePillText`, `passiveName(id)` -- Franklin's and built-in alike --
 joined with `·` for the up to four entries a side can hold, undefined for a stale id from an
 old save simply dropped) is built once and passed
-into `drawNameplate` as that plate's last stack row (word-wrapped at the plate's own width,
+into the plate builder as its last row (word-wrapped at the plate's own width,
 since three names at the Large preset outrun the field), and the `Text` object isn't kept as a
 field, unlike `playerStatusLabel`/`opponentStatusLabel` (those are fields because
 `renderStatusLabel` reads them back later; nothing reads the passive pill back). It uses
@@ -2008,7 +2013,7 @@ moves never reach that function at all, see `resolveHit`'s own early return) -- 
 includes that class), picks a real compound of one of those types at random from `allCrystals()`,
 and takes on that compound's type and look while keeping the name "The Adapted" (the compound
 is named only in the log line, `WORLDS.md` §6),
-rebuilding `opponentCrystal`, rebuilding the opponent's nameplate through `drawOpponentPlate()`
+rebuilding `opponentCrystal`, rebuilding the opponent's boss banner through `drawOpponentPlate()`
 (whole, not retitled -- the plate is a one-shot fitted layout, see STYLE.md's "Nameplates"),
 redrawing the move menu (`drawMoveMenu`, so every button's `!!2x` tag is a mismatch check
 against the form the player is now facing) and logging the change. Both rebuilds happen
@@ -2051,7 +2056,8 @@ before the plates are drawn, and `settleArenaZoom()` splits the HUD camera off t
 plate is held in `playerPlate` for exactly this) and eases the main camera to the rest zoom
 without ever merging the cameras back. `hudPoint(x, y)` maps an arena point to where it sits
 on the HUD at the rest zoom (the camera zooms about the field's centre), and every HUD
-element anchored to an arena object -- both nameplates -- is placed through it. The stage
+element anchored to an arena object -- the player's nameplate -- is placed through it; the
+rival's boss banner sits on the top rail and stays put at any zoom. The stage
 also lays its own sky: `art/stars.ts`'s `drawStarCanopy` over the whole painted sky
 (`ARENA_X0..ARENA_X0 + ARENA_W`, `-OVERSCAN_Y..R_HORIZON_Y`), drowned toward `arenaAir`
 (the air `drawRealisticBackdrop` keeps for it) and moved to the display-list slot directly
@@ -2065,8 +2071,7 @@ sets `battleOver` first and shows `finaleVictoryLineFor` for a stage-3 win and
 `finaleDefeatLineFor` for a loss at stage 2 or 3, in place of the compound-keyed greeting and
 blurb (a stage-1 loss keeps those, for the real compound the Adapted was wearing).
 `sampleEnvironment` leaves out the compound the cloud is answering as now, so each round is a
-different one. `opponentExtent` also carries `plateRise`, where the plate anchors: the head for
-every figure but the cloud, whose plate sits in its crown (hud.ts's `SMOKE_PLATE_RISE`). `battleOver` and `lastOpponentMoveId` are public probe fields for
+different one. `battleOver` and `lastOpponentMoveId` are public probe fields for
 `component-check`'s Test 4e, which plays the chain through and asserts each stage's rule.
 
 **Progression is exclusive to the pass.** No panel anywhere offers a progression action:

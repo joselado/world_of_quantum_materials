@@ -869,8 +869,8 @@ async function main() {
       const geom = {
         playerAnchor: { x: s['playerCrystal'].x, y: s['playerCrystal'].y },
         opponentAnchor: { x: s['opponentCrystal'].x, y: s['opponentCrystal'].y },
-        playerHpBar: bounds(s['playerHpBar']),
-        opponentHpBar: bounds(s['opponentHpBar']),
+        playerHpBar: bounds(s['playerPlate'].hpFill),
+        opponentHpBar: bounds(s['opponentPlate'].hpFill),
         opponentName: s['wild'] ? s['wild'].name : '?',
         playerName: s['playerMaterial'] ? s['playerMaterial'].name : '?',
         isRival: !!s['isRival'],
