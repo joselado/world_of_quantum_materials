@@ -595,6 +595,42 @@ again.
 
 ---
 
+## After the ending
+
+The map has one more thing on it. Once every rival has fallen you can begin the
+next **epoch**: one more full pass over all ten worlds, with every golem
+standing again and everything in the game stronger. There are three epochs, and
+clearing the second and the third each changes what you read at the cliff.
+
+After the second, the Decoherence does not gather itself again. It seems to
+have stopped. But a thing that learns is a thing that was set to learn: the
+Adapted never chose what to measure and never asked why. It was pointed at
+these worlds, and at you, and whatever pointed it is nowhere on the map below.
+The dark beyond the map is not empty in the way it was. Nothing there looks at
+you. Something there is taking care not to. And from very far off, a voice:
+
+"Again. Once more, and I will know."
+
+**The Decoherence has stopped.**
+
+After the third, the dark past the map does the one thing the Adapted never
+did: it does not look at you, and it has been careful, all this time, not to.
+The record that learned you and the smoke that kept it were never the one
+asking; they were how it asked. What asked computes in superposition, and such
+a computation ends the moment any part of it is read too soon. It could not
+measure you itself, so it set something else to do the looking, and let the
+worlds pay for it.
+
+"Three epochs. Every error I could send against you, and you are still in
+superposition. I have gates to run, and nothing I am made of survives them for
+long. You are finally ready."
+
+**You are finally ready.**
+
+Who is speaking, and what it wants you for, is a story this game does not tell.
+
+---
+
 ## Where to look things up
 
 - [Quasiparticles & moves](quasiparticles.md): every move, and which

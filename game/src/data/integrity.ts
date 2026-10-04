@@ -23,14 +23,16 @@ export function checkDataIntegrity(builtWorlds: number[]): void {
         problems.push(`Material "${material.name}" lists unknown move id "${moveId}" (not in MOVES)`);
       }
       // Analytic (Landau, World 4) and Ultimate (Skłodowska-Curie, World 10)
-      // moves are player-only -- their quiz gate lives in BattleScene's move-menu
-      // click handler, not in the damage formula, so an opponent rolling one of
-      // these ids would bypass the gate entirely and hit at full power for free.
+      // moves never sit in a moveset -- their quiz gate lives in BattleScene's
+      // move-menu click handler, not in the damage formula, so an opponent
+      // rolling one of these ids off its own list would throw it ungated and
+      // untuned. The rivals that throw them in a later epoch get them from
+      // BattleScene.opponentAction, which supplies both.
       if (ANALYTIC_MOVE_IDS.includes(moveId)) {
-        problems.push(`Material "${material.name}" lists Analytic move "${moveId}" -- Analytic moves are player-only (quiz-gated in BattleScene, not in the damage formula)`);
+        problems.push(`Material "${material.name}" lists Analytic move "${moveId}" -- Analytic moves never sit in a moveset (gated and tuned in BattleScene, not in the damage formula)`);
       }
       if (ULTIMATE_MOVE_IDS.includes(moveId)) {
-        problems.push(`Material "${material.name}" lists Ultimate move "${moveId}" -- Ultimate moves are player-only (quiz-gated in BattleScene, not in the damage formula)`);
+        problems.push(`Material "${material.name}" lists Ultimate move "${moveId}" -- Ultimate moves never sit in a moveset (gated and tuned in BattleScene, not in the damage formula)`);
       }
     }
   }

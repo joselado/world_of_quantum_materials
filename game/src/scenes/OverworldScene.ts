@@ -48,8 +48,10 @@ import {
   DEFAULT_STATS,
   allCrystals,
   isHybridMaterial,
+  getEpoch,
+  allRivalsFallen,
 } from '../data/materials';
-import { wildHpForWorld, MAX_STAT, DEFAULT_EPOCH } from '../data/balance';
+import { wildHpForWorld, MAX_STAT, DEFAULT_EPOCH, MAX_EPOCH } from '../data/balance';
 import { PASSIVES, PASSIVE_OWNERS, PASSIVE_MAX_SLOTS, passiveSlotsUsed } from '../data/passives';
 import type { ActivePassivesByOwner, PassiveSlotsByOwner } from '../data/passives';
 import { pickTokenValue, tokenColorForValue } from '../data/tokens';
@@ -59,7 +61,7 @@ import { hasMath, makeQuestionText, makeFormulaButton } from '../ui/mathtext';
 import { encounterGreeting } from '../data/greetings';
 import { TUTORIAL_TIPS, hasSeenTip, markTipSeen, tipBodyFor } from '../data/tutorial';
 import type { TutorialTipId } from '../data/tutorial';
-import { worldGoalTextFor, FINALE_TITLE, storyBeatFor, finaleBodyFor } from '../data/story';
+import { worldGoalTextFor, FINALE_TITLE, storyBeatFor, finaleBodyFor, afterStoryFor } from '../data/story';
 import { worldLoreFor, rivalTauntFor, hasSeenWorldLore, markWorldLoreSeen } from '../data/worldLore';
 import type { WorldLore } from '../data/worldLore';
 import {
@@ -1096,11 +1098,11 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // one-time tip/replayable recap alone.
     const name = worldName(this.world);
     const essenceGutterProbe = this.add
-      .text(0, 0, 'Qumatessence: 99999', { fontSize: fontPx(this, 14), padding: { x: 4, y: 2 } })
+      .text(0, 0, 'Qumatessence: 999999', { fontSize: fontPx(this, 14), padding: { x: 4, y: 2 } })
       .setVisible(false);
     const essenceGutter = essenceGutterProbe.width + 8;
     essenceGutterProbe.destroy();
-    this.add
+    const worldLabel = this.add
       .text(8, 8, `World ${this.world}: ${name}`, {
         fontSize: fontPx(this, 16),
         color: '#ffffff',
@@ -1109,6 +1111,20 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
         wordWrap: { width: CANVAS_W - 16 - essenceGutter },
       })
       .setDepth(50);
+    // Past the first epoch the label carries which one this is, on a line of
+    // its own under the world's name: the map that begins an epoch is out of
+    // reach until The Adapted falls again, so this is where a run reads it.
+    const epoch = getEpoch(this.game.registry);
+    if (epoch > DEFAULT_EPOCH) {
+      this.add
+        .text(8, 8 + worldLabel.height + 2, `Epoch ${epoch} of ${MAX_EPOCH}`, {
+          fontSize: fontPx(this, 12),
+          color: GOLD_ACCENT_HEX,
+          backgroundColor: 'rgba(0,0,0,0.35)',
+          padding: { x: 4, y: 2 },
+        })
+        .setDepth(50);
+    }
     this.tokenText = this.add
       .text(CANVAS_W - 8, 8, `Qumatessence: ${this.qumatessence}`, {
         fontSize: fontPx(this, 14),
@@ -3182,8 +3198,15 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // trained on, and what it kept is a record, which holds only what was
   // measured. Content laid out top-down first, panel sized/inserted behind
   // everything afterward -- same pattern as showGuardianLore/showSettingsPanel.
+  //
+  // Once all ten rivals have fallen in a later epoch the same panel carries
+  // that epoch's after-story instead (data/story.ts's AFTER_STORY): the
+  // ending was read at this edge an epoch ago, and what is new is what
+  // answers from past the map.
   private showFinalePanel() {
     this.dialogueActive = true;
+    const epoch = getEpoch(this.game.registry);
+    const after = epoch >= 2 && allRivalsFallen(this.game.registry) ? afterStoryFor(epoch as 2 | 3, storyLength(this.game.registry)) : null;
 
     const panelWidth = 600;
     const top = 40;
@@ -3205,7 +3228,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     let y = top + topPad;
 
     const title = this.add
-      .text(CANVAS_W / 2, y, FINALE_TITLE, {
+      .text(CANVAS_W / 2, y, after?.title ?? FINALE_TITLE, {
         fontSize: `${Math.round(16 * scale)}px`,
         color: GOLD_ACCENT_HEX,
         fontStyle: 'bold',
@@ -3260,7 +3283,11 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // to): an ending screen pages to nothing, so the closing text gives up
     // font size rather than splitting, and the panel always ends on the
     // canvas at every FONT_SCALE_PRESETS setting.
-    fitProseToBudget(body, [finaleBodyFor(storyLength(this.game.registry))], CANVAS_H - bottomMargin - y - (20 + farewell.height + bottomPad));
+    fitProseToBudget(
+      body,
+      [after?.body ?? finaleBodyFor(storyLength(this.game.registry))],
+      CANVAS_H - bottomMargin - y - (20 + farewell.height + bottomPad)
+    );
     y += body.height + 20;
 
     study.setY(y);

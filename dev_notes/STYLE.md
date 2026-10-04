@@ -1139,7 +1139,19 @@ the ten worlds, with a world whose rival still stands dimmed; the right column i
 panel map with a pulsing gold ring on the selected world's marker, then that world's
 rival by name (pale when fallen, the boss label's red when standing), one status
 sentence, and a single "Reset this rival" button, present only for a fallen rival.
-The escape button reads "Step back".
+The escape button reads "Step back". The first row of the list is the epoch ("Epoch N
+of 3"), in the panel's gold rather than a world's pale blue, since it is not a place:
+selected, it rings no marker, and the right column carries the same three things in
+the same positions -- the epoch in gold where a rival's name would be, one status
+sentence, and a "Begin Epoch N" button present only once all ten rivals have fallen.
+Out in the worlds the same words sit under the world label in the top-left corner from
+Epoch 2 on: one line, in the gold of the qumatessence counter opposite it, two sizes
+under the label (12 against 16), on the label's own translucent backing.
+
+At a cleared later epoch the finale panel this menu is reached from shows the
+after-story in the ending's own layout: gold title, pale body with its paragraphs kept
+apart and the voice's line in quotation marks as the last of them, the same two
+buttons.
 
 ### The star network (Worlds 7-10's sky)
 

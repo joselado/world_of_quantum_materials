@@ -163,6 +163,21 @@ Monte-Carlo sample count/seed, the ±15%-variance robustness check behind a
 row's WIN/LOSE/INCONCLUSIVE verdict) is documented in that script's own
 header comment -- read it before trusting a number out of its output.
 
+After the ten worlds the script carries each build that cleared them through the
+two post-game epochs (`data/balance.ts`'s `Epoch`) and prints a second report:
+per epoch and world, how many ordinary wild wins the build had to farm before
+that world's rival became beatable, where it farmed them, and its stats at that
+point, then the total per epoch. This is what the epoch tables in `balance.ts`
+are tuned against. That pass makes its own assumptions, stated above
+`simulatePostGame`: no grind-patience cap (it measures how much leveling an
+epoch asks for, not whether a build would stall), farming in the best-paying
+world of the epoch the build reliably wins in, stat points bought evenly, a
+fight read with turn order (an opponent with more Momentum swings first), and
+an Ultimate counted in casts rather than as an averaged multiplier, since past
+Epoch 1 one landed cast is many times the bar it hits. A last line per build
+reports what The Quantum Adapted's Ultimate does to it at Epoch 3 against its
+bar, outside the expected-value table, which would average a one-shot away.
+
 ## Content lint
 
 `game/scripts/content-lint.mjs` (`npm run content-lint` from `game/`, ~2s --

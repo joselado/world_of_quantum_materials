@@ -6,7 +6,16 @@ import { buildQumatuomiMap } from '../../art/qumatuomiMap';
 import { CANVAS_W, CANVAS_H } from '../../art/perspective';
 import { fontScale } from '../../ui/text';
 import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
-import { WORLD_RIVALS, worldName } from '../../data/materials';
+import { WORLD_RIVALS, worldName, getEpoch, allRivalsFallen } from '../../data/materials';
+import {
+  MAX_EPOCH,
+  epochStatMultiplier,
+  epochHpMultiplier,
+  epochStakeMultiplier,
+  rivalAnalyticChance,
+  QUANTUM_ULTIMATE_EPOCH,
+} from '../../data/balance';
+import type { Epoch } from '../../data/balance';
 import { persistFromRegistry } from '../../data/save';
 import {
   LIST_DETAIL_PANEL_W,
@@ -40,6 +49,15 @@ import {
 // while The Adapted is beaten. The world is re-entered from its far end
 // (`advanceToWorld(world, 'goal')`), which puts the player at the pass mouth
 // facing a rival that stands again.
+//
+// The row above the ten worlds is the epoch (data/balance.ts's Epoch), the
+// same act at the scale of the whole map: once all ten rivals have fallen it
+// begins the next pass over the worlds, which stands every one of them back
+// up at once, stronger, and cannot be taken back. All ten, because Bloch
+// folds the player to any world they have visited and The Adapted can be
+// brought down with other passes still held. It closes the edge the way
+// resetting The Adapted does, and for the same reason.
+const EPOCH_ROW = 0;
 const MAP_H = 146;
 const PANEL_STROKE = GOLD_ACCENT;
 
@@ -54,6 +72,18 @@ function rivalName(world: number): string {
   return WORLD_RIVALS[world]?.name ?? 'Its rival';
 }
 
+// What an epoch does, in the terms the player reads on the row that begins
+// it: its multipliers and what the rivals throw.
+function epochSummary(epoch: Epoch): string {
+  const chance = rivalAnalyticChance(epoch);
+  const analytic =
+    chance >= 1
+      ? "rivals' Analytic moves always land at full power"
+      : `rivals throw Analytic moves, at full power ${Math.round(chance * 100)}% of the time`;
+  const ultimate = epoch >= QUANTUM_ULTIMATE_EPOCH ? ', and The Quantum Adapted casts Ultimates' : '';
+  return `every opponent's stats x${epochStatMultiplier(epoch)} and HP x${epochHpMultiplier(epoch)}, stakes x${epochStakeMultiplier(epoch)}, ${analytic}${ultimate}.`;
+}
+
 export function showOverlookPanel(scene: GuardianPanelHost, selected?: number, page = 0) {
   scene.dialogueActive = true;
 
@@ -62,6 +92,7 @@ export function showOverlookPanel(scene: GuardianPanelHost, selected?: number, p
     superposition ? BUILT_WORLDS : scene.getVisitedWorlds().filter((w) => BUILT_WORLDS.includes(w))
   );
   const defeated = rivalDefeatedMap(scene);
+  const epoch = getEpoch(scene.game.registry);
 
   const panelWidth = LIST_DETAIL_PANEL_W;
   const top = 20;
@@ -100,8 +131,9 @@ export function showOverlookPanel(scene: GuardianPanelHost, selected?: number, p
   const columns = listDetailColumns(panelLeft);
   const columnsTop = y;
 
-  const items = BUILT_WORLDS;
-  let preview = selected !== undefined && items.includes(selected) ? selected : items.find((w) => defeated[w]) ?? items[0];
+  const items = [EPOCH_ROW, ...BUILT_WORLDS];
+  let preview =
+    selected !== undefined && items.includes(selected) ? selected : BUILT_WORLDS.find((w) => defeated[w]) ?? BUILT_WORLDS[0];
 
   const selectWorld = (w: number) => {
     preview = w;
@@ -117,9 +149,9 @@ export function showOverlookPanel(scene: GuardianPanelHost, selected?: number, p
     width: columns.leftColW,
     items,
     idFor: (w) => String(w),
-    labelFor: (w) => (discoveredWorlds.has(w) ? worldName(w) : '???'),
+    labelFor: (w) => (w === EPOCH_ROW ? `Epoch ${epoch} of ${MAX_EPOCH}` : discoveredWorlds.has(w) ? worldName(w) : '???'),
     // A world whose rival stands is dimmed: there is nothing here to do to it.
-    colorFor: (w) => (discoveredWorlds.has(w) && defeated[w] ? '#cfd8ff' : '#6a7396'),
+    colorFor: (w) => (w === EPOCH_ROW ? GOLD_ACCENT_HEX : discoveredWorlds.has(w) && defeated[w] ? '#cfd8ff' : '#6a7396'),
     selectedId: String(preview),
     page,
     onPageChange: (next) => {
@@ -164,6 +196,11 @@ export function showOverlookPanel(scene: GuardianPanelHost, selected?: number, p
       scene.tweens.add({ targets: ring, scale: 1.8, alpha: { from: 1, to: 0 }, duration: 900, repeat: -1, ease: 'Sine.easeOut' });
     }
 
+    if (preview === EPOCH_ROW) {
+      renderEpochDetail();
+      return;
+    }
+
     const discovered = discoveredWorlds.has(preview);
     const fallen = !!defeated[preview];
     const rival = rivalName(preview);
@@ -197,7 +234,53 @@ export function showOverlookPanel(scene: GuardianPanelHost, selected?: number, p
       status,
       confirm: discovered && fallen ? { label: 'Reset this rival', onClick: () => resetRival(scene, preview, listResult.page) } : undefined,
     });
+    closePanel(rightY);
+  };
 
+  // The epoch row's own detail: which pass over the worlds this is, how many
+  // of its rivals have fallen, and -- once all ten have -- the button that
+  // begins the next.
+  const renderEpochDetail = () => {
+    const nameText = scene.add
+      .text(columns.rightColCenterX, detailTop, `Epoch ${epoch} of ${MAX_EPOCH}`, {
+        fontSize: `${Math.round(13 * Math.min(fontScale(scene), DETAIL_NAME_CAP))}px`,
+        color: GOLD_ACCENT_HEX,
+        fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: columns.rightColW },
+      })
+      .setOrigin(0.5, 0);
+    detailBlock.add(nameText);
+
+    const fallenCount = BUILT_WORLDS.filter((w) => defeated[w]).length;
+    const cleared = allRivalsFallen(scene.game.registry);
+    const next = (epoch + 1) as Epoch;
+    const fallenLine = `${fallenCount} of ${BUILT_WORLDS.length} rivals ${fallenCount === 1 ? 'has' : 'have'} fallen.`;
+    const status =
+      epoch >= MAX_EPOCH
+        ? cleared
+          ? 'The last epoch, and every rival of it has fallen.'
+          : `The last epoch. ${fallenLine}`
+        : cleared
+        ? `All ten have fallen. Epoch ${next} stands every rival back up and cannot be undone: ${epochSummary(next)}`
+        : `${fallenLine} All ten open Epoch ${next}: ${epochSummary(next)}`;
+
+    const rightY = renderStatusAndConfirm({
+      scene,
+      container: detailBlock,
+      centerX: columns.rightColCenterX,
+      y: detailTop + nameText.height + 6,
+      colW: columns.rightColW,
+      maxBottom: CANVAS_H - 16,
+      status,
+      confirm: epoch < MAX_EPOCH && cleared ? { label: `Begin Epoch ${next}`, onClick: () => beginNextEpoch(scene) } : undefined,
+    });
+    closePanel(rightY);
+  };
+
+  // The footer, the divider and the panel behind everything, sized to
+  // whichever column runs lower.
+  const closePanel = (rightY: number) => {
     const leftBottom = renderListColumnFooter(scene, chromeBlock, columns, listResult.bottom + 10, 'Step back', () => scene.closeDialogue());
     const columnsBottom = Math.max(leftBottom, rightY);
     insertColumnDivider(scene, chromeBlock, columns.dividerX, columnsTop, columnsBottom);
@@ -209,6 +292,19 @@ export function showOverlookPanel(scene: GuardianPanelHost, selected?: number, p
     chromeBlock.addAt(panel, 0);
   };
   renderDetail();
+}
+
+// Begins the next epoch: every rival stands again, and the world is
+// re-entered from its far end like a reset of The Adapted, since the cliff
+// this panel was opened from is gone with it.
+function beginNextEpoch(scene: GuardianPanelHost) {
+  const registry = scene.game.registry;
+  const epoch = getEpoch(registry);
+  if (epoch >= MAX_EPOCH || !allRivalsFallen(registry)) return;
+  registry.set('epoch', epoch + 1);
+  registry.set('rivalDefeated', {});
+  persistFromRegistry(registry);
+  scene.advanceToWorld(scene.world, 'goal');
 }
 
 function resetRival(scene: GuardianPanelHost, world: number, page: number) {

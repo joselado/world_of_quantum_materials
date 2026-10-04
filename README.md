@@ -249,6 +249,28 @@ with the whole map lying below; from that edge you can pick any world and
 reset its rival, to fight it again. See [Crystals](docs/crystals.md) for
 every world's full wild-material list.
 
+**After the ending: epochs.** The same map has one more row, the epoch. Once
+all ten rivals have fallen you can begin Epoch 2, and after clearing that,
+Epoch 3. Beginning an epoch stands every rival back up at once and cannot be
+undone, and it makes the whole game harder (from Epoch 2 on, the epoch you
+are in is shown under the world's name):
+
+| | Epoch 1 | Epoch 2 | Epoch 3 |
+|---|---|---|---|
+| Every opponent's Energy, Momentum and Lifetime | x1 | x4 | x8 |
+| Every opponent's HP | x1 | x2 | x3 |
+| Qumatessence won or lost per battle | x1 | x3 | x6 |
+| Rivals throw Analytic moves | no | full power half the time | always full power |
+| The Quantum Adapted casts Ultimates | no | no | yes |
+
+Your own HP does not grow, so a later epoch is won by leveling: expect to
+roughly triple your stats for Epoch 2 and triple them again for Epoch 3, and
+to lean on Analytic moves, Ultimates and Feynman's levels to get through the
+longer HP bars. An Ultimate from The Quantum Adapted takes your whole bar
+whatever your Lifetime; Franklin's Last Scattering and Full Reflection are
+the answers to it. Clearing all ten rivals in Epoch 2, and again in Epoch 3,
+changes what you read at the cliff.
+
 Each world has its own history, its own way the Decoherence comes for it,
 and its own rival standing in the way, and the ten of them tell one story.
 [The story](docs/storyline.md) is that story, world by world, from the

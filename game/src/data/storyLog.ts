@@ -1,5 +1,5 @@
-import { worldName } from './materials';
-import { STORY_BEATS, WORLD_GOAL_TEXT, FINALE_TITLE, FINALE_BODY, FINALE_STAGES } from './story';
+import { worldName, getEpoch, allRivalsFallen } from './materials';
+import { STORY_BEATS, WORLD_GOAL_TEXT, FINALE_TITLE, FINALE_BODY, FINALE_STAGES, AFTER_STORY } from './story';
 import { WORLD_LORE, RIVAL_TAUNTS } from './worldLore';
 import { TUTORIAL_TIPS } from './tutorial';
 import type { TutorialTipId } from './tutorial';
@@ -57,10 +57,14 @@ export interface StoryEntry {
 //             meets a little earlier, on reaching the pass mouth -- nothing
 //             persists that moment, and the whole pass sequence reads as one
 //             chapter either way.
+//   - `epoch` every rival has fallen in this epoch (`epoch` with
+//             `rivalDefeated`): the save is on it with all ten down, or
+//             already past it, which it can only be by having cleared it.
 export type StoryUnlock =
   | { kind: 'tip'; id: TutorialTipId }
   | { kind: 'lore'; world: number }
-  | { kind: 'rival'; world: number };
+  | { kind: 'rival'; world: number }
+  | { kind: 'epoch'; epoch: 2 | 3 };
 
 // A world's three chapters: the history it opens with, the Decoherence's
 // attack on that history, and the pass at its far end -- goal line, the
@@ -154,6 +158,10 @@ export const STORY_LOG: StoryEntry[] = [
     // open together.
     unlock: { kind: 'rival', world: 10 },
   },
+  // The after-story (data/story.ts's AFTER_STORY), one chapter per later
+  // epoch, each readable once that epoch's ten rivals have all fallen.
+  { title: AFTER_STORY[2].title, listLabel: 'After Epoch 2', body: AFTER_STORY[2].body, unlock: { kind: 'epoch', epoch: 2 } },
+  { title: AFTER_STORY[3].title, listLabel: 'After Epoch 3', body: AFTER_STORY[3].body, unlock: { kind: 'epoch', epoch: 3 } },
 ];
 
 // Minimal structural type (mirrors data/tutorial.ts's RegistryLike) so this
@@ -183,6 +191,8 @@ export function storyLogIndex(registry: RegistryLike): StoryLogRow[] {
   const tipsSeen = (registry.get('tutorialTipsSeen') as string[]) ?? [];
   const loreSeen = (registry.get('worldLoreSeen') as number[]) ?? [];
   const rivalDefeated = (registry.get('rivalDefeated') as Record<number, boolean>) ?? {};
+  const epoch = getEpoch(registry);
+  const cleared = allRivalsFallen(registry);
   return STORY_LOG.map((entry) => {
     const unlock = entry.unlock;
     let reached: boolean;
@@ -195,6 +205,9 @@ export function storyLogIndex(registry: RegistryLike): StoryLogRow[] {
         break;
       case 'rival':
         reached = !!rivalDefeated[unlock.world];
+        break;
+      case 'epoch':
+        reached = epoch > unlock.epoch || (epoch === unlock.epoch && cleared);
         break;
     }
     return { entry, reached: superposition || reached };

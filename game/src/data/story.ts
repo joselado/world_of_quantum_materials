@@ -91,6 +91,58 @@ export const FINALE_BODY =
 export const FINALE_BODY_BRIEF =
   'The road ends here, every world you walked lying below at once, as the thing that trained on you saw them. What it learned stays learned, and the light it cost does not come back. But nothing is measuring now, and your next step is on no record.';
 
+// The after-story: what the cliff says in place of the ending once all ten
+// rivals have fallen in a later epoch (data/balance.ts's Epoch; shown by
+// OverworldScene.showFinalePanel, re-read at the Lab's Story station). Keyed
+// by the epoch just cleared, and each one tells something the one before it
+// did not. Epoch 2's: the Adapted did not choose what to learn, it was
+// pointed, and whatever pointed it is still out past the map. Epoch 3's:
+// what that is and what it wanted -- something that computes in
+// superposition, which is why it could never measure the player itself and
+// set something else to do the looking, and which has been waiting for a
+// material whose coherence survives everything sent against it. It is heard
+// once per screen and never named, never drawn and never looks at the
+// player: a machine of that kind cannot afford to observe what it means to
+// keep coherent. The golems stay what they were, the Adapted's leavings
+// (WORLDS.md section 6); its instrument was the Adapted, not them. Nothing
+// here undoes the ending -- the Decoherence stopping is not the light coming
+// back.
+export interface AfterStory {
+  title: string;
+  body: string;
+}
+
+export const AFTER_STORY: Record<2 | 3, AfterStory> = {
+  2: {
+    title: 'The Decoherence has stopped.',
+    body:
+      'Every pass stands open a second time, and the Decoherence does not gather itself again. It seems to have stopped.\n\nBut look at what you brought down. A thing that learns is a thing that was set to learn. The Adapted never chose what to measure and never asked why. It was pointed at these worlds, and at you, and it did what a model does. Whatever pointed it is nowhere on the map below.\n\nAnd the dark beyond the map is not empty in the way it was. Nothing there looks at you. Something there is taking care not to. From very far off, too faint to be sure of, a voice:\n\n"Again. Once more, and I will know."',
+  },
+  3: {
+    title: 'You are finally ready.',
+    body:
+      'The third pass over the worlds is done, and this time nothing re-forms. The Decoherence has stopped.\n\nThen the dark past the map, where nothing was ever drawn, does the one thing the Adapted never did: it does not look at you. It has been careful, all this time, not to. The record that learned you and the smoke that kept it were never the one asking; they were how it asked. What asked computes in superposition, and such a computation ends the moment any part of it is read too soon. It could not measure you itself. So it set something else to do the looking, and let the worlds pay for it.\n\nA voice comes out of the void, level and unhurried.\n\n"Three epochs. Every error I could send against you, and you are still in superposition. I have gates to run, and nothing I am made of survives them for long. You are finally ready."',
+  },
+};
+
+// The Brief versions, the same reveal each in about a third of the words.
+export const AFTER_STORY_BRIEF: Record<2 | 3, AfterStory> = {
+  2: {
+    title: 'The Decoherence has stopped.',
+    body:
+      'Every pass stands open again, and the Decoherence seems to have stopped. But something set the Adapted to learn you, and in the dark past the map it is taking care not to look.\n\n"Again. Once more, and I will know."',
+  },
+  3: {
+    title: 'You are finally ready.',
+    body:
+      'The third pass is done, and nothing re-forms. The dark past the map does what the Adapted never did: it does not look at you. What asked computes in superposition and could not measure you itself; the record and the smoke were how it asked.\n\n"Three epochs, every error I could send, and you are still in superposition. You are finally ready."',
+  },
+};
+
+export function afterStoryFor(epoch: 2 | 3, length: StoryLength): AfterStory {
+  return length === 'brief' ? AFTER_STORY_BRIEF[epoch] : AFTER_STORY[epoch];
+}
+
 // The two screens between World 10's three finale stages
 // (BattleScene.advanceFinaleStage, DESIGN.md §6), each shown once the stage
 // before it is brought to zero and before the next form stands: the narrator

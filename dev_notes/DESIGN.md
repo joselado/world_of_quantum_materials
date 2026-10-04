@@ -58,6 +58,21 @@ doors. Resetting The Adapted itself takes the cliff, the land below it and this 
 it, since all three exist only while it is beaten; the player is put back at the pass mouth
 facing it.
 
+**The whole map can be stood back up at once: epochs.** The same menu carries one row above
+the ten worlds, "Epoch N of 3" (`data/balance.ts`'s `Epoch`, save field `epoch`). An epoch is
+one full pass over the ten worlds, the way a training epoch is one full pass over a training
+set. Epoch 1 is the game as first played. Once all ten rivals have fallen the row offers
+"Begin Epoch N+1", which raises the epoch, empties `rivalDefeated` and nothing else, and puts
+the player back at World 10's pass mouth with The Adapted standing, exactly as resetting it
+alone does. It cannot be undone, and it asks for all ten rather than The Adapted alone because
+Bloch folds the player to any world already visited: World 10 can be reached, and its rival
+beaten, with other passes still held. A later epoch makes every opponent stronger and longer
+lived, raises every stake, and changes what the rivals throw (§3, §4, §6); a cleared one is
+answered at the cliff by the after-story (§5). Worlds already reached stay reached, so the
+early worlds of a new epoch, which are its gentlest, are always open to earn in. Past Epoch 1
+every world's top-left label carries the epoch on a second line ("Epoch 2 of 3"), since the
+map that shows it is out of reach until The Adapted falls again.
+
 | World | Course topic | In-game name (`WORLD_NAMES`) | Wild material archetypes |
 |---|---|---|---|
 | 0 (Hub) | — | "The Lab" — guardian's house, Qumatex | — |
@@ -409,6 +424,40 @@ it, meant to be revisited mid-playthrough rather than picked once -- `BattleScen
 both read it live off the registry on every fight/re-level, so a change lands on the player's very
 next battle, no restart needed.
 
+**Epoch** (`data/balance.ts`'s `Epoch`, begun from the map below World 10's cliff, §2): the
+post-game's own axis, independent of the difficulty tier and stacked on it. Where the tier is a
+setting, the epoch is progress: it only ever goes up, one at a time, each time all ten rivals
+have fallen. It does four things, each one table in `data/balance.ts`:
+
+| | Epoch 1 | Epoch 2 | Epoch 3 |
+|---|---|---|---|
+| Every opponent's Energy, Momentum and Lifetime (`epochStatMultiplier`) | x1 | x4 | x8 |
+| Every opponent's max HP (`epochHpMultiplier`) | x1 | x2 | x3 |
+| Every battle stake (`epochStakeMultiplier`) | x1 | x3 | x6 |
+| A rival's Analytic moves land at full power (`rivalAnalyticChance`, §6) | not thrown | 50% | always |
+
+The stat multiplier is multiplied into the tier's and handed to the same curve
+(`enemyStatsForWorld(world, tier x epoch)`), so wilds and rivals scale alike. It is a multiplier
+rather than a flat bonus because the player's max HP is the world's own (23 in World 1 against
+43 in World 10, see below): a flat bonus would flatten the per-world climb and leave World 1,
+where the player's bar is shortest, as the deadliest world of the epoch. Scaling the whole
+curve keeps the ladder, so a new epoch opens on worlds its player can already win in. The HP
+multiplier exists because Lifetime alone cannot make an opponent last: its lever is a square
+root with a ceiling, while a landed Ultimate is ten times an Analytic move's power, so without
+longer bars every later-epoch fight would end on the first cast and Energy would buy nothing.
+The player's own bar does not grow. The stake multiplier is what keeps the leveling a later
+epoch asks for from being hundreds of fights (a stat's total price grows as its square), and it
+grows more slowly than the stats do, so each epoch still asks for more fights than the last.
+
+The values are `npm run balance-sim`-verified against the same three archetypes as the tiers,
+each carried on from the state it finished World 10 in. The M.Sc. build ends Epoch 1 near 5 in
+each stat, clears Epoch 2 at about 13 with some sixteen ordinary wins beyond the rivals
+themselves, and clears Epoch 3 at about 38 with some seventy. The Ph.D. build lands in the
+same range against its own stronger opponents (53 in each stat in the last world). The B.Sc.
+build, which by construction never uses a quiz-gated move, needs stats near 40 and then near
+90, and several hundred wins: the later epochs are built to be answered with Analytic moves,
+Ultimates and Feynman's tiers, not with stat points alone.
+
 **Superposition Mode's own stat/opponent handling** (`OverworldScene.applySuperpositionUnlocks`,
 `data/balance.ts`'s `superpositionEnemyStats`): every player stat is pinned straight to `MAX_STAT`
 (100/100/100) rather than re-leveled per world, since the mode's whole point is "every guardian,
@@ -419,7 +468,11 @@ baseline (`SUPERPOSITION_BASE_ENEMY_STAT`, 55) instead of `enemyStatsForWorld`'s
 the same difficulty tier multiplier still applies on top, giving B.Sc./M.Sc./Ph.D. real separation
 (a comfortable win, a genuine-but-winnable fight, and a tight one, respectively) rather than every
 tier converging on the same "always trivially wins" result a maxed player would otherwise get
-against a small, Story-Mode-curve-derived opponent.
+against a small, Story-Mode-curve-derived opponent. The epoch's stat multiplier is applied to
+that baseline too, and the result stops at `MAX_STAT`: the player is pinned there with no stat
+left to buy, so an opponent past it would out-swing them several times a round with nothing
+to answer it. A later epoch in this mode therefore meets the player at parity and is carried
+by its longer bars and what the rivals throw.
 
 **Max HP is never intrinsic to a crystal** -- no `Material` (wild, rival, or the player's
 own current form) carries an HP number at all; it's purely a function of which world the
@@ -442,7 +495,9 @@ roll (their own body isn't a specimen with variance) -- so transmuting/fusing in
 different crystal form (§5) never changes it by itself, only the world does. Arriving in a
 world sets the player's HP to that world's own number
 (`OverworldScene.levelHpToWorld`, run on every entry), so the first fight of a world opens at
-its full bar rather than the previous world's smaller one.
+its full bar rather than the previous world's smaller one. A later epoch multiplies an
+opponent's bar, wild and rival alike (`wildHpForWorld(world, epoch)`/`rivalHpForWorld(world,
+epoch)`), and never the player's, nor the Model of You's copy of it (§6).
 
 **Crystal database.** Each wild "crystal" is named after a real compound rather than
 an invented species name, and inherits its main type (and therefore its look and its
@@ -1050,7 +1105,9 @@ difficulty: winning earns it, losing costs it, floored at 0. It rises linearly f
 World 1 to 200 in World 10, rounded to the nearest 10 (`BattleScene`'s
 `battleStakeForWorld`), so the late game pays out meaningfully more than the early game
 without inflating World 1. A rival fight always pays out double that same world's ordinary
-stake, win or lose, since beating the world's gating rival is the harder, rarer fight.
+stake, win or lose, since beating the world's gating rival is the harder, rarer fight. A
+later epoch multiplies both (§3's table), so an ordinary win in World 10 pays 200, 600 and
+1200 across the three.
 Either way the player's crystal is fully healed afterward (`scenes/BattleScene.ts`) -- the
 qumatessence stake, not HP attrition, is what's on the line from one battle to the next.
 World 10's finale refills it between its three stages as well, and pays its rival stake once
@@ -1849,6 +1906,21 @@ buttons: "Study the map" (§2) and "Farewell", which closes it and leaves the pl
 the edge. The narrator never steps outside the story to address the player as a
 player.
 
+**The after-story.** Once all ten rivals have fallen in Epoch 2, and again in Epoch 3
+(§2), the same panel reads that epoch's after-story in place of the ending
+(`data/story.ts`'s `AFTER_STORY`, keyed by the epoch just cleared, with the same two
+buttons): the ending was read at this edge an epoch ago, and what is new is what
+answers from past the map. Each one tells something the one before did not. Epoch 2's:
+the Decoherence seems to have stopped, but the Adapted never chose what to learn, it
+was pointed, and whatever pointed it is out in the dark past the map, taking care not
+to look at the player; a voice asks for one more pass. Epoch 3's: what that is and what
+it wanted. It computes in superposition, so it could never measure the player itself
+and set something else to do the looking, and it has been waiting for a material whose
+coherence survives everything sent against it; the voice says the player is finally
+ready. It is a quantum computer, never named as one, never drawn, and it is the
+expansion's to show (WORLDS.md §6 holds the rules for it). Both chapters are listed in
+the Lab's Story station after the ending, each readable once its epoch is cleared.
+
 ## 6. Boss design
 
 A world's boss is the rival golem holding its forward pass. The encounter is one shape
@@ -1918,23 +1990,45 @@ Two of the ten answer to something other than a fixed row in `WORLD_RIVALS`:
     Its bar is `rivalHpForWorld(10)`; its fall ends the chain with its own closing line
     (`FINALE_VICTORY_LINE`) in place of a compound's greeting and blurb.
 
-**Planned: an after-story boss.** A hidden encounter past World 10, stronger than anything
-on the main path, is what the top of the stat ladder exists for. Reaching `MAX_STAT` costs
-roughly a hundred playthroughs' worth of qumatessence in one stat (`statUpgradeCost` is
-linear per point, so total cost grows quadratically while the Energy/Lifetime lever grows
-as a square root, §3) -- deliberate, not an accident of the two formulas, and **not** to be
-"fixed" by flattening the price ladder or lowering `MAX_STAT` toward the stats 5-8 a normal
-run reaches. That headroom is this fight's to claim.
+**Later epochs.** From Epoch 2 (§2, §3) every rival fight changes in one way beyond the
+numbers: the rival also holds Landau's two Analytic moves beside its own
+(`BattleScene.opponentAction`), rolled uniformly with them. A rival has no question to answer,
+so its Lance or Eruption lands at the right-answer strength (2x) with the epoch's chance,
+half the time in Epoch 2 and always in Epoch 3, and at the wrong-answer strength (0.5x)
+otherwise; the log line says which. It is tuned the way the player's is, to the quasiparticle
+of one of the moves the rival would otherwise have thrown, rolled per cast, and named for it:
+a golem's is its world's own excitation, decohered ("Decohered Helical Lance"), so the mismatch
+rule reads exactly as it does for the golem's own move, and World 1's phonon-only rule (§4)
+still holds. This covers golems 1-9, The Adapted and The Quantum Adapted, whose Analytic moves
+carry a class the player's type cannot host like everything else it throws. The Model of You
+is the exception: it is the record of the player's basic moves and throws nothing else in any
+epoch, on the player's own bar. Wild crystals never throw them. Neither id sits in any
+material's `moves` list (`data/integrity.ts` forbids it); they are supplied at battle time.
 
-Three things it has to answer when it is built. It must be tuned against a *farmed* build
-rather than `enemyStatsForWorld`'s world-10 values, which assume a player at stats 5-8 and
-evaporate against a 20-50 one. It has to be worth reaching in Story Mode on its own terms,
-since Superposition Mode already grants `MAX_STAT` for free (§5) and a fight that merely
-*requires* max stats is a mode switch away rather than a reward for the grind. And its
-Velocity sets a hard cliff in the build space: Momentum is a ratio against the opponent
-capped at `MAX_MULTI_HIT`, so past 5x the boss's own Velocity every further Momentum point
-buys exactly nothing while Energy and Lifetime keep paying -- pick that number deliberately
-rather than inheriting it.
+In Epoch 3 The Quantum Adapted also casts Skłodowska-Curie's Ultimates: on each of its slots,
+one time in ten (`QUANTUM_ULTIMATE_CHANCE`), a Meteor or a Nova carried by a quasiparticle the
+player cannot host, and an opponent's Ultimate never fizzles. This is lethal by construction
+and meant to be: a mismatched power-100 move at that epoch's Energy takes several times the
+player's 43-point bar at any Lifetime they can buy. What answers it is Franklin's Last
+Scattering (the hit leaves one point), Full Reflection (three in ten go back), or ending the
+stage before it comes, which is what Energy and the player's own Ultimates are for.
+
+**What the top of the stat ladder is for.** Reaching `MAX_STAT` costs roughly a hundred
+Epoch-1 playthroughs' worth of qumatessence in one stat (`statUpgradeCost` is linear per point,
+so total cost grows quadratically while the Energy/Lifetime lever grows as a square root, §3)
+-- deliberate, not an accident of the two formulas, and **not** to be "fixed" by flattening the
+price ladder or lowering `MAX_STAT` toward the stats 5-8 an Epoch-1 run reaches. The epochs
+are what climbs it: Epoch 2 is tuned for a build in the low teens and Epoch 3 for one near 40,
+each against opponents scaled to match rather than `enemyStatsForWorld`'s Epoch-1 values, which
+evaporate against a farmed build. Three constraints shaped them and bind anything built above
+them. The climb has to be worth making in Story Mode on its own terms, since Superposition
+Mode grants `MAX_STAT` for free (§5): there the epochs meet the player at parity and are
+carried by bars and moves instead (§3). An opponent's Momentum sets a hard cliff in the build
+space, because Momentum is a ratio capped at `MAX_MULTI_HIT`: Epoch 3's last world stands at 38
+(53 at Ph.D.), where a player can still reach the Momentum that holds it to one swing a round,
+and can buy a second swing of their own only at M.Sc. and below. And the range from 40 to
+`MAX_STAT` is left unclaimed on purpose: it is the expansion's, for the fight the after-story
+points at (§5).
 
 ## 7. Technical architecture
 
@@ -2279,8 +2373,8 @@ configuration; see `dev_notes/DEVELOPMENT.md`.
 
 Built and playable end to end: all 10 worlds have an overworld map, biome, wild-encounter
 pool, rival, and guardian slot; the Hub, title screen, localStorage save, Qumatex, the
-contextual tutorial tips, and the Story Mode/Superposition Mode picker are all in place
-(§2, §4, §5, §7). `game/` is the only build; there is no separate no-install
+contextual tutorial tips, the Story Mode/Superposition Mode picker, and the three post-game
+epochs with their after-story are all in place (§2, §4, §5, §7). `game/` is the only build; there is no separate no-install
 single-file `demo/` prototype. All audio is procedural Web Audio with no external assets
 (`game/src/audio/music.ts`), with both an overworld track and a battle track per world in
 two selectable arrangements — "Classic" and "Modern", the latter derived from the classic

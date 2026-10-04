@@ -279,6 +279,12 @@
 //   swinging one hit in a short fight. If that swing flips which side the
 //   margin favors, the row prints INCONCLUSIVE instead of a flat call.
 
+//
+// After the ten worlds, each build that cleared them is carried through the
+// two post-game epochs (data/balance.ts's Epoch) and a second report says
+// how much leveling each one asks for. That pass has its own assumptions,
+// stated above simulatePostGame.
+
 import ts from 'typescript';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -555,6 +561,14 @@ const {
   rivalHpForWorld,
   MAX_MULTI_HIT,
   DIFFICULTY_MULTIPLIERS,
+  MAX_EPOCH,
+  epochStatMultiplier,
+  rivalsThrowAnalytic,
+  rivalAnalyticChance,
+  ANALYTIC_CORRECT_MULTIPLIER,
+  ANALYTIC_WRONG_MULTIPLIER,
+  QUANTUM_ULTIMATE_EPOCH,
+  QUANTUM_ULTIMATE_CHANCE,
 } = balance;
 
 // --- Seeded RNG (mulberry32) -- deterministic so re-running this script
@@ -647,15 +661,11 @@ function roundHits(playerVelocity, enemyVelocity) {
 
 // --- Quiz/Analytic/Ultimate accuracy-weighted expected multipliers --------
 // (OverworldScene.ts's QUIZ_CORRECT_MULTIPLIER/QUIZ_WRONG_MULTIPLIER = 1.5/
-// 0.6, BattleScene.ts's ANALYTIC_CORRECT_MULTIPLIER/ANALYTIC_WRONG_MULTIPLIER
-// = 2/0.5 -- both plain scene-local consts, not part of this task's
-// balance.ts extraction scope, so mirrored here as literals rather than
-// imported.)
+// 0.6 are plain scene-local consts, so they are mirrored here as literals;
+// the Analytic pair lives in balance.ts and is imported above.)
 
 const QUIZ_CORRECT_MULTIPLIER = 1.5;
 const QUIZ_WRONG_MULTIPLIER = 0.6;
-const ANALYTIC_CORRECT_MULTIPLIER = 2;
-const ANALYTIC_WRONG_MULTIPLIER = 0.5;
 
 function quizAttackMult(accuracy) {
   return accuracy * QUIZ_CORRECT_MULTIPLIER + (1 - accuracy) * QUIZ_WRONG_MULTIPLIER;
@@ -845,26 +855,41 @@ function bestPlayerHit(hitFn, state, playerStats, enemyStats, defender) {
 // (HYBRID_AURA_ATTACK_MULT on every hit it throws), whatever defensive
 // buffs/passives the player currently holds and whichever form the player
 // currently wears (mismatch as the defender).
+//
+// From Epoch 2 on a rival also throws the two Analytic moves, uniformly
+// with its own (BattleScene.opponentAction): each carries the class of a
+// uniformly rolled move of that same pool and resolves at its full-power
+// multiplier with the epoch's chance, folded in here as the expected
+// multiplier the way the player's own quiz gates are.
 function avgEnemyHit(hitFn, state, playerStats, enemyStats, enemy) {
-  let total = 0;
-  for (const moveId of enemy.moves) {
-    const move = MOVES[moveId];
-    const mismatch = !canHost(state.playerType, move.class);
-    total += hitFn(
+  const hit = (power, moveClass, bonusMultiplier) =>
+    hitFn(
       enemyStats,
       playerStats,
-      move.power,
-      mismatch,
+      power,
+      !canHost(state.playerType, moveClass),
       playerMismatchMultiplierAsDefender(state),
       1,
-      1,
-      playerScreenedMult(state, move.class),
+      bonusMultiplier,
+      playerScreenedMult(state, moveClass),
       playerFractionalGuardMult(state),
       enemy.hybridAura ? HYBRID_AURA_ATTACK_MULT : 1,
       1
     );
+  let total = 0;
+  for (const moveId of enemy.moves) total += hit(MOVES[moveId].power, MOVES[moveId].class, 1);
+  let slots = enemy.moves.length;
+  if (enemy.isRival && rivalsThrowAnalytic(activeEpoch)) {
+    const chance = rivalAnalyticChance(activeEpoch);
+    const bonus = chance * ANALYTIC_CORRECT_MULTIPLIER + (1 - chance) * ANALYTIC_WRONG_MULTIPLIER;
+    for (const analyticId of ANALYTIC_MOVE_IDS) {
+      let carried = 0;
+      for (const sourceId of enemy.moves) carried += hit(MOVES[analyticId].power, MOVES[sourceId].class, bonus);
+      total += carried / enemy.moves.length;
+    }
+    slots += ANALYTIC_MOVE_IDS.length;
   }
-  return total / enemy.moves.length;
+  return total / slots;
 }
 
 // One fight's full evaluation against a single defender {type, maxHp,
@@ -883,18 +908,68 @@ function avgEnemyHit(hitFn, state, playerStats, enemyStats, enemy) {
 // it through otherwise (evaluateFight/marginWithMultipliers are called from
 // many places, including from inside each build's own `spend()`).
 let activeDifficultyMultiplier = 1;
+// Which epoch (data/balance.ts's Epoch) the fights being evaluated are in:
+// 1 for the ten-world run simulateBuild walks, raised by simulatePostGame for
+// the two passes after it. Read wherever the game itself reads the epoch --
+// the opponent's stat multiplier, what a rival throws, the stake.
+let activeEpoch = 1;
+function activeEnemyStats(world) {
+  return enemyStatsForWorld(world, activeDifficultyMultiplier * epochStatMultiplier(activeEpoch));
+}
 
+// The post-game's rounds-to-kill, counted in casts rather than through the
+// expected-multiplier fold bestPlayerHit uses. Past Epoch 1 a landed
+// Ultimate is many times the bar it hits, so averaging its three-question
+// gate into the damage would report a one-round kill for a move that lands
+// only accuracy^3 of the time; here each move is asked how many landed
+// casts the bar takes, an Ultimate needs 1/accuracy^3 casts per landed one,
+// and the build throws whichever move gets there in the fewest rounds.
+function castRoundsToKill(hitFn, state, playerStats, enemyStats, defender, playerHits) {
+  let best = Infinity;
+  for (const moveId of ownedAttackMoves(state)) {
+    const isUltimate = ULTIMATE_MOVE_IDS.includes(moveId);
+    const landed = hitFn(
+      playerStats,
+      enemyStats,
+      effectivePower(state, moveId),
+      !canHost(defender.type, moveClassFor(state, moveId)),
+      MISMATCH_MULTIPLIER,
+      quizAttackMult(state.accuracy),
+      isUltimate ? 1 : bonusMultiplierFor(state, moveId),
+      1,
+      1,
+      1,
+      defender.hybridAura ? HYBRID_AURA_DAMAGE_MULT : 1
+    );
+    if (landed <= 0) continue;
+    const casts = Math.ceil(defender.maxHp / landed) / (isUltimate ? ultimateBonusMult(state.accuracy) : 1);
+    best = Math.min(best, Math.ceil(casts / playerHits));
+  }
+  return best;
+}
+
+// `beatable` is the margin read with turn order: the faster side swings
+// first every round (ties go to the player), so a build that is outpaced has
+// to kill a full round before it would die, not in the same one. The
+// ten-world run above reads the bare margin; the post-game, where an
+// opponent can be several times the build's Momentum, reads this.
 function evaluateFight(hitFn, state, world, defender) {
   const playerStats = state.stats;
-  const enemyStats = enemyStatsForWorld(world, activeDifficultyMultiplier);
-  const playerHitDmg = bestPlayerHit(hitFn, state, playerStats, enemyStats, defender);
-  const enemyHitDmg = avgEnemyHit(hitFn, state, playerStats, enemyStats, defender);
+  const enemyStats = activeEnemyStats(world);
   const { playerHits, enemyHits } = roundHits(playerStats.velocity, enemyStats.velocity);
-  const playerDmgPerRound = playerHitDmg * playerHits;
-  const enemyDmgPerRound = enemyHitDmg * enemyHits;
-  const roundsToKill = playerDmgPerRound > 0 ? Math.ceil(defender.maxHp / playerDmgPerRound) : Infinity;
+  // The player's side first: both draw from the same seeded stream.
+  let roundsToKill;
+  if (activeEpoch > 1) {
+    roundsToKill = castRoundsToKill(hitFn, state, playerStats, enemyStats, defender, playerHits);
+  } else {
+    const playerDmgPerRound = bestPlayerHit(hitFn, state, playerStats, enemyStats, defender) * playerHits;
+    roundsToKill = playerDmgPerRound > 0 ? Math.ceil(defender.maxHp / playerDmgPerRound) : Infinity;
+  }
+  const enemyDmgPerRound = avgEnemyHit(hitFn, state, playerStats, enemyStats, defender) * enemyHits;
   const roundsToDie = enemyDmgPerRound > 0 ? Math.ceil(wildHpForWorld(world) / enemyDmgPerRound) : Infinity;
-  return { roundsToKill, roundsToDie, margin: roundsToDie - roundsToKill };
+  const margin = roundsToDie - roundsToKill;
+  const playerFirst = playerStats.velocity >= enemyStats.velocity;
+  return { roundsToKill, roundsToDie, margin, beatable: playerFirst ? margin >= 0 : margin >= 1 };
 }
 
 // Averages evaluateFight's own numeric fields across several defenders
@@ -902,7 +977,10 @@ function evaluateFight(hitFn, state, world, defender) {
 function averageFights(fights) {
   const n = fights.length;
   const sum = (key) => fights.reduce((acc, f) => acc + (Number.isFinite(f[key]) ? f[key] : 999), 0) / n;
-  return { roundsToKill: sum('roundsToKill'), roundsToDie: sum('roundsToDie'), margin: sum('margin') };
+  // Beatable when at least half the defenders are (World 9's rolled rival is
+  // the one fight with more than one).
+  const beatable = fights.filter((f) => f.beatable).length * 2 >= n;
+  return { roundsToKill: sum('roundsToKill'), roundsToDie: sum('roundsToDie'), margin: sum('margin'), beatable };
 }
 
 // The defender(s) a wild/rival fight is evaluated against for a world --
@@ -916,11 +994,11 @@ function averageFights(fights) {
 // wild and every rival.
 function defendersFor(world, isRival) {
   if (!isRival) {
-    const maxHp = wildHpForWorld(world);
+    const maxHp = wildHpForWorld(world, activeEpoch);
     const hybridAura = world === 10;
     return getWildPool(world).map((d) => ({ ...d, maxHp, hybridAura }));
   }
-  const maxHp = rivalHpForWorld(world);
+  const maxHp = rivalHpForWorld(world, activeEpoch);
   if (world === 9) {
     // No fixed WORLD_RIVALS[9] entry -- getRival(9, t) rolls t uniformly
     // from RIVAL_9_TYPES at battle time (rollRival9Type); average over all 8.
@@ -932,9 +1010,10 @@ function defendersFor(world, isRival) {
       maxHp,
       moves: [RIVAL_9_MOVES[type], 'thermalFluctuation'],
       hybridAura: false,
+      isRival: true,
     }));
   }
-  return [{ ...WORLD_RIVALS[world], maxHp, hybridAura: false }];
+  return [{ ...WORLD_RIVALS[world], maxHp, hybridAura: false, isRival: true }];
 }
 
 function evaluateWildFight(hitFn, state, world) {
@@ -952,7 +1031,7 @@ function evaluateRivalFight(hitFn, state, world) {
 // reported figure, so it never touches the seeded RNG).
 function marginWithMultipliers(state, world, defenders, playerMult, enemyMult) {
   const playerStats = state.stats;
-  const enemyStats = enemyStatsForWorld(world, activeDifficultyMultiplier);
+  const enemyStats = activeEnemyStats(world);
   const { playerHits, enemyHits } = roundHits(playerStats.velocity, enemyStats.velocity);
   const fights = defenders.map((d) => {
     const playerDmgPerRound = bestPlayerHit(frozenHitDamage, state, playerStats, enemyStats, d) * playerMult * playerHits;
@@ -1163,6 +1242,7 @@ const BUILDS = [
     // always do (walk back through an earlier world's own door, no guardian
     // tools needed), and the realistic way this archetype affords a fix
     // when the world it's stuck on genuinely isn't safe to grind directly.
+    postGameFeynman: false, // the post-game epochs' spending policy (simulatePostGame): stat points only, this build never having used Feynman
     spend(state, world, hitFn) {
       for (let i = 0; i < 30; i++) {
         // Both margins, not just the wild one -- a comfortably positive wild
@@ -1213,6 +1293,7 @@ const BUILDS = [
     accuracy: 0.75, // midway between the coin-flip floor (0.5, two-option quizzes) and mastery: engaged with the course material but imperfect on it, which is exactly the "intended default" player
     transmutes: true, // transmuting into a mismatch-hosting form (and buying whatever it newly unlocks from Noether) is treated as ordinary, expected-tier play, not Ph.D.-only optimization -- see maybeTransmuteAndShop
     grindCap: grindWinsForWalks(4), // ~4 extra whole-corridor re-walks per world (~24 wild wins): a typical player grinds when visibly stuck, but not indefinitely -- see the grind-patience section above
+    postGameFeynman: true,
     spend(state, world, hitFn) {
       maybeTransmuteAndShop(state, world);
       let statsBoughtThisWorld = 0;
@@ -1285,6 +1366,7 @@ const BUILDS = [
     accuracy: 0.95, // near-mastery, not literal infallibility: the quiz pool spans all ten worlds' course content with authored-to-be-plausible distractors, and even a player who knows the material misreads occasionally -- which matters most exactly where a flat 1.0 would erase real risk, the Ultimate's all-3-or-nothing gate (0.95^3 ~= 0.86, not 1) and Feynman's tier-3 8-streak (expected cost x1.5, not x1). See header comment.
     transmutes: true, // near-optimal, aggressive: chases the same transmute-and-shop play as M.Sc. -- see maybeTransmuteAndShop -- plus everything else this build's own priority list below adds on top
     grindCap: GRIND_CAP, // grinding is what a high-optimization player does happily -- patience bounded only by the model's own hard anti-runaway ceiling (50 wins, ~8.5 corridor re-walks per world), not by temperament
+    postGameFeynman: true,
     spend(state, world, hitFn) {
       maybeTransmuteAndShop(state, world);
       for (let guard = 0; guard < 100; guard++) {
@@ -1452,6 +1534,7 @@ function farmIfStuck(hitFn, state, world, neededExtra, currentMargin) {
 
 function simulateBuild(build) {
   activeDifficultyMultiplier = DIFFICULTY_MULTIPLIERS[build.tier];
+  activeEpoch = 1;
   const rng = mulberry32(0xb0ba1a); // fixed seed -- same seed reused per world/build so the whole table is reproducible run to run
   const state = newState(build.accuracy, build.grindCap);
   const rows = [];
@@ -1522,7 +1605,126 @@ function simulateBuild(build) {
     // worlds are reported as unreached instead (see printBuildTable).
     if (rivalVerdict === 'LOSE') break;
   }
+  return { rows, state };
+}
+
+// --- The post-game epochs --------------------------------------------------
+// (data/balance.ts's Epoch: the two passes over the ten worlds that follow
+// the run above, begun from the map below World 10's cliff.)
+//
+// Each build is carried on from the state it finished World 10 in, through
+// Epoch 2's ten worlds and then Epoch 3's, and what is reported is what the
+// epoch multipliers exist to set: how many ordinary wild wins a build has to
+// take, world by world, before that world's rival becomes beatable, and
+// what its stats are when it is. Four things differ from simulateBuild:
+//
+// - There is no grind-patience cap. The question here is not whether a build
+//   would stall but how much leveling an epoch asks for, so the search runs
+//   until the rival is beatable (POST_GAME_WIN_CEILING guards a runaway).
+// - Income is farmed where it pays best. Every world stays reachable through
+//   Bloch after its pass shuts again, so a build farms the best-paying world
+//   of the current epoch whose wilds it reliably beats, not only the worlds
+//   behind it.
+// - Spending is one post-game policy rather than the build's own spend():
+//   the kit is already bought, so what is left to buy is stat points, spread
+//   evenly, cheapest first, and -- for the two builds that use Feynman at
+//   all -- a tier on the main move whenever one is affordable.
+// - A fight is read with turn order and in casts (evaluateFight's
+//   `beatable`, castRoundsToKill): an opponent several times the build's
+//   Momentum swings first, and a landed Ultimate is many times the bar.
+//
+// A build that robustly lost a rival in Epoch 1 never reached the cliff and
+// is not carried on.
+
+const POST_GAME_WIN_CEILING = 600;
+
+// The purchase the post-game policy makes next from this state, as
+// { cost, apply(state) }, or null once every stat is at MAX_STAT.
+function nextPostGamePurchase(build, state) {
+  if (build.postGameFeynman) {
+    const moveId = mainMoveId(state);
+    const level = moveLevel(state, moveId);
+    if (level < 3) {
+      const cost = feynmanLevelCost(MOVES[moveId], level + 1) / Math.pow(state.accuracy, MOVE_LEVEL_STREAKS[level + 1]);
+      if (state.qumatessence >= cost) return { cost, apply: (st) => { st.moveLevels.set(moveId, level + 1); } };
+    }
+  }
+  const open = STAT_ROTATION.filter((stat) => state.stats[stat] < balance.MAX_STAT);
+  if (open.length === 0) return null;
+  const stat = open.reduce((a, b) => (statUpgradeCost(state.stats[a], a) <= statUpgradeCost(state.stats[b], b) ? a : b));
+  return { cost: statUpgradeCost(state.stats[stat], stat), apply: (st) => { st.stats[stat] += 1; } };
+}
+
+// The best-paying world of the current epoch whose ordinary wilds this
+// state beats with a full round to spare, or failing that at all.
+function bestFarmWorld(state) {
+  let fallback = null;
+  for (let w = 10; w >= 1; w--) {
+    const fight = evaluateWildFight(frozenHitDamage, state, w);
+    if (fight.beatable && fight.margin >= 1.5) return w;
+    if (fight.beatable && fallback === null) fallback = w;
+  }
+  return fallback;
+}
+
+function simulatePostGame(build, state) {
+  const rows = [];
+  for (let epoch = 2; epoch <= MAX_EPOCH; epoch++) {
+    activeEpoch = epoch;
+    for (let world = 1; world <= 10; world++) {
+      if (build.transmutes) maybeTransmuteAndShop(state, world);
+      let wins = 0;
+      let stuck = false;
+      const farmed = new Map();
+      while (!evaluateRivalFight(frozenHitDamage, state, world).beatable) {
+        const purchase = nextPostGamePurchase(build, state);
+        if (!purchase) { stuck = true; break; }
+        if (state.qumatessence >= purchase.cost) {
+          state.qumatessence -= purchase.cost;
+          state.spentTotal += purchase.cost;
+          purchase.apply(state);
+          continue;
+        }
+        const farmWorld = bestFarmWorld(state);
+        if (farmWorld === null || wins >= POST_GAME_WIN_CEILING) { stuck = true; break; }
+        const income = battleStakeForWorld(farmWorld, epoch);
+        state.qumatessence += income;
+        state.earnedTotal += income;
+        farmed.set(farmWorld, (farmed.get(farmWorld) ?? 0) + 1);
+        wins += 1;
+      }
+      const rival = evaluateRivalFight(frozenHitDamage, state, world);
+      const wild = evaluateWildFight(frozenHitDamage, state, world);
+      rows.push({ epoch, world, wins, stuck, farmed, stats: { ...state.stats }, form: state.playerFormName, rival, wild, enemy: activeEnemyStats(world).quantumness });
+      if (stuck) return rows;
+      const rivalStake = 2 * battleStakeForWorld(world, epoch);
+      state.qumatessence += rivalStake;
+      state.earnedTotal += rivalStake;
+    }
+  }
   return rows;
+}
+
+// What The Quantum Adapted's Ultimate does to this build at the last epoch,
+// outside the expected-value tables above, which would average a one-shot
+// away: one cast at the middle of its variance band, mismatched (the last
+// stage only throws what the player's type cannot host), against the
+// build's Lifetime and whatever it holds, beside the bar it lands on.
+function quantumUltimateReport(state) {
+  activeEpoch = QUANTUM_ULTIMATE_EPOCH;
+  const enemyStats = activeEnemyStats(10);
+  const damage = frozenHitDamage(
+    enemyStats,
+    state.stats,
+    MOVES.ultimateMeteor.power,
+    true,
+    playerMismatchMultiplierAsDefender(state),
+    1,
+    1,
+    1,
+    playerFractionalGuardMult(state)
+  );
+  return { damage, hp: wildHpForWorld(10) };
 }
 
 // --- Report -----------------------------------------------------------
@@ -1573,7 +1775,7 @@ function printBuildTable(build, rows) {
 console.log('Difficulty-curve simulation -- k=rounds-to-kill, d=rounds-to-die, margin=d-k (positive=player favored).');
 console.log('All figures are expected values (Monte-Carlo averaged through the real resolveHitDamage, seeded for reproducibility), not one stochastic playthrough. See this file\'s own header comment for every modeling assumption before reading these as literal predictions.');
 
-const allResults = BUILDS.map((build) => ({ build, rows: simulateBuild(build) }));
+const allResults = BUILDS.map((build) => ({ build, ...simulateBuild(build) }));
 for (const { build, rows } of allResults) {
   printBuildTable(build, rows);
 }
@@ -1594,4 +1796,44 @@ for (let i = 0; i < 10; i++) {
   console.log(
     [world, ...allResults.map(({ rows }) => (rows[i] ? `${fmt(rows[i].wild.margin, 2)} (${rows[i].wildVerdict})` : 'UNREACHABLE'))].join('\t')
   );
+}
+
+// --- Post-game report ------------------------------------------------------
+
+console.log('\n=== Post-game epochs: wild wins farmed before each rival is beatable, and the stats it is beaten at ===');
+console.log('Stats are Energy/Momentum/Lifetime. "Enemy" is each opponent stat in that world at that epoch and tier.');
+for (const { build, rows, state } of allResults) {
+  activeDifficultyMultiplier = DIFFICULTY_MULTIPLIERS[build.tier];
+  if (rows.length < 10 || rows[9].rival.margin < 0) {
+    console.log(`\n${build.label}: did not clear Epoch 1, not carried on.`);
+    continue;
+  }
+  console.log(`\n${build.label} -- enters at ${state.stats.quantumness}/${state.stats.velocity}/${state.stats.correlation} with ${Math.round(state.qumatessence)} qumatessence`);
+  console.log(['Epoch', 'W', 'Enemy', 'Wins', 'FarmedIn', 'Stats', 'Form', 'Wild k/d', 'Rival k/d'].join('\t'));
+  const post = simulatePostGame(build, state);
+  const totals = new Map();
+  for (const r of post) {
+    totals.set(r.epoch, (totals.get(r.epoch) ?? 0) + r.wins);
+    console.log(
+      [
+        r.epoch,
+        r.world,
+        fmt(r.enemy),
+        r.stuck ? `${r.wins}+ (STUCK)` : r.wins,
+        [...r.farmed].map(([w, n]) => `W${w}x${n}`).join(' ') || '-',
+        `${r.stats.quantumness}/${r.stats.velocity}/${r.stats.correlation}`,
+        r.form,
+        `${fmt(r.wild.roundsToKill)}/${fmt(r.wild.roundsToDie)}`,
+        `${fmt(r.rival.roundsToKill)}/${fmt(r.rival.roundsToDie)}`,
+      ].join('\t')
+    );
+  }
+  console.log([...totals].map(([epoch, wins]) => `Epoch ${epoch}: ${wins} wild wins (${fmt(wins / 10)} per world)`).join('; '));
+  if (post.length === 20 && !post[19].stuck) {
+    const { damage, hp } = quantumUltimateReport(state);
+    console.log(
+      `The Quantum Adapted's Ultimate at Epoch ${QUANTUM_ULTIMATE_EPOCH}: ${damage} damage against a ${hp}-point bar ` +
+        `(${damage >= hp ? 'lethal from full' : 'survivable from full'}), cast on ${Math.round(QUANTUM_ULTIMATE_CHANCE * 100)}% of its slots.`
+    );
+  }
 }

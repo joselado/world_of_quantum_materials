@@ -744,8 +744,11 @@ export class BattleScene extends Phaser.Scene {
           velocity: baseEnemyStats.velocity * encounterFactor,
           correlation: baseEnemyStats.correlation * encounterFactor,
         };
+    // The epoch lengthens the opponent's bar and never the player's.
     this.playerMaxHp = wildHpForWorld(this.world);
-    this.opponentMaxHp = this.isRival ? rivalHpForWorld(this.world) : Math.round(wildHpForWorld(this.world) * encounterFactor);
+    this.opponentMaxHp = this.isRival
+      ? rivalHpForWorld(this.world, this.epoch)
+      : Math.round(wildHpForWorld(this.world, this.epoch) * encounterFactor);
 
     // World 10's rival mirrors the player's own current type from turn one
     // (literalizing "a model of you" immediately, not just once it first
@@ -2963,7 +2966,7 @@ export class BattleScene extends Phaser.Scene {
     this.flashHit(this.opponentCrystal);
     this.cameras.main.flash(160, 0xe6, 0xdc, 0xff, false);
 
-    this.opponentMaxHp = finaleStageHp(stage, this.world);
+    this.opponentMaxHp = finaleStageHp(stage, this.world, this.epoch);
     this.opponentHp = this.opponentMaxHp;
     this.playerHp = this.playerMaxHp;
     this.game.registry.set('playerHp', this.playerHp);
@@ -3175,8 +3178,8 @@ export class BattleScene extends Phaser.Scene {
   // reaches the ceiling the player is building, and World 1 rolls its whole
   // authored moveset like every other world. The filter reads each move's
   // own static `MOVES` class rather than `getTunedMoveClass`, which only
-  // remaps the player-only Analytic/Ultimate ids no wild or rival moveset
-  // carries. Falls back to the full moveset if a World 1 opponent were ever
+  // remaps the Analytic/Ultimate ids no wild or rival moveset carries.
+  // Falls back to the full moveset if a World 1 opponent were ever
   // authored without a phonon move at all, so the roll can never come up
   // empty.
   //
@@ -3390,7 +3393,7 @@ export class BattleScene extends Phaser.Scene {
   // all-correct/whiff multiplier (default 1, a no-op for every ordinary
   // move) -- always already decided by the time this runs
   // (showAnalyticQuestion/showUltimateQuestions resolve before playerAttack
-  // ever calls this). The tail below (damage/log/win-lose/onDone) hangs off
+  // ever calls this, and a rival's is rolled in opponentAction). The tail below (damage/log/win-lose/onDone) hangs off
   // the animation's own callbacks rather than running inline, so a hit
   // resolves where it lands: for an ordinary move all of it fires on the
   // impact beat. For Skłodowska-Curie's two Ultimate moves (§5,
@@ -3440,8 +3443,10 @@ export class BattleScene extends Phaser.Scene {
     // bonusMultiplier from the question. Tuning is the player's own save
     // state, read on the player's side only (the same isPlayer gate
     // `effectiveMovePower`/`getMoveLevel` below use): an opponent's move
-    // carries its own static class, and getTunedMoveClass would otherwise
-    // judge its hostability against the *player's* form. Franklin's
+    // carries its own static class, or, for a quiz-gated move a rival throws
+    // in a later epoch, the class its own action was tuned to
+    // (`opponentTuning`, opponentAction), and getTunedMoveClass would
+    // otherwise judge its hostability against the *player's* form. Franklin's
     // Amorphous Halo (§5) softens this to a smaller multiplier for
     // whichever side has it active as the defender -- a defect-broadened
     // diffraction halo partially shrugging off a hit that would otherwise
@@ -3549,7 +3554,8 @@ export class BattleScene extends Phaser.Scene {
       // Feynman's level prefix (§5) and Landau's class tuning are both the
       // player's own save state -- an opponent's own use of a move id never
       // carries either, so its side of the log reads the move's static name
-      // straight off MOVES (the same read resolveSelfBuff makes).
+      // straight off MOVES (the same read resolveSelfBuff makes), or the
+      // name its own tuning gave a quiz-gated move (opponentAction).
       const displayName = isPlayer ? moveDisplayName(this.game.registry, moveId) : opponentTuning?.name ?? move.name;
       // The attacker's own Kondo cloud (§5) ticks down regardless of whether
       // this particular hit lands -- it's the attacker's own technique, not

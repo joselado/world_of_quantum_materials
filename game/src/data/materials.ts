@@ -19,7 +19,9 @@ import {
   MOVE_LEVEL_MULTIPLIERS,
   MOVE_LEVEL_STREAKS,
   feynmanLevelCost,
+  clampEpoch,
 } from './balance';
+import type { Epoch } from './balance';
 export {
   BASE_STAT,
   MAX_STAT,
@@ -131,9 +133,8 @@ export const MOVES: Record<string, Move> = {
   // defender whose physics cannot host that class. What changed is the
   // excitation itself. A golem's coherence was ground out of it, and the
   // quasiparticle it carries came out the other side decohered, which is
-  // why it is named for what it used to be. Opponent-only, in the same way
-  // Analytic and Ultimate moves are player-only: no shop sells these and no
-  // wild crystal carries one.
+  // why it is named for what it used to be. Opponent-only: no shop sells
+  // these and no wild crystal carries one.
   decoheredMagnon: { id: 'decoheredMagnon', name: 'Decohered Magnon Wave', class: 'magnon', power: 8 },
   decoheredSpinon: { id: 'decoheredSpinon', name: 'Decohered Spinon Swap', class: 'spinon', power: 10 },
   decoheredTriplon: { id: 'decoheredTriplon', name: 'Decohered Triplon Surge', class: 'triplon', power: 9 },
@@ -148,10 +149,12 @@ export const MOVES: Record<string, Move> = {
   // payoff is the answer-gated 2x/0.5x multiplier BattleScene applies, not
   // raw power, which is also why Landau sells them at a flat price
   // (data/balance.ts's ANALYTIC_MOVE_COST) rather than off this number. Never
-  // listed in any material's `moves` array (wild/rival
-  // movesets) -- only the player can ever be asked one of these questions,
-  // and an opponent using one would bypass the quiz gate entirely (it lives
-  // in the player-only move-menu click handler, not the damage formula).
+  // listed in any material's `moves` array (wild/rival movesets): the quiz
+  // gate lives in the player's move-menu click handler, not in the damage
+  // formula, so a moveset entry would throw one ungated. A rival does throw
+  // them from Epoch 2 on, but through BattleScene.opponentAction, which puts
+  // a roll where the question would be and tunes the move to the rival's own
+  // quasiparticle.
   // Each starts at the universal 'phonon' class (so it's usable/
   // never-mismatched before the player ever tunes it) -- Landau's picker
   // (TUNABLE_MOVE_CLASSES, getTunedMoveClass) lets the player assign it any
@@ -164,7 +167,9 @@ export const MOVES: Record<string, Move> = {
   // that power is a binary 3-questions-in-a-row gate (any wrong answer
   // whiffs for 0 damage) rather than Analytic's continuous 2x/0.5x
   // multiplier. Never listed in any material's `moves` array, same reasoning
-  // as skyfallBeam/groundEruption above -- only the player can ever use one.
+  // as skyfallBeam/groundEruption above; the one opponent that casts them is
+  // The Quantum Adapted at the last epoch, again through
+  // BattleScene.opponentAction.
   // Priced completely differently from every other move too: not via
   // shopCost, but a flat 1000-qumatessence unlock per (move, quasiparticle
   // class) pair (ULTIMATE_CLASS_UNLOCK_COST, Skłodowska-Curie's own panel).
@@ -266,10 +271,11 @@ export const MOVES: Record<string, Move> = {
 // identity, not something derivable from `class`.
 //
 // Never add these ids (or ULTIMATE_MOVE_IDS below) to any material's
-// `moves` array in WORLD_CRYSTALS/WORLD_RIVALS -- an opponent using one
-// would bypass the quiz gate entirely, since that gate lives in the
-// player-only move-menu click handler (BattleScene.ts's addMoveButton), not
-// in the damage formula itself.
+// `moves` array in WORLD_CRYSTALS/WORLD_RIVALS -- the quiz gate lives in the
+// player's move-menu click handler (BattleScene.ts's addMoveButton), not in
+// the damage formula itself, so a moveset entry would resolve ungated and
+// untuned. What a rival throws of them in a later epoch is decided at battle
+// time instead (BattleScene.opponentAction, data/balance.ts's Epoch).
 export const ANALYTIC_MOVE_IDS = ['skyfallBeam', 'groundEruption'];
 
 // Skłodowska-Curie is the sole seller of these two quiz-gated Ultimate
@@ -280,8 +286,7 @@ export const ANALYTIC_MOVE_IDS = ['skyfallBeam', 'groundEruption'];
 // `moves` array either.
 export const ULTIMATE_MOVE_IDS = ['ultimateMeteor', 'ultimateNova'];
 
-// The rival golems' decohered moves -- opponent-only, the mirror image of
-// ANALYTIC_MOVE_IDS/ULTIMATE_MOVE_IDS above. A player never obtains one:
+// The rival golems' decohered moves -- opponent-only. A player never obtains one:
 // they are kept out of SHOP_MOVE_IDS so Noether cannot sell them, out of
 // every wild crystal's moveset, and out of the generated move table in
 // docs/quasiparticles.md, since a player-facing move list should only list
@@ -2113,6 +2118,23 @@ export const WORLD_NAMES: Partial<Record<number, string>> = {
 // banner. Falls back to "World N" for a number with no entry above.
 export function worldName(world: number): string {
   return WORLD_NAMES[world] ?? `World ${world}`;
+}
+
+// Which pass over the worlds a save is on (data/balance.ts's Epoch), read
+// off the registry and pinned to a real one.
+export function getEpoch(registry: RegistryLike): Epoch {
+  return clampEpoch(registry.get('epoch'));
+}
+
+// Whether every world's rival has fallen in the epoch the save is on. This
+// is what the map below World 10's cliff asks for before it begins the next
+// epoch (scenes/panels/overlook.ts), and what the after-story waits for
+// (data/story.ts's AFTER_STORY). All ten, not the last alone: Bloch folds
+// the player to any world already visited, so The Adapted can be reached
+// with other passes still held.
+export function allRivalsFallen(registry: RegistryLike): boolean {
+  const defeated = (registry.get('rivalDefeated') as Record<number, boolean>) ?? {};
+  return Object.keys(WORLD_NAMES).every((world) => !!defeated[Number(world)]);
 }
 
 // World 9 (defects/excitations) additionally spawns every non-hybrid

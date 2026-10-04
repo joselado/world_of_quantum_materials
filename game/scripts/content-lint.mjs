@@ -871,6 +871,21 @@ for (const w of BUILT_WORLDS.filter((w) => w !== '10')) {
       if (b.button !== d.button) flag(`FINALE_STAGES_BRIEF[${stage}].button '${b.button}' differs from the Detailed '${d.button}'`);
       pairs.push([`FINALE_STAGES[${stage}].body`, d.body, b.body]);
     }
+    // The after-story, one screen per later epoch: a title and a body at both
+    // lengths, held the way the stage screens are.
+    const after = evalNode(findTopLevelConst(storySf, 'AFTER_STORY'), storySf);
+    const afterBrief = evalNode(findTopLevelConst(storySf, 'AFTER_STORY_BRIEF'), storySf);
+    for (const epoch of ['2', '3']) {
+      const d = after[epoch];
+      const b = afterBrief[epoch];
+      if (!d) { flag(`AFTER_STORY[${epoch}] is missing`); continue; }
+      for (const field of ['title', 'body']) {
+        if (typeof d[field] !== 'string' || !d[field].trim()) flag(`AFTER_STORY[${epoch}].${field} is empty`);
+      }
+      if (!b) { flag(`AFTER_STORY_BRIEF[${epoch}] is missing`); continue; }
+      if (b.title !== d.title) flag(`AFTER_STORY_BRIEF[${epoch}].title '${b.title}' differs from the Detailed '${d.title}'`);
+      pairs.push([`AFTER_STORY[${epoch}].body`, d.body, b.body]);
+    }
     holdTable('finale', pairs);
   }
 

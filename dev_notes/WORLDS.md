@@ -1018,6 +1018,21 @@ shut, and the fight is there to be taken once more. Resetting The Adapted itself
 closes the edge. The view exists only while it is beaten, so the player who
 calls it back has to earn the view again.
 
+**And the whole record can be run again: an epoch.** The same panel carries one
+row above the ten worlds, the epoch. In the vocabulary this world teaches, an
+epoch is one full pass over the training set, and here the training set is the
+ten worlds: once every rival has fallen the player can begin the next one, and
+all ten stand again at once, stronger, with no way back. The name obeys the
+naming law, because it promises exactly what happens: every world, again, in
+order. What a later pass changes is what a second pass over the data changes in
+any learner. The golems throw the player's own answer-gated technique, the
+Analytic moves, landing them at full strength half the time in the second epoch
+and every time in the third, and in the third the environment that measured the
+player casts the Ultimates. They do this as residue, not as servants: nothing
+about a later epoch makes a golem the Adapted's agent (§6), and no golem's
+taunt, name or release changes with the epoch. `DESIGN.md` §3 and §6 own the
+numbers.
+
 One flourish, kept faint: a dim luminous trace of the player's actual route
 across the map (*it has your whole walk*), with no marker at either end. A pulse
 at the Espoo point is not drawn; a single point pulsing on the land reads as a
@@ -1078,9 +1093,10 @@ patterns, because they are what make the arc land rather than merely exist.
 | `WORLD_GOAL_TEXT` | `data/story.ts` | on reaching the goal tile | one line: this world's physics still holds. World 10's speaks of the Adapted as present, and gives way to `WORLD_GOAL_TEXT_FALLEN`'s once it has fallen: the road's end, every world below it, nothing watching |
 | `FINALE_STAGES` | `data/story.ts` | between the finale's three stages, World 10 only | the narrator on the stage just brought to zero, then the next form's own line |
 | `FINALE_TITLE`/`FINALE_BODY` | `data/story.ts` | at World 10's cliff, each time the player looks out from it | the ending, spoken from the edge: the worlds below as the thing that trained on the player saw them, what stays learned, and that nothing is measuring now |
+| `AFTER_STORY` | `data/story.ts` | at the same cliff, in place of the ending, once all ten rivals have fallen in Epoch 2 and again in Epoch 3 | the after-story: one further thing learned per epoch about what lies past the map, and one line from it |
 | `WORLD_FLAVOR` | `data/worldFlavor.ts` | Bloch's destination preview | plain physics, deliberately *not* narrative |
 
-`WORLD_LORE`, `RIVAL_TAUNTS`, `STORY_BEATS` and the finale are each written twice: the Detailed
+`WORLD_LORE`, `RIVAL_TAUNTS`, `STORY_BEATS`, the finale and the after-story are each written twice: the Detailed
 text and a Brief one (`*_BRIEF`) roughly a third its length, with the same keys and the same
 two-page and two-part shape, picked by the Settings station's Text Length row (Brief by
 default). Every rule in this section binds the Brief text exactly as it binds the Detailed one:
@@ -1191,6 +1207,38 @@ coherence-bearer, learned to exhaustion — which is the opposite of serving it.
 If they are ever rewritten as the Adapted's servants the reveal dies, because
 "it was never one of them in disguise" only lands while they are something it
 made rather than something it wore.
+
+**Past the map there is an architect, and it is heard, never seen.** The
+after-story (`AFTER_STORY`) is the one place the game looks beyond its own
+ending, and it exists to point at an expansion: everything that happened was
+set in motion by a quantum computer, which that expansion will show. This game
+only hints at it, and the hint is built on one piece of physics. A quantum
+computation survives only while nothing reads it too soon, so the thing that
+wanted to know whether the player's coherence could survive being learned
+could not look for itself. It pointed a learner at the worlds instead. That
+makes it the Adapted's exact inverse, and the rules follow from that:
+
+- **It never looks at the player.** The Adapted was observation itself; this is
+  the first thing in the game that takes care not to observe. No line gives it
+  eyes, attention on the player, or knowledge gained by watching. "Nothing is
+  measuring now" (the ending) stays true after it speaks.
+- **It is never named, drawn or given a body.** It is a voice out of the dark
+  past the map, one quoted line per after-story. "Quantum computer" appears in
+  no player-facing string; its own words carry it (superposition, error,
+  gates, a material that holds).
+- **Each after-story tells one thing the last did not.** Epoch 2: the Adapted
+  never chose what to learn, it was pointed, and what pointed it is still out
+  there, and asks for one more pass. Epoch 3: what it is and what it wanted, a
+  material whose coherence survives every error sent against it, and that the
+  player is finally ready. A third text would have to tell a third thing.
+- **Its instrument was the Adapted, never the golems.** The golems stay the
+  Adapted's leavings and stay innocent (above); nothing in the after-story
+  makes them, or the worlds' materials, party to the plan.
+- **It reverses nothing.** The Decoherence stopping is not the light coming
+  back, what was learned stays learned, and no world brightens. The ending's
+  cost stands.
+- **Epoch 1 never mentions it.** The ending is complete without it; a player
+  who never begins a second epoch has the whole story of this game.
 
 **Tone gradient.** The lore voice tracks the light: worlds 1–3 are told as
 legend, second-hand and almost pastoral ("Long ago, before the corridors had

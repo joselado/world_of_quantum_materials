@@ -144,9 +144,16 @@ export function enemyStatsForWorld(world: number, difficultyMultiplier = 1): Sta
 // tier), M.Sc.'s 1 sits just above it, and Ph.D.'s 1.4 pushes past MAX_STAT,
 // where the levers' own plateau keeps it merely tighter rather than
 // unwinnable.
+//
+// The multiplier handed in is the tier's times the epoch's (below), and the
+// result stops at MAX_STAT: the player is pinned there and has no stat left
+// to buy, so an opponent past it would out-swing them several times a round
+// with nothing to answer it. A later epoch in this mode therefore meets the
+// player at parity and is carried by its longer bars and what the rivals
+// throw.
 const SUPERPOSITION_BASE_ENEMY_STAT = 55;
 export function superpositionEnemyStats(difficultyMultiplier = 1): Stats {
-  const stat = SUPERPOSITION_BASE_ENEMY_STAT * difficultyMultiplier;
+  const stat = Math.min(MAX_STAT, SUPERPOSITION_BASE_ENEMY_STAT * difficultyMultiplier);
   return { quantumness: stat, velocity: stat, correlation: stat };
 }
 
@@ -180,9 +187,20 @@ export function clampEpoch(value: unknown): Epoch {
 // an epoch's early worlds stay the gentle ones, so a player who has just
 // begun it can always earn there -- and puts its World 10 well past where the
 // previous epoch ended (`npm run balance-sim`-verified, like the tiers).
-const EPOCH_STAT_MULTIPLIERS: readonly number[] = [1, 3, 7];
+const EPOCH_STAT_MULTIPLIERS: readonly number[] = [1, 4, 8];
 export function epochStatMultiplier(epoch: Epoch): number {
   return EPOCH_STAT_MULTIPLIERS[epoch - 1];
+}
+
+// What an epoch multiplies every opponent's max HP by (wildHpForWorld and
+// rivalHpForWorld below; the player's own bar, and the Model of You's copy
+// of it, stay the world's). Lifetime alone cannot make an opponent last: its
+// lever is a square root with a ceiling, while a landed Ultimate is ten
+// times an Analytic move's power, so without a longer bar every later-epoch
+// fight would end on the first cast and Energy would buy nothing.
+const EPOCH_HP_MULTIPLIERS: readonly number[] = [1, 2, 3];
+export function epochHpMultiplier(epoch: Epoch): number {
+  return EPOCH_HP_MULTIPLIERS[epoch - 1];
 }
 
 // What an epoch multiplies every battle stake by (battleStakeForWorld
@@ -191,7 +209,7 @@ export function epochStatMultiplier(epoch: Epoch): number {
 // 1's would turn the stats a later epoch asks for into hundreds of fights.
 // These grow more slowly than the square of the stat multiplier, so each
 // epoch still asks for more fights than the one before it.
-const EPOCH_STAKE_MULTIPLIERS: readonly number[] = [1, 5, 20];
+const EPOCH_STAKE_MULTIPLIERS: readonly number[] = [1, 3, 6];
 export function epochStakeMultiplier(epoch: Epoch): number {
   return EPOCH_STAKE_MULTIPLIERS[epoch - 1];
 }
@@ -220,9 +238,13 @@ export function rivalsThrowAnalytic(epoch: Epoch): boolean {
 // Skłodowska-Curie's Ultimates: on each of its slots it throws one with this
 // chance, carried by a quasiparticle the player's lattice cannot host, and an
 // opponent's Ultimate never fizzles. A fixed chance per slot rather than two
-// more entries in its pool, whose size depends on the player's type.
+// more entries in its pool, whose size depends on the player's type. One slot
+// in ten, because the hit is lethal: a mismatched power-100 move at that
+// epoch's Energy takes more than the player's whole bar at any Lifetime they
+// can buy, so what answers it is Franklin's Last Scattering or Full
+// Reflection, or ending the stage before it comes.
 export const QUANTUM_ULTIMATE_EPOCH: Epoch = 3;
-export const QUANTUM_ULTIMATE_CHANCE = 0.15;
+export const QUANTUM_ULTIMATE_CHANCE = 0.1;
 
 // Correlation prices the same as Quantumness/Velocity -- all three share the
 // same "full range stays meaningful, then plateaus" shape (the Energy and
@@ -277,8 +299,10 @@ const WILD_HP_GROWTH_PER_WORLD = 20 / 9;
 // player's own max HP uses this same un-rolled value for whichever world
 // they're currently in, no roll (their own body isn't a specimen with
 // variance). Rivals use `rivalHpForWorld` below instead, not this.
-export function wildHpForWorld(world: number): number {
-  return Math.round(WILD_HP_BASE + WILD_HP_GROWTH_PER_WORLD * (world - 1));
+// `epoch` is the opponent's own multiplier (epochHpMultiplier); the player's
+// bar is read without it.
+export function wildHpForWorld(world: number, epoch: Epoch = DEFAULT_EPOCH): number {
+  return Math.round(WILD_HP_BASE + WILD_HP_GROWTH_PER_WORLD * (world - 1)) * epochHpMultiplier(epoch);
 }
 
 // A rival's own max HP, a separate and much steeper curve than an ordinary
@@ -291,8 +315,8 @@ export function wildHpForWorld(world: number): number {
 // challenge, the same boss every time it's fought.
 const RIVAL_HP_BASE = 30;
 const RIVAL_HP_GROWTH_PER_WORLD = 6.8;
-export function rivalHpForWorld(world: number): number {
-  return Math.round(RIVAL_HP_BASE + RIVAL_HP_GROWTH_PER_WORLD * (world - 1));
+export function rivalHpForWorld(world: number, epoch: Epoch = DEFAULT_EPOCH): number {
+  return Math.round(RIVAL_HP_BASE + RIVAL_HP_GROWTH_PER_WORLD * (world - 1)) * epochHpMultiplier(epoch);
 }
 
 // World 10's finale is three fights in one scene (BattleScene's
@@ -303,8 +327,10 @@ export function rivalHpForWorld(world: number): number {
 // same read the player's bar comes from -- as it carries their type and
 // their moves: the copy is exact, which is what makes that stage a mirror
 // rather than a wall, and the breath between the two rival-scale bars.
-export function finaleStageHp(stage: 1 | 2 | 3, world: number): number {
-  return stage === 2 ? wildHpForWorld(world) : rivalHpForWorld(world);
+// The epoch lengthens the two rival-scale bars and leaves the mirror's alone:
+// the player's bar does not grow with the epoch, so neither does its copy.
+export function finaleStageHp(stage: 1 | 2 | 3, world: number, epoch: Epoch = DEFAULT_EPOCH): number {
+  return stage === 2 ? wildHpForWorld(world) : rivalHpForWorld(world, epoch);
 }
 
 // Qumatessence price for one of Noether's ordinary attack moves, scaled off

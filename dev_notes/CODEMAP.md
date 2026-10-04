@@ -925,8 +925,8 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
 DEVELOPMENT.md's "Balance simulator") is also outside `src/` -- it reads the
 same static tables the same AST way, but transpiles and actually imports
 `data/balance.ts` (Phaser-free, unlike `materials.ts`) to run the real damage/
-economy formulas against three reference player builds across worlds 1-10, a
-difficulty-curve sanity check rather than a docs generator.
+economy formulas against three reference player builds across worlds 1-10 and then through
+the two post-game epochs, a difficulty-curve sanity check rather than a docs generator.
 
 `game/scripts/content-lint.mjs` (`npm run content-lint`) parses the data tables the same
 AST way for its consistency checks, and additionally walks every `src/` file's AST for
@@ -1394,9 +1394,11 @@ two-phase curve, gentle through worlds 1-3 and steeper from world 4 on
 rates and the reasoning behind the two phases); in Superposition Mode (every player stat already
 pinned to `MAX_STAT`, so there's no per-world climb left to track on the opponent's side either),
 `superpositionEnemyStats(difficultyMultiplier)` returns one flat baseline
-(`SUPERPOSITION_BASE_ENEMY_STAT`) shared by every world instead. Both apply the active difficulty
-tier's own multiplier on top (`DIFFICULTY_MULTIPLIERS`, read live off registry `difficultyTier`,
-the Lab's Settings station). Left fractional (never rounded) here -- an opponent's stats are never
+(`SUPERPOSITION_BASE_ENEMY_STAT`) shared by every world instead, stopping at `MAX_STAT`. Both
+apply one multiplier on top, the active difficulty tier's (`DIFFICULTY_MULTIPLIERS`, read live
+off registry `difficultyTier`, the Lab's Settings station) times the epoch's
+(`epochStatMultiplier(epoch)`, registry `epoch` read through `clampEpoch` into
+`BattleScene.epoch` -- see "Epochs" under "Rival/boss fights"). Left fractional (never rounded) here -- an opponent's stats are never
 shown to the player as a number, only felt through hit chance/damage/turn order -- and
 `BattleScene.create` rounds them only for an ordinary wild, whose `rollEncounterFactor()` roll
 (+/-15%) scales the baseline first; a rival's are used exactly as returned. The player's own
@@ -1444,7 +1446,9 @@ defensive terms, the attacker's Anomalous Cloud pull as `luck`) and calls into i
 computing the product inline.
 This is the only type-interaction term in the damage formula (DESIGN.md §3/§4) -- there is no
 separate type-chart multiplier. Which move the opponent swings is decided one level up, in
-`playerAttack`'s `opponentMoveId` thunk (re-rolled per opponent hit): it draws from
+`opponentAction()` (re-rolled per opponent slot, returning an `OpponentAction`: the move id, its
+`bonusMultiplier`, and for a quiz-gated move the class it `carrying` and the `name` that gives
+it): it draws from
 `this.wild.moves`, filtered to the `phonon`-class entries when `this.world === 1` *and* every
 `playerStats` value is below `PHONON_ONLY_STAT_CEILING` (`data/balance.ts`, 5) -- wilds and
 rival alike, so the opening world can never land the mismatch bonus on a player who hasn't
@@ -1492,7 +1496,8 @@ and `buffCastThisRound` included, since Phaser reuses the Scene instance across 
 
 `runNextSlot()` walks the array one slot at a time, chained through
 `time.delayedCall(TURN_GAP_MS, ...)`, the same gap every hit uses. An opponent slot resolves on
-its own (`opponentMoveId()`, its own method, rolled fresh per slot). A player slot resolves
+its own (`opponentAction()`, its own method, rolled fresh per slot, handed to `resolveHit` whole
+as `opponentTuning`). A player slot resolves
 `pendingPlayerMove` -- the `{ moveId, bonusMultiplier }` a move-menu click committed -- and when
 there is none, releases `turnLock` and returns, which puts the menu back in the player's hands
 for that slot's own pick. So the menu is live exactly when the next slot is the player's, and a
@@ -2025,7 +2030,7 @@ pick under `FINALE_STAGES[3].title` with every basic move), the old container is
 bars refill (`finaleStageHp`; `playerHp` set to `playerMaxHp`, written back to the registry and persisted), both
 statuses clear, the round state resets and the plate/bars/menu/turn row redraw before
 `turnLock` releases -- it is held from the KO to that point, which is what keeps
-`component-check`'s `waitTurnFree` honest. `opponentMoveId` reads `finalePool` in the finale
+`component-check`'s `waitTurnFree` honest. `opponentAction` reads `finalePool` in the finale
 and, on stage 3, filters to the moves whose class `canHost(playerMaterial.type, ·)` rejects;
 `rollQuantumForm()` re-samples the stage-3 form where `runNextSlot` ends a round (not in
 `beginRound`, which runs lazily inside `playerAttack` after the pick), retints the cloud and
@@ -2305,13 +2310,20 @@ prompt and panel in the input order. `updateOverlookZone()` enables it only whil
 would show at the cliff (`gateAtPlayer() === 'forward'`, no dialogue, not mid-step), so the land
 is clickable exactly where the prompt is offered. Its `pointerdown` and the finale panel's "Study
 the map" button both end in `showOverlookPanel` (`scenes/panels/overlook.ts`): a list+detail panel
-over `buildQumatuomiMap`, whose one commit, `resetRival`, deletes that world's `rivalDefeated`
+over `buildQumatuomiMap`, with two commits. `resetRival` deletes that world's `rivalDefeated`
 entry and persists. No other state is touched, so everything that reads `rivalDefeated` -- the
 rival standing in the pass, the shut goal row, the Story station's pass chapter, the Lab door's
 frontier (`HubScene.highestUnlockedWorld`) -- sees that world as not yet beaten. Resetting the
 rival of the world the panel is open in (only ever World 10's) leaves through
 `advanceToWorld(world, 'goal')`, which rebuilds the scene with the rival standing and the player
-at the pass mouth; any other world re-renders the panel in place.
+at the pass mouth; any other world re-renders the panel in place. The other commit belongs to
+the row above the ten worlds, `EPOCH_ROW` (a list item of its own, id `0`, labelled "Epoch N of
+3"): its detail pane (`renderEpochDetail`) says how many rivals have fallen and what the next
+epoch does (`epochSummary`, composed from `data/balance.ts`'s epoch tables so the text cannot
+drift from the numbers), and once `allRivalsFallen(registry)` holds it offers "Begin Epoch N+1",
+whose `beginNextEpoch` sets `epoch + 1`, sets `rivalDefeated` to `{}`, persists, and leaves
+through the same `advanceToWorld(world, 'goal')`. Both detail panes end in the shared
+`closePanel(rightY)`, which lays the footer, the divider and the panel background.
 
 **The star network (`art/stars.ts`).** Worlds 7-10 share one sky that assembles a network across
 them (WORLDS.md section 1's "The stars"). `drawStarNetwork` is called from `drawDepthHaze` (and from `BattleScene.drawRealisticBackdrop`, for the arena's sky at the same stage, frozen at `R_FROZEN_NOW`)
@@ -2561,6 +2573,40 @@ Every actor's depth is fixed rather than computed from its position, which is so
 terrain is drawn entirely in the ground plane: `worldGfx` has nothing standing up out of it that
 an actor could be behind, so painting it first and every actor over it is always correct, and no
 actor can ever appear to float in front of terrain it should be occluded by.
+
+### Epochs
+
+The post-game axis (DESIGN.md §2/§3/§6). Everything about it is in four places:
+
+- **`data/balance.ts`** (Phaser-free): the `Epoch` type, `MAX_EPOCH`/`DEFAULT_EPOCH`,
+  `clampEpoch`, and one table per effect behind an accessor -- `epochStatMultiplier`,
+  `epochHpMultiplier`, `epochStakeMultiplier`, `rivalAnalyticChance`/`rivalsThrowAnalytic`,
+  `QUANTUM_ULTIMATE_EPOCH`/`QUANTUM_ULTIMATE_CHANCE`. `wildHpForWorld`, `rivalHpForWorld`,
+  `finaleStageHp` and `battleStakeForWorld` each take the epoch as a trailing argument that
+  defaults to 1, so a call that leaves it off reads the player's own bar or the Epoch-1 value.
+  `ANALYTIC_CORRECT_MULTIPLIER`/`ANALYTIC_WRONG_MULTIPLIER` live here too, shared by the
+  player's question and the rival's roll.
+- **`data/materials.ts`**: `getEpoch(registry)` and `allRivalsFallen(registry)` (every key of
+  `WORLD_NAMES` set in `rivalDefeated`), the two reads every other module makes.
+- **`BattleScene`**: `create()` reads the epoch once into `this.epoch` and uses it for the
+  stat multiplier and the opponent's bar; `endBattle` for the stake; `opponentAction()` for
+  what a rival throws. There, from Epoch 2, a rival fight other than finale stage 2 rolls
+  uniformly over its pool plus `ANALYTIC_MOVE_IDS`, and stage 3 at `QUANTUM_ULTIMATE_EPOCH`
+  first rolls `QUANTUM_ULTIMATE_CHANCE` for an Ultimate. A quiz-gated pick goes through the
+  local `tuned()`, which takes the class of a random move of that same (already filtered)
+  pool as `carrying` and builds the name from `quasiparticleLabel` + `moveShapeName`, prefixed
+  "Decohered" when the source move is in `GOLEM_MOVE_IDS`. `resolveHit` reads `carrying` for
+  the mismatch and screening checks and the effect's class, `name` for the log, and adds the
+  "full power"/"half power" clause for a rival's Analytic move. Those ids are never in a
+  `moves` array (`data/integrity.ts`).
+- **`scenes/panels/overlook.ts`**: the only writer (`beginNextEpoch`, see "Taking hold of it"
+  under the overlook). `OverworldScene.showFinalePanel` swaps in `afterStoryFor(epoch, length)`
+  when `epoch >= 2 && allRivalsFallen`.
+
+`TitleScene.loadIntoRegistry` seeds the registry key and `OverworldScene`'s bare-registry
+fallback sets it beside `rivalDefeated`. `OverworldScene.create` draws the "Epoch N of 3" line
+under the world label when the epoch is past the first. `scripts/balance-sim.mjs` reads the same tables for
+its post-game pass, and `scripts/component-check.mjs`'s `testBeginEpoch` drives the button.
 
 ## World progression
 
@@ -3436,12 +3482,15 @@ world's chapters (entry history, the Decoherence's attack on it, and its pass: g
 two-part rival taunt, the beat that follows the win; World 10 carries six: its reveal split
 in two because its lore page 2 outgrows the pane's shrink-only fit, and the two screens between
 its finale's three stages after its pass), then the ending -- and
-the panel lists all thirty-five at every point in a playthrough. A chapter the save hasn't reached keeps its row and
+and the two after-story chapters after it -- and
+the panel lists all thirty-seven at every point in a playthrough. A chapter the save hasn't reached keeps its row and
 is masked to `'???'` in the dimmer `#6a7396` via `renderListColumn`'s own `labelFor`/`colorFor`
 hooks, the same treatment Qumatex gives an undiscovered crystal and Bloch's table an unvisited
 world, with its detail pane cut to one short line rather than a pane of question marks. Reach is
 derived, never stored: `{ kind: 'tip' }` reads `tutorialTipsSeen`, `{ kind: 'lore'; world }`
-reads `worldLoreSeen`, `{ kind: 'rival'; world }` reads `rivalDefeated`, and Superposition Mode
+reads `worldLoreSeen`, `{ kind: 'rival'; world }` reads `rivalDefeated`, `{ kind: 'epoch'; epoch }`
+(the after-story's two chapters) reads `epoch` with `allRivalsFallen` -- on that epoch with all ten
+down, or already past it -- and Superposition Mode
 reads everything -- so the station adds no persisted state and `defaultSave`/
 `persistFromRegistry` are untouched. That derivation is also why the Settings station's Story
 Screens row can be turned off without stranding a chapter: a skipped screen still marks its own
@@ -3617,7 +3666,9 @@ guardian panels above.
 
 ## Save schema
 
-`data/save.ts`'s `SaveData`: `playerStats: Stats`, `visitedWorlds: number[]`,
+`data/save.ts`'s `SaveData`: `epoch: Epoch` (1-3, which pass over the ten worlds the run is on;
+raised only by `scenes/panels/overlook.ts`'s `beginNextEpoch`, clamped by `clampEpoch` on load
+and on every persist, read through `data/materials.ts`'s `getEpoch`), `playerStats: Stats`, `visitedWorlds: number[]`,
 `defeatedMaterials: DiscoveredMaterial[]` (written by `BattleScene.endBattle` on an ordinary
 wild win, same "not for rivals" rule as `discoveredMaterials`), `playerForm: Material | null`
 (round-trips a *whole* `Material` object through `JSON.stringify`/`localStorage`, so the
