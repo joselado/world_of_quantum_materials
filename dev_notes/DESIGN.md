@@ -2026,9 +2026,10 @@ Mode grants `MAX_STAT` for free (§5): there the epochs meet the player at parit
 carried by bars and moves instead (§3). An opponent's Momentum sets a hard cliff in the build
 space, because Momentum is a ratio capped at `MAX_MULTI_HIT`: Epoch 3's last world stands at 38
 (53 at Ph.D.), where a player can still reach the Momentum that holds it to one swing a round,
-and can buy a second swing of their own only at M.Sc. and below. And the range from 40 to
-`MAX_STAT` is left unclaimed on purpose: it is the expansion's, for the fight the after-story
-points at (§5).
+and can buy a second swing of their own only at M.Sc. and below. And for a build that uses
+the quiz-gated moves, the range from about 40 to `MAX_STAT` is left unclaimed on purpose (only
+a build answering with stat points alone climbs into it, §3): it is the expansion's, for the
+fight the after-story points at (§5).
 
 ## 7. Technical architecture
 
