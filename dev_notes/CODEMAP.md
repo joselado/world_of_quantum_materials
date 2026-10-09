@@ -652,6 +652,13 @@ game/src/
                                   picks the table + restarts the current track,
                                   makeBattleScore() generates worlds 2-10's battle themes
                                   (classic world 1 is hand-written), duck() for attack beats.
+                                  renderScore(which, style, seconds) renders a score offline
+                                  into an AudioBuffer through the same master bus, ambience
+                                  bus and schedulers play() uses (every loop scheduled up
+                                  front into an OfflineAudioContext, since play()'s lookahead
+                                  timer cannot drive one), for captures outside the game
+                                  loop (the promotional video, PROMO_VIDEO_BUILD_TASK.md);
+                                  the live engine's context and timers are not involved.
                                   SCORES_MODERN is not authored: it is SCORES mapped through
                                   modernizeScore(score, opts), a per-track smoothing transform
                                   (wave mapping, drive strip, attack/release/wet floors,

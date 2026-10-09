@@ -1624,8 +1624,10 @@ for (const [key, score] of Object.entries(SCORES)) assertLoopBeats(key, score);
 class MusicEngine {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
-  private compressor: DynamicsCompressorNode | null = null;
-  private noiseBuffer: AudioBuffer | null = null;
+  // One white-noise buffer per context: the live one's, and an offline
+  // render's own (renderScore), since a buffer is built at its context's
+  // sample rate.
+  private noiseBuffers = new WeakMap<BaseAudioContext, AudioBuffer>();
   private driveCurve: Float32Array<ArrayBuffer> | null = null;
   private activeGain: GainNode | null = null;
   // The outgoing track's ambience input, kept only so it can be unwired
@@ -1644,31 +1646,42 @@ class MusicEngine {
   private ensureCtx(): AudioContext {
     if (!this.ctx) {
       this.ctx = new AudioContext();
-      this.master = this.ctx.createGain();
-      this.master.gain.value = 1;
-      // A gentle bus compressor so the busier battle mix (several layers
-      // stacking on the downbeat) stays punchy without clipping.
-      this.compressor = this.ctx.createDynamicsCompressor();
-      this.compressor.threshold.value = -14;
-      this.compressor.knee.value = 12;
-      this.compressor.ratio.value = 4;
-      this.compressor.attack.value = 0.003;
-      this.compressor.release.value = 0.25;
-      this.master.connect(this.compressor);
-      this.compressor.connect(this.ctx.destination);
+      this.master = this.buildMasterBus(this.ctx);
     }
     if (this.ctx.state === 'suspended') this.ctx.resume();
     return this.ctx;
   }
 
-  private getNoiseBuffer(ctx: AudioContext): AudioBuffer {
-    if (!this.noiseBuffer) {
-      const buf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+  // The master bus every score and sound effect plays through: a master gain
+  // into a gentle bus compressor into the context's destination, so the
+  // busier battle mix (several layers stacking on the downbeat) stays punchy
+  // without clipping. Built once for the live context (ensureCtx) and once
+  // per offline render (renderScore), so a render is mixed as the game is.
+  // The compressor stays alive by being wired between the two, so only the
+  // master gain, which play() and getSfxBus() hand voices to, is returned.
+  private buildMasterBus(ctx: BaseAudioContext): GainNode {
+    const master = ctx.createGain();
+    master.gain.value = 1;
+    const compressor = ctx.createDynamicsCompressor();
+    compressor.threshold.value = -14;
+    compressor.knee.value = 12;
+    compressor.ratio.value = 4;
+    compressor.attack.value = 0.003;
+    compressor.release.value = 0.25;
+    master.connect(compressor);
+    compressor.connect(ctx.destination);
+    return master;
+  }
+
+  private getNoiseBuffer(ctx: BaseAudioContext): AudioBuffer {
+    let buf = this.noiseBuffers.get(ctx);
+    if (!buf) {
+      buf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
       const data = buf.getChannelData(0);
       for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-      this.noiseBuffer = buf;
+      this.noiseBuffers.set(ctx, buf);
     }
-    return this.noiseBuffer;
+    return buf;
   }
 
   // A mild tanh soft-clip curve -- used to give square/sawtooth voices a
@@ -1720,7 +1733,7 @@ class MusicEngine {
     }, 300);
   }
 
-  private createAmbienceBus(ctx: AudioContext, dest: GainNode): GainNode {
+  private createAmbienceBus(ctx: BaseAudioContext, dest: GainNode): GainNode {
     const input = ctx.createGain();
     input.gain.value = 1;
     const delay = ctx.createDelay(1);
@@ -1851,6 +1864,40 @@ class MusicEngine {
     scheduleLoop();
   }
 
+  // The mix play() makes, rendered instead of played: `seconds` of the score
+  // `which` in the given arrangement, as an AudioBuffer, for a caller outside
+  // the game loop (the promotional video's capture script,
+  // dev_notes/PROMO_VIDEO_BUILD_TASK.md, which encodes the buffer to a file).
+  // play()'s lookahead timer cannot drive an OfflineAudioContext, whose clock
+  // only advances while it renders, so every loop that fits the length is
+  // scheduled up front, from time zero, through the same master bus, session
+  // gain, ambience bus and schedulers the live engine plays through, and the
+  // context is rendered in one go. The live engine is not involved: its
+  // context, buses, timers and current track are left as they are, and the
+  // offline context gets a noise buffer of its own (getNoiseBuffer is keyed
+  // by context). The last loop runs past `seconds` and is cut by the buffer's
+  // end, so a length that is a whole number of loops ends on a loop seam.
+  async renderScore(which: string, style: Exclude<MusicStyle, 'mute'>, seconds: number): Promise<AudioBuffer> {
+    const score = (style === 'modern' ? modernScore(which) : undefined) ?? SCORES[which];
+    if (!score) throw new Error(`music.renderScore: no score for "${which}"`);
+    const sampleRate = 44100;
+    const ctx = new OfflineAudioContext(2, Math.ceil(seconds * sampleRate), sampleRate);
+    const master = this.buildMasterBus(ctx);
+    const sessionGain = ctx.createGain();
+    sessionGain.gain.value = 1;
+    sessionGain.connect(master);
+    const ambience = this.createAmbienceBus(ctx, sessionGain);
+    const secPerBeat = 60 / score.bpm;
+    const loopSeconds = score.loopBeats * secPerBeat;
+    const loops = Math.ceil(seconds / loopSeconds);
+    for (let i = 0; i < loops; i++) {
+      for (const track of score.tracks) {
+        this.scheduleTrack(ctx, track, i * loopSeconds, secPerBeat, sessionGain, ambience);
+      }
+    }
+    return ctx.startRendering();
+  }
+
   stop() {
     this.stopToken++;
     this.current = null;
@@ -1907,7 +1954,7 @@ class MusicEngine {
     return { ctx, dest: this.master!, noiseBuffer: this.getNoiseBuffer(ctx), driveCurve: this.getDriveCurve() };
   }
 
-  private scheduleTrack(ctx: AudioContext, track: Track, startAt: number, secPerBeat: number, dest: GainNode, ambience: GainNode) {
+  private scheduleTrack(ctx: BaseAudioContext, track: Track, startAt: number, secPerBeat: number, dest: GainNode, ambience: GainNode) {
     let t = startAt;
     if (track.kind === 'tone') {
       const envelope = { attack: track.attack, release: track.release, wet: track.wet };
@@ -1952,7 +1999,7 @@ class MusicEngine {
   }
 
   private scheduleTone(
-    ctx: AudioContext,
+    ctx: BaseAudioContext,
     wave: Wave,
     vol: number,
     midi: number,
@@ -2001,7 +2048,7 @@ class MusicEngine {
     osc.stop(time + dur + 0.02);
   }
 
-  private scheduleKick(ctx: AudioContext, vol: number, time: number, dest: GainNode) {
+  private scheduleKick(ctx: BaseAudioContext, vol: number, time: number, dest: GainNode) {
     const osc = ctx.createOscillator();
     osc.type = 'sine';
     osc.frequency.setValueAtTime(150, time);
@@ -2019,7 +2066,7 @@ class MusicEngine {
 
   // Bandpassed noise crack plus a short triangle "body" thump underneath,
   // for a punchier snare hit than the hat's plain noise burst.
-  private scheduleSnare(ctx: AudioContext, vol: number, time: number, dest: GainNode) {
+  private scheduleSnare(ctx: BaseAudioContext, vol: number, time: number, dest: GainNode) {
     const src = ctx.createBufferSource();
     src.buffer = this.getNoiseBuffer(ctx);
     const bandpass = ctx.createBiquadFilter();
@@ -2048,7 +2095,7 @@ class MusicEngine {
     osc.stop(time + 0.12);
   }
 
-  private scheduleHat(ctx: AudioContext, vol: number, time: number, dest: GainNode) {
+  private scheduleHat(ctx: BaseAudioContext, vol: number, time: number, dest: GainNode) {
     const src = ctx.createBufferSource();
     src.buffer = this.getNoiseBuffer(ctx);
 
@@ -2069,7 +2116,7 @@ class MusicEngine {
 
   // A bright, slowly-decaying noise wash -- a cymbal crash for dramatic
   // punctuation at the top of the battle loop.
-  private scheduleCrash(ctx: AudioContext, vol: number, time: number, dest: GainNode) {
+  private scheduleCrash(ctx: BaseAudioContext, vol: number, time: number, dest: GainNode) {
     const src = ctx.createBufferSource();
     src.buffer = this.getNoiseBuffer(ctx);
     const highpass = ctx.createBiquadFilter();
