@@ -20,23 +20,22 @@ into shape.
 
 **https://joselado.github.io/world_of_quantum_materials/**
 
-A three-minute trailer plays from the same site:
+Watch the trailer:
 [trailer.mp4](https://joselado.github.io/world_of_quantum_materials/trailer.mp4).
 
-Works on any current browser on Windows, macOS or Linux. Needs no account, no
-download and no permission to install software, so it runs on a locked-down
-university machine as happily as on your own laptop. You need to be online to
-open it. A computer without a graphics card plays it too: the game notices and
-draws with the browser's own canvas instead, which keeps it smooth there.
-Adding `?renderer=canvas` or `?renderer=webgl` to the address picks one by
-hand, should it ever guess wrong.
+Runs in any current browser on Windows, macOS or Linux, with no account, no
+download and nothing to install, so a locked-down university machine plays it
+as happily as your own laptop. You only need to be online to open it. No
+graphics card? The game notices and draws with the browser's own canvas
+instead, and if it ever guesses wrong, add `?renderer=canvas` or
+`?renderer=webgl` to the address.
 
 **Offline, as a single file.** Download
 [`world_of_quantum_materials.html`](https://joselado.github.io/world_of_quantum_materials/world_of_quantum_materials.html)
 (right-click the link, "Save Link As...") and open it by double-clicking it.
-The whole game is inside that one file, because every sprite and every note is
-drawn and played by code rather than loaded from anywhere, so once it is on
-your machine it never touches the network again.
+Every sprite and every note is drawn and played by code, so the whole game
+lives in that one file, and once it is on your machine it never touches the
+network again.
 
 **From the source**, if you want to read or change the game. Install
 [Node.js](https://nodejs.org) 18+, then from the repo root:
@@ -63,8 +62,8 @@ stabilize it again.
 
 ## How it plays
 
-**Explore.** Each world is walkable ground rendered in an over-the-shoulder
-pseudo-3D view, the world redrawn from a smoothly moving camera as you walk.
+**Explore.** You walk each world over the shoulder, in pseudo-3D, the camera
+following close behind.
 Every world's layout echoes its own physics, not just its scenery: an open
 field a hedgerow splits into two differently colored halves before letting
 them close back into one in the mean-field world, an open cloister you cross
@@ -140,8 +139,8 @@ which crystal types can use each one.
 </tr>
 </table>
 
-**Grow.** Winning battles and grabbing qumatessence pickups funds the
-guardians waiting partway through each world, ten in all, each teaching a
+**Grow.** Spend the qumatessence you win and pick up at the guardians waiting
+partway through each world, ten in all, each teaching a
 different way of bending the game's usual rules: new moves and stats,
 teleportation, transmuting into a crystal you've defeated, quiz-gated power
 moves, fusing two crystals into a hybrid, doping an impurity into yourself,
@@ -185,7 +184,7 @@ property its own grains took from it, and none of them knows that is what it is
 doing. World 10's rival, The Adapted,
 is the one that breaks the pattern, and it is three fights in one. Step to
 the mouth of the pass and press Space to challenge it. Beat it and the pass
-clears: the next world's colours show through the gap, a board names it, and
+clears: the next world's colors show through the gap, a board names it, and
 pressing Space again crosses over.
 
 **Walk back anytime.** The near end of every world, right where you first
@@ -194,8 +193,8 @@ before it (or, from World 1, a door back to the Lab). Walk up and press Space,
 no menu required; you'll land back in that earlier world right at its own far
 end, ready to walk forward through it again whenever you like.
 
-**Return to the Lab.** World 0 is a static hub room, each of its jobs its own
-physical station: Qumatex, a filterable index of every crystal in the game
+**Return to the Lab.** World 0, the Lab, is your home base, one room with a
+station for every job: Qumatex, a filterable index of every crystal in the game
 listed by name alongside a note on the real physics behind it, each with a
 "???" placeholder name and silhouette for anything you haven't found yet; a
 door back out to whichever world you were last walking; a Moves station where
@@ -204,8 +203,8 @@ quasiparticle it throws actually is; and stations to check your stats, look
 over the passive abilities your crystal runs, replay the tutorial, re-read the
 story so far, adjust settings, and step back out to the title screen. Every
 guardian you've met stands in the room itself, so you can click one to reopen
-their panel without leaving. Your progress autosaves as you play, so there's
-no separate save button anywhere.
+their panel without leaving. The game saves as you play, so there is no save
+button.
 
 <table>
 <tr>
@@ -216,8 +215,8 @@ no separate save button anywhere.
 
 ## The ten worlds
 
-One world per course topic, each with its own biome, wild-material
-archetypes, and a rival crystal gating the way to the next world.
+One world per course topic, each with its own terrain, its own wild crystals,
+and a rival standing between you and the next.
 
 | # | World | Course topic |
 |---|---|---|
@@ -260,7 +259,8 @@ it makes the whole game harder. Nothing is lost by beginning one: each epoch
 keeps its own progress, and Bloch's travel panel has a tab for every epoch
 you have unlocked, so he can fold you to any world you have reached in any of
 them. Your stats, moves and qumatessence come with you. Once you have more
-than one epoch, the one you are in is shown under the world's name:
+than one epoch, the one you are in is shown under the world's name. Each
+epoch hits harder than the last:
 
 | | Epoch 1 | Epoch 2 | Epoch 3 |
 |---|---|---|---|
@@ -306,8 +306,8 @@ extra swings rather than smoothly, and it stops paying once you are five times
 faster than whatever you are fighting. Every stat runs from 1 to a cap of 100,
 raised one point at a time at Noether's shop. A fifth of all hits land as a
 coherent hit for half again the damage, whoever throws them. HP is fully
-healed after each battle, so qumatessence, not HP attrition, is what is
-actually on the line from one fight to the next. The move menu shows one kind
+healed after each battle, so what you risk from one fight to the next is
+qumatessence, not HP. The move menu shows one kind
 of move at a time (ordinary attacks, the quiz-gated ones, and the clouds you
 cast on yourself), with the Left/Right keys or the on-screen arrows
 to page between kinds.
@@ -429,8 +429,7 @@ you are playing with.
   sessions.
 - **Touch Controls**: Auto, On, or Off, the walking arrows in the corner of the
   world. Auto puts them there when you are playing on a touchscreen and leaves
-  them off otherwise, which is what you want unless you want the opposite. The
-  keyboard keeps working whichever way it is set. Takes effect the next time you
+  them off otherwise. The keyboard keeps working whichever way it is set. Takes effect the next time you
   enter a world.
 
 ![Settings panel](screenshots/settings.png)
