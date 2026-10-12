@@ -5,9 +5,11 @@ cut: a hook, the title, the mechanics in the order a player meets them, the
 worlds and their bosses escalating, the final boss as the climax, and a closing
 card saying where to play. Everything on screen is captured from the running
 game, nothing is mocked up, and the music is the game's own. This file is the
-plan; the capture, the assembly and the review happen in a later session, and
-every recipe that session needs is written here so that nothing depends on a
-scratchpad that has since been cleared.
+plan and the reasoning behind every shot; its executable half is
+`game/scripts/promo.mjs` with `game/scripts/promo-cards.html`, described in
+`DEVELOPMENT.md`'s "Capturing the promotional video", and where the two differ
+in a number (a hold, a frame count) the script is the one that was checked on
+a contact sheet.
 
 The text question is settled as follows. The video carries on-screen text and no
 voice-over: a handful of full-frame cards on black at the seams between
@@ -20,8 +22,8 @@ like any other frame.
 
 The deliverable is one file, 1920x1080, 30 frames per second, H.264 video with
 AAC audio, about 180 seconds long, hosted rather than committed (see
-"Housekeeping"). A 2x preview render of the same cut is what the owner watches
-first, since it takes a fraction of the time.
+"Housekeeping"). It is the 2x render: the owner watched the 2x preview and
+judged it final, so the 4x raster, which `promo.mjs` supports, is not used.
 
 ---
 
@@ -39,8 +41,9 @@ minute, and everything from "The road" on is a spoiler. Every card line below is
 written from the premise section's vocabulary (a Decoherence, worlds losing what
 they are, a quantum material walking into each phase of matter), and nothing
 states what the Decoherence is, what the golems were, or what the Adapted is.
-The finale beat shows the thing and says the least it can about it; how much of
-it to show is the owner's first decision (see "Decisions for the owner").
+The finale beat shows the thing and says the least it can about it: all three
+stages, their on-screen titles visible, no card explaining them (the owner's
+decision, see "Decisions for the owner").
 
 ---
 
@@ -110,10 +113,11 @@ first topic.
 
 Recipe: seed `playerForm` null (Silicon), start Overworld `{ world: 1 }`, close
 any lore dialogue, walk 75 frames, then call `showEncounter(findMaterialByName('Nickel Oxide'))`.
-The panel is built by `renderEncounterPage`, so the correct option is the
-button whose text equals `getWorldQuestion(1, 'Nickel Oxide').correct`; walk
-the scene's children for the Text object with that string and emit
-`pointerdown` on it. The scene then calls `startBattle(material, 1.5)` itself,
+The panel's two answers are shuffled through Phaser's `Utils.Array.Shuffle`
+as `{ text, correct }` pairs, and the script watches that call, so it knows
+which of the panel's first two buttons is the right one and emits
+`pointerdown` on it; the same watch answers Landau's and Skłodowska-Curie's
+panels. The scene then calls `startBattle(material, 1.5)` itself,
 which is the boosted multiplier, and the halo is `addBoostHalo` in the battle.
 
 ### Battle, 0:31 to 0:52
@@ -137,8 +141,10 @@ Recipe: shot one continues the ambush capture. Shot two seeds `playerForm`
 Yttrium Iron Garnet, `unlockedMoves` holding `magneticField`, starts Overworld
 `{ world: 3 }`, calls `startBattle(findMaterialByName('Bi₂Te₃'), 1)`, steps 20
 frames, then `playerAttack('magneticField')` and runs 70 frames. Shot three
-seeds `playerStats` with Momentum well above the opponent's (20 against a
-World 1 wild) so `currentHitOrder` gives the player two swings. Shot four seeds
+sets the battle's own `playerStats.velocity` (Momentum) to 2.2 times the
+wild's `enemyStats.velocity` once the battle has started, since a wild's stats
+carry a specimen roll and a seeded value can land either side of twice it, so
+`currentHitOrder` gives the player two swings. Shot four seeds
 Energy high enough that one more hit empties the bar, so `endBattle(true)`
 raises the panel; run 90 frames after the attack.
 
@@ -263,12 +269,12 @@ crystal back, made of the same network (4 s, the first caption). Then The
 Adapted standing in the throat wearing the player's own crystal (3 s). The
 fight: a hit lands and the Adapted reshapes, the transmute glow and the swap
 into a real compound that hosts what was just thrown, twice (7 s, the second
-caption). What follows depends on the owner's first decision: with the
-recommended option, the stage screen's title "The Model of You" (1 s), the
-network figure in the player's shape and colour (3 s), then the third stage's
-smoke, the arena pulled back, the second star network filling the sky, and an
-Ultimate falling on the player (8 s), then black (2 s). No card explains any of
-it; the stage titles are the game's own and are the most the video says.
+caption). Then the stage screen's title "The Model of You" (0.5 s), the network
+figure in the player's shape and colour (3 s), then the third stage's title,
+its smoke, the arena pulled back, the second star network filling the sky, and
+an Ultimate falling on the player (7.5 s, cut before the defeat summary rises),
+then black (1.5 s). No card explains any of it; the stage titles are the game's
+own and are the most the video says.
 
 Recipe: seed `playerForm` to a form with two hostable classes (Yttrium Iron
 Garnet), `rivalDefeated` with 1 to 9 true, start Overworld `{ world: 10 }`, walk
@@ -278,9 +284,14 @@ run 80 frames to see `transmuteAdapted` play, attack again, run 80 more. For
 the later stages set `opponentHp` to 1 and attack, which routes through
 `checkEndOrContinue` into `advanceFinaleStage` and raises the stage panel; emit
 `pointerdown` on its button ("Face it", then "Battle!"), which is what calls
-`standFinaleForm`. For the Ultimate seed `epoch` 3 before the battle starts, let
-the opponent act (`runNextSlot` after the player's pick) and run 120 frames.
-`storyScreensEnabled` must be on or the stage screens do not appear.
+`standFinaleForm`. The Ultimate needs `epoch` 3, and in epoch 3 the Adapted
+casts one from its first stage on, which ends the fight before the reshaping
+can be shown, so the finale is two battles: the reshaping and the second stage
+in epoch 1, then an epoch 3 battle whose first two stages are passed off camera
+(the opponent's bar emptied on the player's first pick each time, the player
+faster, so the Adapted never acts) and whose recording starts on the third
+stage's panel. `storyScreensEnabled` must be on or the stage screens do not
+appear.
 
 The cliff with the map below is the ending, not the boss, and the brief asked
 for the boss; the cut leaves it out unless the owner chooses otherwise (second
@@ -303,8 +314,9 @@ open, at "Become any crystal", at "Or fuse two", at "Ten guardians", and at the
 close; each fades in and out over 0.3 s. A lower-third caption is one line in
 the game's panel style (the panel background and gold accent from `ui/theme.ts`)
 across the bottom of the frame over gameplay, fading the same way, and never
-covering the battle log or the move menu, which sit in the bottom corners, so
-it is placed just above them. The face is Courier, the game's own prose face
+covering the battle log, the move menu or either crystal: over a battle it sits
+at the top of the field, under a rival's banner it sits mid-field, and over the
+overworld and over panels that fill the top it sits low, just above the player. The face is Courier, the game's own prose face
 (`ui/mathtext.ts`), at a size that reads at 1080p from a phone.
 
 Rules the lines obey, to be rechecked on every edit: no dashes of any kind, no
@@ -336,7 +348,7 @@ plays them in the game. Five cues, crossfaded over one bar at each seam:
 | 1:04 | 1:35 | World 6 overworld, C Ionian, 116 bpm | The false calm, World 1's own key returning, under crystals, hybrids and the guardians' room |
 | 1:35 | 2:22 | World 4 battle, 132 bpm | The crash every fourth bar lands under the Ultimate and the golems |
 | 2:22 | 2:52 | World 10 overworld, F# Lydian, 158 bpm | The lead answered a bar later by an exact copy of itself, the world modelling the player, under the Adapted |
-| 2:52 | 3:00 | A tonic chord of World 1's score held and fading, or silence | The close |
+| 2:50 | 3:00 | World 1 overworld again, faded in under the title | The close: the title screen plays this score in the game too |
 
 Classic against Modern is the owner's call (third decision); Classic is the
 recommendation, because it is the sound the game identifies itself by.
@@ -377,8 +389,12 @@ The frozen clock. Headless Chrome runs the game's own loop at a few frames per
 second, and the component checks had to learn to wait on signals rather than
 time because of it. The recorder sidesteps the problem: after boot it calls
 `game.loop.sleep()` and then advances the game by hand, `game.step(t, 1000/30)`
-with `t` incremented by a thirtieth of a second per call, taking one screenshot
-per step. Every tween, bob and effect then runs at exactly 30 frames per second
+with `t` incremented by a thirtieth of a second per call (and the loop's own
+`now`, `time`, `delta` and `rawDelta` set to match, since the overworld paces
+its walk on `rawDelta`), taking one screenshot per step. Phaser's tweens read
+`Date.now()` rather than the loop's time, so the page's `Date.now()` is a
+virtual clock advanced by the same thirtieth per step, and `Math.random()` is
+a generator seeded from the segment's name. Every tween, bob and effect then runs at exactly 30 frames per second
 of game time no matter how slow the machine is, and a segment comes out the
 same length on every run. Scene changes stop every active scene first
 (`Title`, `Hub`, `Overworld`, `Battle`) and start the wanted one with its init
@@ -386,15 +402,19 @@ data.
 
 The raster. The canvas is 854x480 and the deliverable is 1920x1080, and a
 `deviceScaleFactor` alone yields a blurred upscale. The genuine high-resolution
-raster is the recipe that produced the README's 4x title image: set the
-viewport to 854x480 at `deviceScaleFactor` N, patch
-`HTMLCanvasElement.prototype.getContext` before the page loads so every WebGL
-context's `viewport` and `scissor` multiply their four arguments by N, after
-boot set `game.canvas.width` and `height` to N times the canvas size while the
-CSS size stays 854x480, and call `setResolution(N)` on every Text object,
-walking every active scene's containers. Panels and battles create new Text
-objects after the walk, so the recorder re-walks after every driven action and
-every scene start. N is 4 for the final render (3416x1920 frames, downscaled to
+raster: set the viewport to 854x480 at `deviceScaleFactor` N, patch
+`HTMLCanvasElement.prototype.getContext` before the page loads, and after boot
+set `game.canvas.width` and `height` to N times the canvas size while the CSS
+size stays 854x480. The patch records `viewport` and `scissor` as Phaser asks
+for them and applies them at each draw call, multiplied by N only while the
+screen is the bound framebuffer, since Phaser sets a viewport before binding
+the offscreen target it is meant for as often as after; it also reports the
+drawing buffer's logical size, because Phaser flips every scissor box against
+`drawingBufferHeight` and re-reads it on a scene start. Every Text object is
+rasterized at N through its prototype's `updateText`, so text created mid-shot
+is sharp on the frame it appears, and `art/bake.ts`'s `setBakeOutputScale(N)`
+makes every bake (the title's map, the Lab's room, the battle backdrop) keep N
+texels per pixel. N is 4 for the final render (3416x1920 frames, downscaled to
 1920x1080 with lanczos, which is crisp) and 2 for previews (1708x960, scaled up
 by 1.124, soft but fast). Before capturing the whole cut at 4x, time one
 segment: 5400 frames of 3416x1920 PNG screenshots may take 30 to 45 minutes and
@@ -460,51 +480,30 @@ only what a shot needs and leaves the rest at the defaults.
 
 ## Decisions for the owner
 
-Each one is a pick; the first option is the recommendation.
+Every decision is settled. The finale shows all three stages with their titles and no card,
+each stage panel held half a second, long enough for its title and too short
+for its story text;
+the cliff with the map below is left out; the music is the Classic
+arrangement; hit sounds wait for a second pass judged on the preview.
 
-How much of the final boss to show:
-
-- All three stages, their on-screen titles visible, no card explaining them:
-  the strongest climax, and the titles alone give nothing away.
-- The Adapted's first stage only, reshaping on each hit: keeps the later
-  stages a surprise, at the cost of the pulled-back arena and the Ultimate.
-- The corridor and the Adapted standing in the pass, no fight: the most
-  guarded cut, and the weakest ending.
-
-The cliff with the map below, which is the ending:
-
-- Leave it out: the video ends on the boss, as the brief asked.
-- One wordless second between the boss and the close: a hint there is
-  something past the fight.
-
-The music arrangement:
-
-- Classic: the chiptune the game identifies itself by.
-- Modern: the same scores smoothed, closer to what trailers usually sound like.
-
-Where the file lives:
-
-- YouTube, linked from the README's "Play it" section: streams anywhere, costs
-  the repository nothing.
-- The GitHub Pages site beside the game, linked the same way: one host for
-  both, with the file served from the repository's deploy.
-- A GitHub release asset: downloadable, not embeddable.
-
-The three untracked clips at the repository root (`gameplay.mp4`,
-`gameplay-20s.mp4`, `gameplay-worlds-20s.mp4`), which are the earlier session's
-tests:
-
-- Delete them once `promo.mjs` reproduces their shots.
-- Move them under `promo/` with the rest of the output.
-
-Hit sounds on the hits:
-
-- Leave them for a second pass, judged on the preview.
-- Render them in the first pass from `audio/sfx.ts` at the logged impact times.
+Where the file lives is settled too: served from the GitHub Pages site beside
+the game, because the video has to be watchable wherever the game can be
+played, and YouTube is blocked or filtered in places github.io is not. The file
+is kept out of git history: it is the asset `trailer.mp4` of the GitHub
+release tagged `trailer`, and the Pages workflow (`.github/workflows/pages.yml`) downloads it into `game/dist` at
+deploy time, so github.io serves it while the repository never stores it. The
+README's "Play it" section links to its github.io address. The workflow step is
+added together with the release, never before it, since a step fetching a
+release that does not exist fails the deploy.
 
 ---
 
 ## Order of work for the executing session
+
+The work is done: the 2x cut is published as the `trailer` release's asset and
+served by the Pages deploy, and the README links to it. Steps 5 and 6 below
+stop at the preview, which the owner judged final; a 4x render, should one be
+wanted, runs at 0.5 to 0.9 s a frame (about 75 minutes and 4 GB for the cut).
 
 1. Write `promo.mjs` with the frozen clock, the raster recipe at N given on the
    command line, the segment runner, the contact sheet and the per-segment clip

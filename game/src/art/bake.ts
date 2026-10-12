@@ -39,6 +39,16 @@ import Phaser from 'phaser';
 // against the live layers is down to sub-pixel sample positions on thin lines.
 export const BAKE_SUPERSAMPLE = 2;
 
+// How many texels a bake keeps per screen pixel. One, everywhere the game
+// runs; the promotional video's capture (scripts/promo.mjs) draws the canvas
+// at several times its size and sets this to the same factor before any scene
+// starts, so a baked backdrop is as sharp in its frames as the live vectors
+// around it, rather than a 854x480 picture stretched over a larger raster.
+let bakeOutputScale = 1;
+export function setBakeOutputScale(scale: number) {
+  bakeOutputScale = Math.max(1, Math.round(scale));
+}
+
 export interface BakeRegion {
   x: number;
   y: number;
@@ -101,11 +111,12 @@ export function bakeLayers(
   // stretches everything painted by a column over the texture's width.
   const w = evenCeil(region.w + fx);
   const h = evenCeil(region.h + fy);
-  const supersample = webgl ? supersampleFor(renderer, w, h) : 1;
+  const out = webgl ? bakeOutputScale : 1;
+  const supersample = webgl ? supersampleFor(renderer, w * out, h * out) : 1;
 
   const textures = scene.textures;
   if (textures.exists(key)) textures.remove(key);
-  const created = textures.addDynamicTexture(key, w, h);
+  const created = textures.addDynamicTexture(key, w * out, h * out);
   if (!created) throw new Error(`bake texture ${key} could not be created`);
   const target = created;
 
@@ -122,7 +133,7 @@ export function bakeLayers(
   const paint = () => {
     target.clear();
     if (supersample === 1) {
-      drawLayers(target, 1);
+      drawLayers(target, out);
       return;
     }
     // Painted large on a scratch texture, then stamped down at exactly
@@ -131,9 +142,9 @@ export function bakeLayers(
     // than by every frame sampling a texture four times the size it shows.
     const scratchKey = `${key}-supersampled`;
     if (textures.exists(scratchKey)) textures.remove(scratchKey);
-    const scratch = textures.addDynamicTexture(scratchKey, w * supersample, h * supersample);
+    const scratch = textures.addDynamicTexture(scratchKey, w * out * supersample, h * out * supersample);
     if (!scratch) throw new Error(`bake texture ${scratchKey} could not be created`);
-    drawLayers(scratch, supersample);
+    drawLayers(scratch, out * supersample);
     target.stamp(scratchKey, undefined, 0, 0, { originX: 0, originY: 0, scale: 1 / supersample });
     textures.remove(scratchKey);
   };
@@ -143,6 +154,7 @@ export function bakeLayers(
   const image = scene.add
     .image(region.x - fx, region.y - fy, key)
     .setOrigin(0, 0)
+    .setScale(1 / out)
     .setDepth(first?.depth ?? 0);
   if (parent) parent.addAt(image, parent.getIndex(first));
   else if (first) scene.children.moveTo(image, scene.children.getIndex(first));

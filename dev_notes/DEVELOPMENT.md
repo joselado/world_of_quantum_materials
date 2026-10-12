@@ -88,7 +88,10 @@ string silently corrupts the bundle into something that throws at parse time.)
 
 Both are published by `.github/workflows/pages.yml` on every push to master:
 the site at `https://joselado.github.io/world_of_quantum_materials/` and the
-downloadable `world_of_quantum_materials.html` beside it. The workflow runs the
+downloadable `world_of_quantum_materials.html` beside it. The same deploy copies
+in `trailer.mp4`, the promotional video, from the asset of the GitHub release
+tagged `trailer`, so the video is served from the game's own address without
+the repository ever storing it (see "Capturing the promotional video"). The workflow runs the
 same `npm run build` (so `tsc -b` failing fails the deploy rather than
 publishing a broken game).
 The repo's Settings -> Pages -> Source must be set to "GitHub Actions" for the
@@ -839,6 +842,63 @@ each driven straight from the scene.
 
 A PNG under 5 kB fails the run: that is an empty or black frame, a shot that
 "worked" but captured nothing, which the docs would otherwise embed silently.
+
+## Capturing the promotional video
+
+**`npm run promo`** (`scripts/promo.mjs`) captures the three-minute trailer
+planned in `PROMO_VIDEO_BUILD_TASK.md`, segment by segment, from the running
+game, and assembles it. Everything it writes goes to the repo's top-level
+`promo/`, which is gitignored; the video itself is hosted, never committed.
+
+```
+npm run promo                       # every segment, at 2x
+npm run promo -- road finale        # named segments only (--list prints them)
+npm run promo -- --scale=4          # the final raster
+npm run promo -- --audio            # the music cues, promo/audio/*.wav
+npm run promo -- --cards            # cards and captions, promo/cards/*.png
+npm run promo -- --assemble         # promo/preview.mp4 (promo/world_of_quantum_materials.mp4 with --scale=4)
+```
+
+Each segment is driven like a `shots.mjs` shot, registry seeded and scene
+methods called, and is written as frames, a 1920x1080 clip in
+`promo/segments/`, and a contact sheet in `promo/sheets/` (every fifteenth
+frame, eight across), which is how a segment is checked by eye before the cut
+is assembled. A segment that comes out wrong is recaptured alone.
+
+What makes the frames trustworthy is worth knowing before editing the script.
+The game's loop is put to sleep and stepped by hand, a thirtieth of a second
+of game time per frame, so a segment runs at exactly 30 fps of game time
+however slowly headless Chrome renders it. Phaser's tweens read `Date.now()`
+rather than the loop's clock, so the page's `Date.now()` is replaced by a
+virtual clock that moves with the steps, and `Math.random()` is replaced by a
+generator seeded from the segment's name, so a recaptured segment draws the
+same map, wilds and questions. The high-resolution raster scales WebGL's
+viewport and scissor at each draw call rather than when they are set, since
+Phaser sets a viewport before binding the target it is meant for as often as
+after, reports the drawing buffer's logical size to Phaser (which flips every
+scissor box against it), rasterizes every `Text` at the scale, and asks
+`art/bake.ts` (`setBakeOutputScale`) for that many texels per pixel in every
+bake. A two-answer question is answered right by watching Phaser's
+`Utils.Array.Shuffle`, through which every question panel shuffles its
+`{ text, correct }` pairs.
+
+At 2x a frame costs about a quarter of a second, so the whole cut captures in
+roughly 25 minutes (`--scale=4` works, at 0.5 to 0.9 s a frame, but the 2x cut
+is the one published); the cut itself (which piece, which caption, which music cue
+starts where) is the `CUT` and `MUSIC` tables at the bottom of the script, and
+the card and caption wording is `scripts/promo-cards.html`. The ffmpeg used is
+the static one `imageio_ffmpeg` ships (override with `FFMPEG=`), which has no
+`drawtext` and no `ffprobe`, which is why the cards are rendered in the browser.
+
+The published trailer is the 2x preview. It lives as the asset `trailer.mp4` of
+the GitHub release tagged `trailer`, which the Pages deploy copies into the
+site; it is never committed. A new cut replaces it in place and is then
+redeployed (the Actions tab's "Run workflow" on the Pages deploy), from `game/`:
+
+```
+cp ../promo/preview.mp4 ../promo/trailer.mp4
+gh release upload trailer ../promo/trailer.mp4 --clobber
+```
 
 ## Checking graphics performance
 

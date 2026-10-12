@@ -20,6 +20,7 @@
     "perf-check": "node scripts/perf-check.mjs",
     "frame-cost": "node scripts/frame-cost.mjs",
     "shots": "node scripts/shots.mjs",
+    "promo": "node scripts/promo.mjs",
     "guide": "node scripts/guide.mjs",
     "component-check": "node scripts/component-check.mjs",
     "playthrough-check": "node scripts/playthrough-check.mjs"

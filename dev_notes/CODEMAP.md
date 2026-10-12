@@ -301,7 +301,9 @@ game/src/
                                  averaged down to 1:1, even-sized, on a whole pixel) shown by one
                                  Image in the first layer's slot, and freed with that Image; the
                                  layers stay hidden in place and repaint it on RESTORE_WEBGL. See
-                                 "Painted-once art is baked" below
+                                 "Painted-once art is baked" below. setBakeOutputScale(n) keeps
+                                 n texels per screen pixel, for scripts/promo.mjs's raster at n
+                                 times the canvas; 1 everywhere the game runs
     canvasRenderer.ts          installCanvasRenderer() -- what Phaser's Canvas renderer is taught
                                  so it draws the game as WebGL does: a Graphics renderer that reads
                                  fillGradientStyle in full and fills gradient rects/triangles by
@@ -951,6 +953,12 @@ AST way for its consistency checks, and additionally walks every `src/` file's A
 class properties declared with a definite-assignment `!` and no initializer, flagging any
 whose name is never an assignment target anywhere in `src/` -- the `!` is what stops `tsc`
 from checking, so an unassigned one reads as `undefined` at runtime with no diagnostic.
+
+`game/scripts/promo.mjs` (`npm run promo`, see DEVELOPMENT.md's "Capturing the promotional
+video") drives the dev build the way `shots.mjs` does, on a hand-stepped loop, and reaches
+into `src/` for three hooks: `music.renderScore` for the cues, `bake.setBakeOutputScale` for
+the raster, and the Phaser module the game loaded (found by its URL) for the question shuffle.
+Its cards and captions are `game/scripts/promo-cards.html`.
 
 `game/scripts/art-sweep.mjs` (`npm run art-sweep`, see DEVELOPMENT.md's "Art-builder input
 sweep") is the one script that imports `src/` modules for real rather than parsing them:

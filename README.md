@@ -20,6 +20,9 @@ into shape.
 
 **https://joselado.github.io/world_of_quantum_materials/**
 
+A three-minute trailer plays from the same site:
+[trailer.mp4](https://joselado.github.io/world_of_quantum_materials/trailer.mp4).
+
 Works on any current browser on Windows, macOS or Linux. Needs no account, no
 download and no permission to install software, so it runs on a locked-down
 university machine as happily as on your own laptop. You need to be online to
