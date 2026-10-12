@@ -142,7 +142,11 @@ specific move from it, borrowing a single excitation channel without fully
 becoming that crystal the way Dresselhaus does. The move keeps firing in
 battle for as long as you stay doped with that crystal, even if your own
 current form can't otherwise host it. Dope in a different crystal later and
-you lose whichever channels only the old one gave you. Only original,
+you lose whichever channels only the old one gave you. You can also take the
+impurity out altogether with the Remove button next to its name in
+Anderson's panel, which leaves you carrying nothing and keeps every move you
+learned, so doping that crystal back in later is free and brings its moves
+straight back. Only original,
 standalone crystals work as hosts, never a [hybrid](hybrids.md).
 
 You can see what you are carrying. A crystal you have doped in rides along as

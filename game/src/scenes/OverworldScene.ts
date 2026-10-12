@@ -295,12 +295,9 @@ export function applySuperpositionUnlocks(registry: Phaser.Data.DataManager) {
   }
   registry.set('passiveSlotsByOwner', slotsByOwner);
   registry.set('activePassivesByOwner', activeByOwner);
-  // Anderson's impurity slot: a random non-hybrid crystal doped in, same
-  // seed-only-if-unset treatment as kondoActiveMove above.
-  if (!registry.get('andersonDopant')) {
-    const hostPool = allCrystals().filter((m) => !isHybridMaterial(m.name));
-    registry.set('andersonDopant', hostPool[Math.floor(Math.random() * hostPool.length)].name);
-  }
+  // Anderson's impurity slot is not seeded here: a Superposition save is
+  // born with a random dopant (data/save.ts's defaultSave), and seeding it
+  // on every entry would undo a deliberate "Remove" in Anderson's panel.
   // Dresselhaus (transmute into a crystal outright) and Majorana (fuse into
   // a hybrid) both drive the same single `playerForm` slot -- only one of
   // the two can seed a starting form, so this coin-flips which mechanic's

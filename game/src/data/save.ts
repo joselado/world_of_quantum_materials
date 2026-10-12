@@ -1,5 +1,5 @@
 import type { Material, MaterialType, MoveClass, Stats } from './types';
-import { PLAYER_MATERIAL, DEFAULT_STATS, MOVES, TYPE_LOOK, findMaterialByName } from './materials';
+import { PLAYER_MATERIAL, DEFAULT_STATS, MOVES, TYPE_LOOK, findMaterialByName, allCrystals, isHybridMaterial } from './materials';
 import { wildHpForWorld, clampEpoch, DEFAULT_EPOCH } from './balance';
 import type { Epoch } from './balance';
 import {
@@ -209,8 +209,8 @@ export interface SaveData {
   // the actual battle always agree on which crystal it turned out to be.
   rival9Type: MaterialType | null;
   // The crystal name currently doped in as an impurity via Anderson's panel
-  // (scenes/panels/anderson.ts) -- null until the player picks a host there
-  // for the first time. getBattleMoves unions this host's own
+  // (scenes/panels/anderson.ts) -- null while nothing is doped in: a fresh
+  // Story save, or after the player removes the impurity in that panel. getBattleMoves unions this host's own
   // MOVE_COMPATIBILITY classes into the player's for as long as it stays set,
   // so a move learned from the dopant is battle-usable even if the player's
   // own type can't host it. Picking a different host in Anderson overwrites
@@ -297,7 +297,7 @@ export function defaultSave(superposition: boolean): SaveData {
     moveClassTuning: {},
     ultimateClassesUnlocked: {},
     rival9Type: null,
-    andersonDopant: null,
+    andersonDopant: superposition ? randomAndersonHost() : null,
     blochUnlockedWorlds: [],
     dresselhausUnlockedCrystals: [],
     andersonUnlockedHosts: [],
@@ -305,6 +305,16 @@ export function defaultSave(superposition: boolean): SaveData {
     moveLevels: {},
     carriedMoveLevels: {},
   };
+}
+
+// A Superposition save is born with a random non-hybrid crystal doped in, so
+// the mode starts with the single impurity slot filled the way it starts with
+// every host unlocked. Rolled here, once per new save, rather than on every
+// world entry, so a dopant the player removes in Anderson's panel stays
+// removed.
+function randomAndersonHost(): string {
+  const hostPool = allCrystals().filter((m) => !isHybridMaterial(m.name));
+  return hostPool[Math.floor(Math.random() * hostPool.length)].name;
 }
 
 // Wipes one mode's save slot so the next loadSave(superposition) for that

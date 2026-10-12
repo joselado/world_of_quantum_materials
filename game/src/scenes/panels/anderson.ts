@@ -133,7 +133,31 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
       })
       .setOrigin(0.5, 0);
     container.add(dopedText);
-    y += dopedText.height + 6;
+    let rowHeight = dopedText.height;
+    // The remove button shares the "Currently doped with" line rather than
+    // taking a row of its own: this header area is what pushes the
+    // fixed-height columns below down, so a full extra row here is what
+    // would overflow the canvas at the largest text-size preset. Offered
+    // only on the host-pick step, the step that decides what is doped in.
+    if (scene.andersonSelection === null) {
+      const gap = 12;
+      const removeBtn = scene.addDialogueButtonAt(
+        container,
+        0,
+        y,
+        'Remove',
+        () => removeImpurity(scene),
+        200,
+        `${Math.round(12 * headlineScale)}px`
+      );
+      const rowWidth = dopedText.width + gap + removeBtn.width;
+      const rowLeft = CANVAS_W / 2 - rowWidth / 2;
+      dopedText.setX(rowLeft + dopedText.width / 2);
+      removeBtn.setX(rowLeft + dopedText.width + gap + removeBtn.width / 2);
+      dopedText.setY(y + (removeBtn.height - dopedText.height) / 2);
+      rowHeight = Math.max(rowHeight, removeBtn.height);
+    }
+    y += rowHeight + 6;
   }
 
   // Doping in a hybrid (isHybridMaterial -- a Majorana fusion, or one of
@@ -356,7 +380,7 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
 }
 
 // Learning a move is the one action that actually commits to a new
-// impurity: this is the only place `andersonDopant` gets written (the
+// impurity: this is the only place `andersonDopant` gets a host written (the
 // host-pick step in showAndersonPanel only records which host the player is
 // browsing/previewing, so looking at a candidate's moves and backing out via
 // "Never mind"/"Farewell" leaves whatever was doped in before untouched).
@@ -389,6 +413,20 @@ function learnImpurityMove(scene: GuardianPanelHost, moveId: string, hostUnlocke
   scene.andersonSelection = null;
   scene.andersonPage = 0;
   scene.andersonMovePage = 0;
+  destroyPanel(scene);
+  showAndersonPanel(scene);
+}
+
+// Takes the impurity back out: the slot goes back to empty, the state a
+// fresh save starts in, so getBattleMoves stops adding the old dopant's
+// classes and its guest leaves the player's crystal. Moves learned from it
+// stay in `unlockedMoves`, the same as when a different dopant replaces it,
+// so doping that host back in later brings them straight back, and the host
+// stays paid for in `andersonUnlockedHosts`.
+function removeImpurity(scene: GuardianPanelHost) {
+  scene.game.registry.set('andersonDopant', null);
+  persistFromRegistry(scene.game.registry);
+  scene.refreshPlayerCrystal();
   destroyPanel(scene);
   showAndersonPanel(scene);
 }

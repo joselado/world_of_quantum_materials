@@ -1387,7 +1387,12 @@ state can mark her met before the player has actually reached her.
   current form and the currently doped-in impurity's type (`getBattleMoves`) -- an
   impurity's channel is real for as long as the impurity stays doped in, and disappears
   the moment a different crystal is doped in instead, the same way a real dopant atom's
-  bound states vanish if you swap in a different dopant species. A doped-in impurity is
+  bound states vanish if you swap in a different dopant species. The impurity can also be
+  taken out altogether: a Remove button sharing the "Currently doped with" line on the
+  host-pick step (`removeImpurity`) sets `andersonDopant` back to null, the empty slot a
+  fresh Story save starts with, so the player's own form is back to hosting only its own
+  classes; learned moves stay in `unlockedMoves` and the host stays paid for, so doping it
+  back in restores the channel for free. A doped-in impurity is
   visible on the player's own crystal for as long as it is carried: one small guest crystal
   in the doped compound's own color and habit, seated in the base of the player's otherwise
   unchanged body (`art/crystals.ts`'s `opts.dopant`, STYLE.md's **Doped crystals**), drawn
@@ -1419,10 +1424,12 @@ state can mark her met before the player has actually reached her.
   impurity untouched. Priced between Dresselhaus's and Majorana's: a persistent extra
   move-class channel is a smaller swing than fusing into a whole new content category,
   but Anderson also sits later in the world 1-10 progression than either. Superposition
-  Mode bypasses this per-host cost entirely the same way the other three do, and its
-  blanket unlock grant (§7) also seeds `andersonDopant` to a random non-hybrid crystal if
-  nothing's doped in yet -- unlocking every host doesn't itself put anything in the single
-  active-impurity slot, the same reasoning behind Kondo's/Franklin's own seeded picks below
+  Mode bypasses this per-host cost entirely the same way the other three do, and a new
+  Superposition save is born with `andersonDopant` set to a random non-hybrid crystal
+  (`data/save.ts`'s `defaultSave`) -- unlocking every host doesn't itself put anything in
+  the single active-impurity slot, the same reasoning behind Kondo's/Franklin's own seeded
+  picks below. It is rolled once per save rather than on every world entry the way
+  Kondo's/Franklin's are, so an impurity the player removes stays removed
 - **Feynman** → world 7 middle → a different mechanic shape entirely from every other
   guardian's: leveling up a move the player already owns (`data/materials.ts`'s
   `MOVE_LEVEL_NAMES`/`MOVE_LEVEL_MULTIPLIERS`/`MOVE_LEVEL_STREAKS`,
