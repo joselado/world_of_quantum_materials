@@ -45,12 +45,8 @@ threshold, nothing comes back at all. The deeper worlds are not less real.
 They are harder to *know*. And everything that was ever learned about them
 went somewhere.
 
-The ten worlds are one road, not ten rooms (you can see the next one on the
-horizon from the far end of each), and the light dies as you walk it:
-morning, midday, afternoon, storm, twilight, night, and then no sky at all,
-after which every world has to light itself. That is not weather. The light
-*is* the coherence, and you are watching it go, and it goes darkest toward
-the thing you are walking to meet.
+The ten worlds are one road, not ten rooms: you can see the next one on the
+horizon from the far end of each.
 
 The physics deepens with every gate: a field that picks a direction, then a
 crystal that repeats, then an edge that damage cannot close, then a number

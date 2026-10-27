@@ -11,6 +11,8 @@
 //                      npm run promo -- --scale=4 road   the final raster
 //                      npm run promo -- --list           segment names
 //                      npm run promo -- --audio          the music cues only
+//                      npm run promo -- --assemble       the three-minute cut
+//                      npm run promo -- --assemble --short   the thirty-second cut
 //
 // Output goes to the repo's top-level promo/ (gitignored):
 //   promo/segments/<name>/f0001.png   the frames
@@ -1177,6 +1179,35 @@ const MUSIC = [
   ['w1-overworld', 'close', 1.0, 2.5],
 ];
 
+// The thirty-second cut, built from the same segments: the walk into an
+// ambush, the battle, the title as the logo sting, the ten worlds again at
+// two thirds of a second apiece, and the close. A piece can reuse a segment
+// under its own `key`; `slices` joins several windows of one segment into a
+// single piece, so a caption runs across the montage without re-fading at
+// every cut; `fadeIn`/`fadeOut` fade the picture itself from and to black.
+const ROAD_STARTS = [0, 37, 75, 112, 150, 187, 225, 262, 300, 337];
+const SHORT_CUT = [
+  { card: 'card-open', dur: 2.2 },
+  { seg: 'ambush', key: 'walk', from: 0.3, to: 4.4 },
+  // The panel is held still while the question is read, so the jump from its
+  // first second to the moment it is answered does not show.
+  { seg: 'ambush', key: 'into-battle', from: 8.4, to: 10.0 },
+  { seg: 'battle-open', to: 2.6, captions: [['cap-quasi', 0.2, 2.5]] },
+  { seg: 'battle2x', from: 1.2, to: 4.4, captions: [['cap-double', 0.1, 3.1]] },
+  { seg: 'finish', to: 2.4 },
+  { seg: 'title', to: 3.0, captions: [['cap-title', 0.4, 2.9]] },
+  { seg: 'road', slices: ROAD_STARTS.map((f) => [f / FPS + 0.3, f / FPS + 0.95]), captions: [['cap-road', 0.2, 3.0]] },
+  { seg: 'close', to: 4.4, captions: [['end', 0.3, 4.4]], fadeOutCaption: false, fadeOut: 0.5 },
+];
+
+// The battle score starts on the frame the battle appears, 0.6 s into its
+// piece; the title brings World 1's score back and carries it to the end.
+const SHORT_MUSIC = [
+  ['w1-overworld', 'card-open', 1.0, 0.4],
+  ['w1-battle', 'into-battle+0.6', 0.02, 0.5],
+  ['w1-overworld', 'title', 0.3, 1.2],
+];
+
 function clipSeconds(file) {
   // No ffprobe on this machine: the duration is read off ffmpeg's banner.
   let out = '';
@@ -1208,8 +1239,8 @@ async function renderCards(browser) {
 // Each piece is encoded on its own, captions burned in, to identical stream
 // parameters, and the pieces are joined with the concat demuxer; the music is
 // mixed from the cue table and muxed on last.
-function assemble(name) {
-  const dir = path.join(OUT_DIR, 'pieces');
+function assemble(name, cut, music) {
+  const dir = path.join(OUT_DIR, `pieces-${name}`);
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
   const cards = path.join(OUT_DIR, 'cards');
@@ -1217,7 +1248,7 @@ function assemble(name) {
   const starts = {};
   let t = 0;
   const list = [];
-  for (const [i, piece] of CUT.entries()) {
+  for (const [i, piece] of cut.entries()) {
     const out = path.join(dir, `p${String(i).padStart(2, '0')}.mp4`);
     let dur;
     if (piece.card) {
@@ -1231,13 +1262,17 @@ function assemble(name) {
     } else {
       const src = path.join(OUT_DIR, 'segments', `${piece.seg}.mp4`);
       if (!fs.existsSync(src)) throw new Error(`segment ${piece.seg} has not been captured`);
-      const from = piece.from ?? 0;
-      const to = piece.to ?? clipSeconds(src);
-      dur = to - from;
-      const args = ['-ss', String(from), '-t', String(dur), '-i', src];
+      const slices = piece.slices ?? [[piece.from ?? 0, piece.to ?? clipSeconds(src)]];
+      dur = slices.reduce((s, [a, b]) => s + b - a, 0);
+      const args = ['-i', src];
       const caps = piece.captions ?? [];
-      let graph = '';
-      let last = '0:v';
+      let graph =
+        slices.map(([a, b], k) => `[0:v]trim=${a}:${b},setpts=PTS-STARTPTS[s${k}];`).join('') +
+        `${slices.map((_, k) => `[s${k}]`).join('')}concat=n=${slices.length}:v=1:a=0`;
+      if (piece.fadeIn) graph += `,fade=t=in:st=0:d=${piece.fadeIn}`;
+      if (piece.fadeOut) graph += `,fade=t=out:st=${(dur - piece.fadeOut).toFixed(3)}:d=${piece.fadeOut}`;
+      graph += '[base];';
+      let last = 'base';
       caps.forEach(([id, at, until], k) => {
         args.push('-loop', '1', '-t', String(dur), '-i', path.join(cards, `${id}.png`));
         const fadeOut = piece.fadeOutCaption === false ? '' : `,fade=t=out:st=${until - 0.3}:d=0.3:alpha=1`;
@@ -1245,9 +1280,9 @@ function assemble(name) {
         graph += `[${last}][c${k}]overlay=enable='between(t,${at},${until})'[v${k}];`;
         last = `v${k}`;
       });
-      if (caps.length) args.push('-filter_complex', graph.replace(/;$/, ''), '-map', `[${last}]`);
+      args.push('-filter_complex', graph.replace(/;$/, ''), '-map', `[${last}]`);
       ffmpeg([...args, ...enc, out]);
-      starts[piece.seg] = t;
+      starts[piece.key ?? piece.seg] = t;
     }
     list.push(`file '${out}'`);
     t += dur;
@@ -1265,12 +1300,12 @@ function assemble(name) {
     if (!(k in starts)) throw new Error(`music cue on unknown piece ${k}`);
     return starts[k] + Number(plus ?? 0);
   };
-  const cues = MUSIC.map(([file, key, fadeIn, fadeOut], i) => {
+  const cues = music.map(([file, key, fadeIn, fadeOut], i) => {
     const start = at(key);
     // A cue fades out across the next one's first moments; the last one
     // fades out to the end of the cut instead.
-    const last = i + 1 === MUSIC.length;
-    const end = last ? total : at(MUSIC[i + 1][1]);
+    const last = i + 1 === music.length;
+    const end = last ? total : at(music[i + 1][1]);
     return { file, start, len: end - start + (last ? 0 : fadeOut), fadeIn, fadeOut };
   });
   const aargs = [];
@@ -1385,7 +1420,8 @@ async function main() {
   for (const w of wanted) if (!SEGMENTS[w]) throw new Error(`unknown segment "${w}" (try --list)`);
   if (argv.includes('--assemble')) {
     log('=== assemble ===');
-    assemble(scale === 4 ? 'world_of_quantum_materials' : 'preview');
+    if (argv.includes('--short')) assemble('short', SHORT_CUT, SHORT_MUSIC);
+    else assemble(scale === 4 ? 'world_of_quantum_materials' : 'preview', CUT, MUSIC);
     return;
   }
   const names = wanted.length ? wanted : Object.keys(SEGMENTS);

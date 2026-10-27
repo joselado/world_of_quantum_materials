@@ -89,8 +89,9 @@ string silently corrupts the bundle into something that throws at parse time.)
 Both are published by `.github/workflows/pages.yml` on every push to master:
 the site at `https://joselado.github.io/world_of_quantum_materials/` and the
 downloadable `world_of_quantum_materials.html` beside it. The same deploy copies
-in `trailer.mp4`, the promotional video, from the asset of the GitHub release
-tagged `trailer`, so the video is served from the game's own address without
+in `trailer.mp4`, the promotional video, and `trailer-30s.mp4`, its
+thirty-second cut, from the assets of the GitHub release tagged `trailer`, so
+the videos are served from the game's own address without
 the repository ever storing it (see "Capturing the promotional video"). The workflow runs the
 same `npm run build` (so `tsc -b` failing fails the deploy rather than
 publishing a broken game).
@@ -857,6 +858,7 @@ npm run promo -- --scale=4          # the final raster
 npm run promo -- --audio            # the music cues, promo/audio/*.wav
 npm run promo -- --cards            # cards and captions, promo/cards/*.png
 npm run promo -- --assemble         # promo/preview.mp4 (promo/world_of_quantum_materials.mp4 with --scale=4)
+npm run promo -- --assemble --short # promo/short.mp4, the thirty-second cut
 ```
 
 Each segment is driven like a `shots.mjs` shot, registry seeded and scene
@@ -886,18 +888,25 @@ At 2x a frame costs about a quarter of a second, so the whole cut captures in
 roughly 25 minutes (`--scale=4` works, at 0.5 to 0.9 s a frame, but the 2x cut
 is the one published); the cut itself (which piece, which caption, which music cue
 starts where) is the `CUT` and `MUSIC` tables at the bottom of the script, and
-the card and caption wording is `scripts/promo-cards.html`. The ffmpeg used is
+the card and caption wording is `scripts/promo-cards.html`. The thirty-second cut is
+the `SHORT_CUT` and `SHORT_MUSIC` tables beside them, built from the same
+segments and cards, so it needs no capture of its own: the walk into the
+ambush, the battle, the title as the logo sting, the ten worlds of `road` at
+two thirds of a second apiece (one piece of ten `slices`, so its caption does
+not re-fade at every cut), and the close. The ffmpeg used is
 the static one `imageio_ffmpeg` ships (override with `FFMPEG=`), which has no
 `drawtext` and no `ffprobe`, which is why the cards are rendered in the browser.
 
-The published trailer is the 2x preview. It lives as the asset `trailer.mp4` of
-the GitHub release tagged `trailer`, which the Pages deploy copies into the
-site; it is never committed. A new cut replaces it in place and is then
+The published trailer is the 2x preview, and the published short cut is
+`short.mp4`. They live as the assets `trailer.mp4` and `trailer-30s.mp4` of the
+GitHub release tagged `trailer`, which the Pages deploy copies into the site;
+they are never committed. A new cut replaces its asset in place and is then
 redeployed (the Actions tab's "Run workflow" on the Pages deploy), from `game/`:
 
 ```
 cp ../promo/preview.mp4 ../promo/trailer.mp4
-gh release upload trailer ../promo/trailer.mp4 --clobber
+cp ../promo/short.mp4 ../promo/trailer-30s.mp4
+gh release upload trailer ../promo/trailer.mp4 ../promo/trailer-30s.mp4 --clobber
 ```
 
 ## Checking graphics performance

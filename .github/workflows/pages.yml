@@ -6,8 +6,9 @@
 #   world_of_quantum_materials.html
 #                         the standalone single-file copy, downloadable from
 #                         the same site and playable offline afterwards
-#   trailer.mp4           the promotional video, served beside the game so it
-#                         is watchable wherever the game is playable
+#   trailer.mp4           the promotional video and its thirty-second cut,
+#   trailer-30s.mp4       served beside the game so they are watchable
+#                         wherever the game is playable
 #
 # One manual step this cannot do for itself: the repository's
 # Settings -> Pages -> Source has to be set to "GitHub Actions" once, or the
@@ -56,11 +57,11 @@ jobs:
       # Written into dist/ by the bundler, so it deploys with the site.
       - run: npm run bundle
 
-      # The trailer is kept out of git history: it is the asset of the
+      # The trailers are kept out of git history: they are the assets of the
       # `trailer` release (made by scripts/promo.mjs, see DEVELOPMENT.md's
       # "Capturing the promotional video") and is copied into dist/ here, so
       # every deploy serves it from the same address as the game.
-      - run: gh release download trailer --repo "$GITHUB_REPOSITORY" --pattern trailer.mp4 --dir dist
+      - run: gh release download trailer --repo "$GITHUB_REPOSITORY" --pattern trailer.mp4 --pattern trailer-30s.mp4 --dir dist
         env:
           GH_TOKEN: ${{ github.token }}
 

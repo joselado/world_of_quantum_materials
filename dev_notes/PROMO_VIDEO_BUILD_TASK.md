@@ -58,7 +58,7 @@ least 3 seconds, so a Brief rival taunt or an encounter question is readable.
 | Time | Beat | On screen | Text | Music |
 |---|---|---|---|---|
 | 0:00 to 0:03 | Cold open | Black | Card: "A Decoherence is spreading through the quantum material worlds." | World 1 overworld fades in |
-| 0:03 to 0:15 | The road | Ten worlds in order, 1.25 s each, walking forward, morning to no sky at all | Caption, 0:03 to 0:08: "Ten worlds. One road. The light dies along it." | World 1 overworld |
+| 0:03 to 0:15 | The road | Ten worlds in order, 1.25 s each, walking forward, morning to no sky at all | Caption, 0:03 to 0:08: "Ten worlds to uncover the Decoherence." | World 1 overworld |
 | 0:15 to 0:19 | Title | The title screen, its map and showcase crystals | Caption under the title: "You are a quantum material." | World 1 overworld |
 | 0:19 to 0:31 | Explore and get ambushed | Silicon walking the Mean Fields, a qumatessence pickup, a wild Nickel Oxide's panel with its question, the right answer picked, the boost halo | Caption over the panel: "Every wild crystal is a real compound, and it asks a question before it fights." | World 1 overworld, the battle score starting on the cut into battle at 0:28 |
 | 0:31 to 0:52 | Battle | Phonon Beam vs Nickel Oxide; Yttrium Iron Garnet's Magnon Wave into Bi₂Te₃ at double damage; a fast crystal swinging twice; the finishing blow and the victory panel with its physics note | Captions: "Every attack is a real quasiparticle." then "A crystal that cannot host it takes double damage." | World 1 battle |
@@ -69,7 +69,7 @@ least 3 seconds, so a Brief rival taunt or an encounter question is readable.
 | 1:35 to 2:00 | Guardians in motion | Bloch's map, Landau's question mid-battle, Kondo's cloud, Anderson's impurity, Skłodowska-Curie's three questions and the meteor | One caption each, see the beat | World 4 battle |
 | 2:00 to 2:22 | The bosses | The approach to World 3's golem, its taunt page, the boss banner fight, the pass clearing onto World 4, World 5's golem on the ice | Captions: "A golem holds every pass." then "Polycrystalline: a thousand grains fused into one." | World 4 battle |
 | 2:22 to 2:50 | The final boss | The Mirror's corridor and horizon, The Adapted wearing your crystal, it reshapes on each hit, the later stages as the owner decides | Captions: "Something has watched you walk every world." then "It is a model of you." | World 10 overworld |
-| 2:50 to 3:00 | Close | The title screen | End card: the title, "Free, in your browser, nothing to install.", the address, "Built on Aalto University's Advanced Quantum Materials course." | World 10 resolves into World 1's closing chord, or silence |
+| 2:50 to 3:00 | Close | The title screen | End card: the title, "Play directly in your browser.", the address, "Built on Aalto University's Advanced Quantum Materials course." | World 10 resolves into World 1's closing chord, or silence |
 
 The budget sums to 180 seconds. What follows is each beat in detail: what the
 frame shows, why that compound and that move, and the recipe that drives the
@@ -85,7 +85,9 @@ storm, the ice, the aurora, the lanes with no sky, the fog, the magma, the
 network. The caption drops out after the fourth world and the rest plays
 silent against the music. World 10's shot is taken from near its far end rather
 than its start, so that the Adapted stands in the throat and the mirror horizon
-is in frame.
+is in frame. The caption names the worlds and the Decoherence and nothing
+more: the light rule is how the worlds were built, and the trailer, like
+everything a player reads, lets the picture carry it rather than saying it.
 
 Recipe: for each world N, seed with `visitedWorlds` holding 1 to N,
 `worldLoreSeen` holding every world, start Overworld with `{ world: N }`, step
@@ -300,7 +302,7 @@ decision).
 ### Close, 2:50 to 3:00
 
 The title screen again, held, with the end card composited over its lower half:
-the title line, "Free, in your browser, nothing to install.", the address
+the title line, "Play directly in your browser.", the address
 `joselado.github.io/world_of_quantum_materials`, and "Built on Aalto
 University's Advanced Quantum Materials course." Recipe: start Title, run 300
 frames.

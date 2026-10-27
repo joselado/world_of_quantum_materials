@@ -21,7 +21,9 @@ into shape.
 **https://joselado.github.io/world_of_quantum_materials/**
 
 Watch the trailer:
-[trailer.mp4](https://joselado.github.io/world_of_quantum_materials/trailer.mp4).
+[trailer.mp4](https://joselado.github.io/world_of_quantum_materials/trailer.mp4),
+or its thirty-second cut,
+[trailer-30s.mp4](https://joselado.github.io/world_of_quantum_materials/trailer-30s.mp4).
 
 Runs in any current browser on Windows, macOS or Linux, with no account, no
 download and nothing to install, so a locked-down university machine plays it
@@ -76,10 +78,8 @@ qumatessence (the in-game currency) are tucked along the way, often at a dead
 end worth the detour, and a world you have picked clean quietly refills as you
 walk it, always out of sight.
 
-The ten worlds are one road, and the light dies along it, from morning through
-storm and night to no sky at all, after which every world lights itself.
-The ground on either side of the path is never somewhere you can walk, and it
-looks less survivable with every world: summer forest, then stone, a drop,
+The ten worlds are one road. The ground on either side of the path is never
+somewhere you can walk, and it looks less survivable with every world: summer forest, then stone, a drop,
 ground the storm strikes, ice and vortex pits, broken rock and open sea, open void, water
 that takes you, molten crust, and at the end terrain that reshapes itself
 around you. From each world's far end you can see the next one on the horizon.
