@@ -632,7 +632,11 @@ under one figure reads as floating even when neither is wrong on its own.
   sprites on a tile, the same as a guardian or a door, not extruded terrain -- there is no
   height field, no occlusion pass and no elevation anywhere in the collision grid. They get
   their occlusion free, because the terrain sweep paints far-to-near and anything drawn upward
-  from its own tile covers the rows beyond it. A world whose surround is a *place* rather than
+  from its own tile covers the rows beyond it. Each one stands on a fixed point of its own tile's
+  ground and is sized by that point's distance, so it moves on screen exactly as the ground under
+  it does and leaves the frame by the bottom edge with it, and a row's objects are painted after
+  all of the row's ground, so none is cut by the tile beside it. Beside the road an object's foot
+  is held on its own tile's ground, so the road's edge stays clear. A world whose surround is a *place* rather than
   a surface needs this: a canopy that never leaves the floor is not a wood, and reeds that never
   leave the water are not reeds. `terrain/paint.ts`'s `drawOffPathTile`
   paints the tile in that biome's own `ground` color (hazed for depth, tinted toward a

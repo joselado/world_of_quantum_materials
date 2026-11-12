@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { blend } from '../../../../art/colors';
 import { LANE_PX } from '../../../../art/perspective';
 import { TILE_SCALE } from '../../projection';
+import { outOfFrame, standingPoint } from '../standing';
 import type { AccentTile } from '../types';
 
 // 'columns' (the Stone Lattice, world 2): rows of identical sandstone columns
@@ -28,15 +29,22 @@ const STONE_LIT = 0xd9c19a;
 const STONE_SHADE = 0x8f7051;
 const STONE_CAP = 0xe8d6b4;
 
-export function drawColumnsAccent(g: Phaser.GameObjects.Graphics, { cx, cy, s, gx, gy, depth, haze, detail, featureCore }: AccentTile) {
+export function drawColumnsAccent(g: Phaser.GameObjects.Graphics, tile: AccentTile) {
+  const { gx, gy, depth, haze, detail, featureCore } = tile;
   if (detail <= 0) return;
   if (!featureCore && (gx % COLUMN_SPACING !== 0 || gy % COLUMN_SPACING !== 0)) return;
 
-  const u = TILE_PX * s;
+  // The column's foot is the centre of its tile's ground, and the shaft is
+  // sized by that point's own distance (terrain/standing.ts).
+  const foot = standingPoint(tile, 0, 0);
+  const cx = foot.x;
+  const cy = foot.y;
+  const u = TILE_PX * foot.scale;
   const shaftW = 0.3 * u;
   const shaftH = 2.2 * u;
   const air = depth * 0.8;
   const top = cy - shaftH;
+  if (outOfFrame(tile, cx, shaftW * 0.7, top)) return;
 
   // The sun is high and from the left all through this world, so every shaft
   // is lit on the same side and every gap between them is the same deep cast

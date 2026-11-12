@@ -4,6 +4,7 @@ import { LANE_PX } from '../../../../art/perspective';
 import { fillConvex } from '../../../../art/shapes';
 import { invariantOfTint } from '../../../../world/generators/world3';
 import { TILE_SCALE } from '../../projection';
+import { outOfFrame, standingPoint } from '../standing';
 import type { AccentTile } from '../types';
 
 // 'deadFloor' (the Winding Borders, world 3): the bulk either side of the lit
@@ -76,12 +77,25 @@ function rockOutline(cx: number, cy: number, u: number, size: number, lean: numb
   return px.map((x, i) => ({ x, y: py[i] }));
 }
 
-export function drawDeadFloorAccent(
-  g: Phaser.GameObjects.Graphics,
-  { cx, cy, s, gx, gy, depth, haze, detail, regionTint }: AccentTile
-) {
+// How far a piece is thrown off its tile's centre along the tile, in tiles on
+// the ground and, for the battle arena's stand, in tile-widths on screen
+// (terrain/standing.ts): the rubble first, then the slabs standing proud of
+// it. Across the tile the throw is the same number in both.
+const ROCK_THROW_NEAR = 0.7;
+const ROCK_THROW_ARENA = 0.5;
+const SLAB_THROW_NEAR = 0.5;
+const SLAB_THROW_ARENA = 0.3;
+
+interface Rock {
+  pts: { x: number; y: number }[];
+  // The tile's width on screen at the rock's own distance, which sizes the
+  // rock and the reach of its shadow.
+  u: number;
+}
+
+export function drawDeadFloorAccent(g: Phaser.GameObjects.Graphics, tile: AccentTile) {
+  const { gx, gy, depth, haze, detail, regionTint } = tile;
   if (detail <= 0) return;
-  const u = TILE_PX * s;
   const air = depth * 0.75;
   const tint = regionTint ?? FALLBACK_TINT;
 
@@ -98,12 +112,20 @@ export function drawDeadFloorAccent(
   const pieces = 1 + Math.floor(hash(gx, gy, 3) * 1.99);
   const drawn = detail > 0.75 ? pieces : detail > 0.45 ? Math.min(pieces, 2) : 1;
 
-  const rocks: { x: number; y: number }[][] = [];
+  // Each piece lies on one ground point of its own and is sized by that
+  // point's distance, so the bed moves on screen as the ground under it does.
+  const rocks: Rock[] = [];
+  const place = (dLane: number, jNear: number, throwNear: number, throwArena: number, lift: number, size: number, lean: number) => {
+    // The whole rock on its own tile's ground: half its width either side.
+    const at = standingPoint(tile, dLane, jNear * throwNear, dLane, jNear * throwArena, 0.5 * size);
+    const u = TILE_PX * at.scale;
+    const y = at.y - lift * u;
+    if (outOfFrame(tile, at.x, 0.5 * size * u, y - 0.18 * size * u)) return;
+    rocks.push({ pts: rockOutline(at.x, y, u, size, lean), u });
+  };
   for (let i = 0; i < drawn; i++) {
-    const ox = (hash(gx, gy, i) - 0.5) * 0.92 * u;
-    const oy = (hash(gx, gy, i + 7) - 0.5) * 0.5 * u;
     const size = 0.22 + hash(gx, gy, i + 13) * 0.34;
-    rocks.push(rockOutline(cx + ox, cy + oy, u, size, hash(gx, gy, i + 21)));
+    place((hash(gx, gy, i) - 0.5) * 0.92, hash(gx, gy, i + 7) - 0.5, ROCK_THROW_NEAR, ROCK_THROW_ARENA, 0, size, hash(gx, gy, i + 21));
   }
 
   // The invariant, counted: one slab standing proud of the bed per unit of it,
@@ -115,9 +137,7 @@ export function drawDeadFloorAccent(
   if (detail >= 0.6) {
     const invariant = invariantOfTint(tint);
     for (let n = 0; n < invariant; n++) {
-      const ox = (hash(gx, gy, n + 31) - 0.5) * 0.5 * u;
-      const oy = (hash(gx, gy, n + 41) - 0.5) * 0.3 * u;
-      rocks.push(rockOutline(cx + ox, cy + oy - 0.1 * u, u, 0.5 + 0.1 * n, hash(gx, gy, n + 51)));
+      place((hash(gx, gy, n + 31) - 0.5) * 0.5, hash(gx, gy, n + 41) - 0.5, SLAB_THROW_NEAR, SLAB_THROW_ARENA, 0.1, 0.5 + 0.1 * n, hash(gx, gy, n + 51));
     }
   }
 
@@ -129,7 +149,7 @@ export function drawDeadFloorAccent(
   // Both faces come off the domain's own tint, so the rubble states which phase
   // it belongs to at the same time as it states that it cannot be walked on.
   g.fillStyle(blend(blend(tint, 0x000000, 0.55), haze, air), detail);
-  for (const rock of rocks) fillConvex(g, rock.map((pt) => ({ x: pt.x + SHADOW_DX * u, y: pt.y + SHADOW_DY * u })));
+  for (const rock of rocks) fillConvex(g, rock.pts.map((pt) => ({ x: pt.x + SHADOW_DX * rock.u, y: pt.y + SHADOW_DY * rock.u })));
   g.fillStyle(blend(blend(tint, 0xffffff, 0.34), haze, air), detail);
-  for (const rock of rocks) fillConvex(g, rock);
+  for (const rock of rocks) fillConvex(g, rock.pts);
 }

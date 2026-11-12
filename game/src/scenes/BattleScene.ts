@@ -2185,6 +2185,9 @@ export class BattleScene extends Phaser.Scene {
       s,
       gx,
       gy,
+      lane: null,
+      ahead: null,
+      outline: null,
       depth: drown,
       haze: air,
       // Full detail only on the row standing at the floor's edge: `detail` is

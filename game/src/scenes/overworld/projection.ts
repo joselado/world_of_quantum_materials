@@ -1,4 +1,4 @@
-import { project, LANE_PX, CANVAS_W, CANVAS_H, HORIZON_Y, ProjectedPoint } from '../../art/perspective';
+import { project, FOCAL, LANE_PX, CANVAS_W, CANVAS_H, HORIZON_Y, ProjectedPoint } from '../../art/perspective';
 import { BASE_GRID_H, BASE_GRID_W } from '../../data/settings';
 
 // Grid is deliberately fine-grained (many small tiles) rather than few large
@@ -65,6 +65,25 @@ export const CAMERA_BACK_TILES = 0.7;
 // itself on top of this.
 export function projectTile(lane: number, depth: number): ProjectedPoint {
   return project(lane * TILE_SCALE, (depth + CAMERA_BACK_TILES) * TILE_SCALE);
+}
+
+// The ground point under something that stands on the plane, with lane and
+// depth meaning what they mean in projectTile. `project` holds every point
+// nearer than the camera's own plane on that plane, which is right for a
+// ground fill (the plane ends at the frame's bottom edge) and wrong for a
+// standing object's foot: the foot of a tree beside the player lies below the
+// frame while its crown is still in it, and a foot held at the edge leaves
+// the tree sliding against the ground it stands on. So this is the same
+// pinhole with no clamp, good for any point in front of the eye itself
+// (depth above -(FOCAL / TILE_SCALE + CAMERA_BACK_TILES), about -4.4 tiles),
+// where the scale runs past 1 and the point falls below the canvas.
+export function projectStanding(lane: number, depth: number): ProjectedPoint {
+  const scale = FOCAL / (FOCAL + (depth + CAMERA_BACK_TILES) * TILE_SCALE);
+  return {
+    x: CANVAS_W / 2 + lane * TILE_SCALE * LANE_PX * scale,
+    y: HORIZON_Y + scale * (CANVAS_H - HORIZON_Y),
+    scale,
+  };
 }
 
 // How high the camera stands over the ground plane, in tile-lengths. Not a

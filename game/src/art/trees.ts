@@ -4,6 +4,7 @@ import { LANE_PX } from './perspective';
 import { ellipseSteps, fillOval, fillPolygon, triangulate } from './shapes';
 import type { TriangulatedPoints } from './shapes';
 import { TILE_SCALE } from '../scenes/overworld/projection';
+import { outOfFrame, standingPoint } from '../scenes/overworld/terrain/standing';
 import type { AccentTile } from '../scenes/overworld/terrain/types';
 
 // The Mean Fields' dense summer canopy (terrain/materials/forest.ts), and
@@ -124,14 +125,38 @@ function crownOutline(steps: number): TriangulatedPoints {
   return pts;
 }
 
+// How far a tree's foot is thrown off its tile's centre, in tiles: across the
+// tile and along it. Both stay under half a tile either way, so a tree stands
+// on its own tile, never on the road beside it (terrain/standing.ts). The
+// battle arena's stand takes the same throw on screen, less deep.
+const JITTER_LANE = 0.9;
+const JITTER_AHEAD = 0.8;
+const JITTER_ARENA_DOWN = 0.7;
+
+// The top of the tallest crown above the tree's foot, and the furthest the
+// crown reaches to either side of it, in units of `size`: the trunk, the
+// crown's lift over it and the upper lobe's reach, and the side lobes' reach,
+// each rounded up.
+const TREE_TOP = 0.7;
+const TREE_HALF_WIDTH = 0.28;
+// How far to either side of its foot a tree needs its own tile's ground, in
+// tiles: the trunk and a little more. The crown may hang over the road.
+const TREE_FOOT_REACH = 0.08;
+
 export function drawTree(g: Phaser.GameObjects.Graphics, tile: AccentTile, style: TreeStyle) {
-  const { cx, cy, s, gx, gy, depth, haze, detail } = tile;
+  const { gx, gy, depth, haze, detail } = tile;
   if (detail <= 0) return;
-  const u = TILE_PX * s;
   // Jitter off the tile centre, so the wood is not visibly a grid.
-  const x = cx + (hash(gx, gy, 1) - 0.5) * 0.9 * u;
-  const base = cy + (hash(gx, gy, 2) - 0.5) * 0.7 * u;
+  const jx = hash(gx, gy, 1) - 0.5;
+  const jy = hash(gx, gy, 2) - 0.5;
+  // The tree's foot is one point of the ground, fixed on its tile, and the
+  // tree is placed and sized by that point's own projection.
+  const foot = standingPoint(tile, jx * JITTER_LANE, jy * JITTER_AHEAD, jx * JITTER_LANE, jy * JITTER_ARENA_DOWN, TREE_FOOT_REACH);
+  const x = foot.x;
+  const base = foot.y;
+  const u = TILE_PX * foot.scale;
   const size = (0.6 + hash(gx, gy, 4) * 0.85) * u;
+  if (outOfFrame(tile, x, TREE_HALF_WIDTH * size, base - TREE_TOP * size * TREE_HEIGHT)) return;
   const trunkH = 0.3 * size * TREE_HEIGHT;
   const crownY = base - trunkH - 0.16 * size * TREE_HEIGHT;
 

@@ -3,6 +3,7 @@ import { blend } from '../../../../art/colors';
 import { LANE_PX } from '../../../../art/perspective';
 import { fillOval, fillPolygon, fillDot } from '../../../../art/shapes';
 import { gridH, TILE_SCALE } from '../../projection';
+import { outOfFrame, standingPoint } from '../standing';
 import type { AccentTile } from '../types';
 
 // 'bog' (the Screened Swamp, world 8): the open water punched into the peat
@@ -96,11 +97,6 @@ export function drawBogAccent(g: Phaser.GameObjects.Graphics, tile: AccentTile) 
   const drift = Math.sin(now / 2600 + gx * 0.5 + gy * 0.3);
   g.fillStyle(blend(0xbcc8bc, haze, 0.35), (0.02 + 0.2 * depth + 0.02 * drift) * detail);
   fillPolygon(g, tile.fill);
-
-  // Reeds last, so they stand out of the mist instead of under it. Stalks
-  // only -- a reed is a line, and the clump is what reads, so nothing here is
-  // tessellated.
-  if (hash(gx, gy, 3) < REED_RATE) drawReeds(g, tile, u, air);
 }
 
 // The screening cloud. The moment is a bright cold point; the counter-lights
@@ -162,13 +158,28 @@ const REED_STALKS = 5;
 // stalks survive the haze, so the rest cost strokes to change nothing.
 const REED_SILHOUETTE_DETAIL = 0.45;
 
-function drawReeds(g: Phaser.GameObjects.Graphics, tile: AccentTile, u: number, air: number) {
-  const { cx, cy, gx, gy, haze, detail } = tile;
+// The reeds are the material's standing draw, painted after the water and the
+// mist of their whole row, so they stand out of the mist instead of under it.
+// Stalks only -- a reed is a line, and the clump is what reads, so nothing
+// here is tessellated.
+export function drawBogReeds(g: Phaser.GameObjects.Graphics, tile: AccentTile) {
+  const { gx, gy, depth, haze, detail } = tile;
+  if (detail <= 0 || hash(gx, gy, 3) >= REED_RATE) return;
+  const air = depth * 0.8;
   const stalks = detail < REED_SILHOUETTE_DETAIL ? 2 : REED_STALKS;
   // Jittered off the tile centre in both axes: clumps pinned to row centres
-  // read as planted rows rather than as wild growth.
-  const root = cx + (hash(gx, gy, 21) - 0.5) * 0.8 * u;
-  const base = cy + (0.1 + hash(gx, gy, 22) * 0.5) * u;
+  // read as planted rows rather than as wild growth. The clump's root is one
+  // point of its tile's ground, and the stalks are sized by that point's
+  // distance (terrain/standing.ts).
+  const jx = hash(gx, gy, 21) - 0.5;
+  const jy = hash(gx, gy, 22);
+  // The clump spreads 0.35 of a tile to either side of its root, all of it
+  // over the tile's own water.
+  const foot = standingPoint(tile, jx * 0.8, (jy - 0.5) * 0.8, jx * 0.8, 0.1 + jy * 0.5, 0.35);
+  const root = foot.x;
+  const base = foot.y;
+  const u = TILE_PX * foot.scale;
+  if (outOfFrame(tile, root, 0.5 * u, base - 0.85 * u)) return;
   g.lineStyle(1.2, blend(0x0d120e, haze, air), 0.85 * detail);
   // The whole clump as one path. Every stalk is the same stroke, and the reeds
   // are the most numerous stroke in the game, so one path per clump rather

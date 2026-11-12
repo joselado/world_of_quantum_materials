@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { Biome } from '../../../art/biomes';
 import type { ProjectedPoint } from '../../../art/perspective';
-import type { TileContour } from '../../../art/contours';
+import type { ContourPoint, TileContour } from '../../../art/contours';
 import type { FeatureCore, GridPoint } from '../../../world/mapgen';
 import type { AtmosphereView } from '../sky';
 
@@ -136,6 +136,26 @@ export interface AccentTile {
   s: number;
   gx: number;
   gy: number;
+  // Where the tile's centre lies on the ground plane as the camera sees it,
+  // in tiles: `lane` to the right of the camera and `ahead` in front of the
+  // player's own tile, the two arguments of projectTile. What a material that
+  // stands something on the tile offsets and projects (projection.ts's
+  // projectStanding) to find the one ground point the thing stands on: `cx`/
+  // `cy`/`s` are the mean of the tile's corners as drawn, which is not a
+  // point of the ground, and an offset from them in screen pixels is a
+  // different distance on the ground at every depth, so whatever is placed
+  // that way drifts over the ground as the player walks. Null in the battle
+  // arena's stand, whose tiles are placed on screen and seen from one spot
+  // (BattleScene.arenaAccentTile).
+  lane: number | null;
+  ahead: number | null;
+  // The tile's traced outline in grid coordinates where it lies on the
+  // walkable boundary (art/contours.ts), null for a plain quad. `fill` is the
+  // same outline as the ground fill draws it, held on the frame's bottom edge
+  // wherever it passes behind the camera's plane; a material that builds a
+  // standing object on the outline itself (the Broken Coast's boulders)
+  // projects this one with no clamp instead.
+  outline: ContourPoint[] | null;
   // How far out this tile is, 0 at the camera and 1 where the depth fog
   // saturates, and the fog color it is heading toward. An accent that ignores
   // these keeps its full contrast to the last row it is drawn on and stands

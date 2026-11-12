@@ -74,7 +74,9 @@ game/src/
                                  edge of the player's field of vision OverworldScene's
                                  respawn placement stays beyond -- CAMERA_BACK_TILES) plus projectTile(),
                                  projectBelow() (the same camera's view of a plane lying below
-                                 the ground: World 10's overlook) and
+                                 the ground: World 10's overlook), projectStanding() (the
+                                 ground point under a standing object, with no clamp at the
+                                 camera's plane) and
                                  laneClipAt(). The one place the camera pullback is applied
       sky.ts                   The static backdrop (drawSky: sky gradient, base ground wash,
                                  clouds) and the per-frame atmosphere (drawDepthHaze: the ground
@@ -100,6 +102,9 @@ game/src/
         paint.ts               drawTerrain(TerrainView) -- the per-frame projection and painting
                                  of that plan, including the lateral/depth margins, the contact
                                  shadow and the chokepoint glow
+        standing.ts            standingPoint()/outOfFrame() -- the one ground point a standing
+                                 object is placed and sized by, and whether any of the object
+                                 is in the frame
         color.ts               groundColor(), the depth haze every ground fill goes through
         decoration.ts          decorateTile(), the per-biome floor motif, and
                                  GROUND_MOTIFS_ENABLED, the default-off switch that decides
@@ -108,7 +113,9 @@ game/src/
                                  "Off-path terrain materials" below): rock.ts, forest.ts,
                                  columns.ts, deadFloor.ts, charged.ts, ice.ts, coast.ts,
                                  bog.ts, lava.ts, consuming.ts, and index.ts's
-                                 TERRAIN_ACCENTS table
+                                 TERRAIN_MATERIALS table (each material's flat part and
+                                 standing part) and TERRAIN_ACCENTS (the two as one draw,
+                                 for the battle arena)
     panels/                    One file per guardian's panel UI (see "Guardian panels" below),
                                  e.g. noether.ts's showNoetherShop(), sklodowskaCurie.ts's
                                  showSklodowskaCuriePanel(), anderson.ts's showAndersonPanel(),
@@ -2639,13 +2646,16 @@ core's glow pulses slowly (`PULSE_MS`); the lake around the pits carries no moti
 **Off-path terrain materials.** One module per material under
 `scenes/overworld/terrain/materials/`, the same "one file per thing" convention the guardian
 avatars follow: `rock.ts`, `forest.ts`, `columns.ts`, `deadFloor.ts`, `charged.ts`, `ice.ts`,
-`coast.ts`, `bog.ts`, `lava.ts`, `consuming.ts`, reached through `index.ts`'s `TERRAIN_ACCENTS`
-table keyed by `OffPathKind`. Every impassable tile is flat ground in its
+`coast.ts`, `bog.ts`, `lava.ts`, `consuming.ts`, reached through `index.ts`'s `TERRAIN_MATERIALS`
+table keyed by `OffPathKind`, which gives each material a `flat` part (what lies on the tile's
+ground) and a `standing` part (what rises off it), either of which may be null. `TERRAIN_ACCENTS`
+is the same table with the two parts joined into one draw, for the battle arena's stand. Every impassable tile is flat ground in its
 biome's own off-path color, in the same plane as the walkable floor; what its material decides is
 only the accent laid over that fill, so each world's impassable terrain reads as its own
 substance while the "you cannot walk here" signal (the color break plus the contact shadow and rim
 light) stays identical everywhere. An accent receives an `AccentTile` -- the tile's projected
-outline for a full-tile wash, its screen centre and depth scale, its own grid coordinates, whether
+outline for a full-tile wash, its screen centre and depth scale, its own grid coordinates, where
+its centre lies on the ground plane under the camera (`lane`/`ahead`), whether
 it is a feature core, its depth ratio and live fog target, the detail-pass falloff, the player's
 crystal colour and the scene clock -- which `paint.ts` builds only for a material that actually
 draws, so a bare-ground tile costs nothing beyond its fill. `rock.ts` is exactly that case and
@@ -2706,9 +2716,52 @@ the last stretch before accents stop being drawn at all, which is what keeps a m
 on a visible line across the middle distance -- most obvious with trees, where the cutoff otherwise
 reads as the wood being mown flat at a fixed range.
 
+**A standing object stands on one ground point.** `cx`/`cy`/`s` are the mean of the tile's corners
+as drawn. That is not a point of the ground: the projection holds every corner behind the camera's
+plane on the frame's bottom edge, so on the row at the player's feet the mean moves at under half
+the ground's speed. An offset from it in screen pixels is also a different distance on the ground
+at every depth, since a tile's width on screen goes as the scale and its depth as the scale
+squared. So everything that rises off a tile is a material's `standing` part and is placed through
+`terrain/standing.ts`. `AccentTile.lane`/`ahead` give the tile's centre on the ground plane
+relative to the camera, in tiles (the arguments of `projectTile`); `standingPoint(tile, dLane,
+dNear)` adds the object's own offset in tiles (under half a tile either way, so the object stays
+on its own tile) and projects that one point with `projection.ts`'s `projectStanding`, which has no
+clamp at the camera's plane. The object's x, its foot and its size all come from that projection,
+so it moves on screen exactly as the ground under it does, at every distance and on past the
+bottom edge. On a tile at the walkable boundary part of the square is road, so `standingPoint`
+draws a thrown object back toward the middle of the tile's traced outline until its foot, and the
+`reach` the material passes to either side of it, lie on the tile's own ground; an object at the
+tile's centre, a column on its lattice, is never moved. The standing parts are the Mean Fields' trees, the Stone Lattice's columns, the
+Winding Borders' rubble and slabs (each piece on a point of its own), the Broken Coast's boulders,
+the Screened Swamp's reeds and the Defect Scars' fallen drums. A boulder is built on its tile's
+whole outline rather than on one point, so `coast.ts` projects the outline itself with no clamp
+(`AccentTile.outline` is the traced outline in grid coordinates on a boundary tile, null for a
+plain quad) and lifts each corner of the top by the rock's height at that corner's own scale.
+`BattleScene.arenaAccentTile` sets `lane`, `ahead` and `outline` to null, since the arena's stand
+is laid out on screen and seen from one spot; `standingPoint` then offsets the tile's own centre
+on screen, by the amounts each material passes for that case, and the arena draws what it drew
+with the offsets written in screen units.
+
+`paint.ts` treats a standing part two ways apart from a flat one. `drawAccent` draws the flat part
+with the tile and holds the standing part until the row's sweep ends, when `drawRowStanding` draws
+the row's standing parts, margin columns included: a crown, a boulder's lifted top or a rock
+reaches over the tiles beside its own, which lie at the same depth, so a neighbour's ground
+painted afterwards would cut the object along the tile's edge. On a boundary tile the contact
+shadow therefore lies under the object, on the ground at its foot, and the reeds stand over the
+mist of their whole row. And a row whose far edge has passed behind the camera's plane, which has
+no ground left in the frame, still gets `drawRowPastCamera`: the standing parts of its tiles only,
+since a tree or a column beside the player has its foot below the frame and its top inside it.
+The sweep runs `PAST_CAMERA_ROWS` (3) rows behind the player's own for this, which is how long the
+tallest object, a column 2.2 tile-widths high, keeps its capital in view. Each standing draw
+drops its object once none of it is in the frame (`outOfFrame`: below the bottom edge or past
+either side). Something that stands but is placed off `cx`/`cy` slides against the ground on the
+last row and is removed while still in view, so a new standing object belongs in its material's
+`standing` part.
+
 `art/trees.ts` holds the Mean Fields' tree sprite, drawn by that world's `forest` material and
-nowhere else. A wood is by far the most expensive surround to draw -- trees are over half of the
-command buffer in World 1, the most expensive world in the game -- so the crown is tiered on the
+nowhere else. A wood is an expensive surround to draw -- a tree is three or four fills where most
+materials lay one or two on a tile, and trees are about a fifth of the terrain layer's draw calls
+in World 1 -- so the crown is tiered on the
 tile's own `detail`: the full three-lobe crown while `detail`
 is 1, a single lit cap over the shaded mass once the fade has started, and one trunkless blob below
 `CROWN_SILHOUETTE_DETAIL`. Keying the tiers to `detail` rather than to a distance of the file's own
@@ -2718,8 +2771,9 @@ threshold keyed to a tree's *on-screen size*
 instead would snap crowns between tiers as the player walked into them. Trees, columns, boulders and
 reeds stand up off the ground plane; the plane itself stays
 flat everywhere (`STYLE.md`'s "Overworld path"). They get their occlusion free from the sweep
-painting far-to-near, with no height field and no repaint pass. Adding a material means adding
-a module and a table entry (plus the `wallTheme` in `art/biomes.ts` and the matching `TerrainKind`
+painting far-to-near, row by row, with no height field and no repaint pass. Adding a material means adding
+a module and a table entry, with its flat and standing parts (plus the `wallTheme` in
+`art/biomes.ts` and the matching `TerrainKind`
 in `terrain/types.ts`); nothing in the paint pass itself changes, and two people can add two
 materials without touching the same file.
 

@@ -3,6 +3,7 @@ import { blend } from '../../../../art/colors';
 import { LANE_PX } from '../../../../art/perspective';
 import { ellipseSteps, fillOval, fillPolygon } from '../../../../art/shapes';
 import { TILE_SCALE } from '../../projection';
+import { outOfFrame, standingPoint } from '../standing';
 import type { AccentTile } from '../types';
 
 // How often a toppled drum from the Stone Lattice's colonnade shows in the
@@ -24,7 +25,7 @@ function hash(gx: number, gy: number): number {
 // fill -- a pulsing warm wash, a bright fissure and a hot core. This is the
 // still-open half of that world's two-tense damage, against the closed old
 // scars cracking the walkable clay beside it.
-export function drawLavaAccent(g: Phaser.GameObjects.Graphics, { fill, cx, cy, s, gx, gy, depth, haze, detail, now }: AccentTile) {
+export function drawLavaAccent(g: Phaser.GameObjects.Graphics, { fill, cx, cy, s, now }: AccentTile) {
   // Phase from the tile's screen position, geometry from its own center.
   // The spatial frequency is kept low -- a fraction of a radian between
   // neighboring tiles -- so the glow drifts across the crust as broad slow
@@ -54,23 +55,22 @@ export function drawLavaAccent(g: Phaser.GameObjects.Graphics, { fill, cx, cy, s
   const coreW = 0.2 * u * pulse;
   const coreH = 0.11 * u * pulse;
   fillOval(g, cx, cy, coreW, coreH);
-
-  if (hash(gx, gy) < DRUM_RATE) drawColumnDrum(g, cx, cy, s, depth, haze, detail);
 }
 
 // One drum of a fallen sandstone column, lying on its side and half sunk into
 // the crust: an ellipse for the exposed circular face and a short barrel
 // behind it, with the near half swallowed by the ground it is sinking into.
-function drawColumnDrum(
-  g: Phaser.GameObjects.Graphics,
-  cx: number,
-  cy: number,
-  s: number,
-  depth: number,
-  haze: number,
-  detail: number
-) {
-  const u = TILE_PX * s;
+// The one thing in this world that stands off the crust, so it is the
+// material's standing draw: it lies on the centre of its tile's ground and is
+// sized by that point's distance (terrain/standing.ts).
+export function drawLavaDrum(g: Phaser.GameObjects.Graphics, tile: AccentTile) {
+  const { gx, gy, depth, haze, detail } = tile;
+  if (hash(gx, gy) >= DRUM_RATE) return;
+  const at = standingPoint(tile, 0, 0);
+  const cx = at.x;
+  const cy = at.y;
+  const u = TILE_PX * at.scale;
+  if (outOfFrame(tile, cx, 0.3 * u, cy - 0.15 * u)) return;
   const air = depth * 0.7;
   g.fillStyle(blend(0x8f7051, haze, air), detail);
   g.fillRect(cx - 0.3 * u, cy - 0.15 * u, 0.5 * u, 0.3 * u);

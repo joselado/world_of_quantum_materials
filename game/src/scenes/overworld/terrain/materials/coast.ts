@@ -4,7 +4,8 @@ import { LANE_PX } from '../../../../art/perspective';
 import type { ProjectedPoint } from '../../../../art/perspective';
 import { fillPolygon } from '../../../../art/shapes';
 import { isSeaTint } from '../../../../world/generators/world6';
-import { TILE_SCALE } from '../../projection';
+import { CANVAS_H } from '../../../../config/screen';
+import { TILE_SCALE, projectStanding } from '../../projection';
 import type { AccentTile } from '../types';
 
 // 'coast' (the Broken Coast, world 6): the two impassable surrounds of a
@@ -132,10 +133,37 @@ function lerp(a: ProjectedPoint, b: ProjectedPoint, t: number): ProjectedPoint {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, scale: a.scale + (b.scale - a.scale) * t };
 }
 
+// What lies flat on the tile: the sea, or on the rock the domain wall's
+// crack between the boulders.
 export function drawCoastAccent(g: Phaser.GameObjects.Graphics, tile: AccentTile) {
   if (tile.detail <= 0) return;
   if (isSeaTint(tile.regionTint)) drawSea(g, tile);
-  else drawRock(g, tile);
+  else drawWall(g, tile);
+}
+
+// What stands on it: the rock's boulder, the material's standing draw.
+export function drawCoastBoulder(g: Phaser.GameObjects.Graphics, tile: AccentTile) {
+  if (tile.detail <= 0 || isSeaTint(tile.regionTint)) return;
+  drawRock(g, tile);
+}
+
+// The tile's outline on the ground with no clamp at the camera's plane, which
+// is what a boulder is built on: the outline the ground fill uses is held on
+// the frame's bottom edge wherever it passes behind the plane, and a boulder
+// built on that is squashed flat as its tile leaves the frame. A tile on the
+// beach's boundary carries its traced outline, in grid coordinates; any other
+// is the plain quad. The battle arena's stand has no ground point to project
+// and keeps the outline it was handed.
+function groundOutline(tile: AccentTile): ProjectedPoint[] {
+  const { lane, ahead, gx, gy } = tile;
+  if (lane === null || ahead === null) return tile.fill;
+  if (tile.outline) return tile.outline.map((p) => projectStanding(lane + p.x - gx, ahead - (p.y - gy)));
+  return [
+    projectStanding(lane - 0.5, ahead + 0.5),
+    projectStanding(lane + 0.5, ahead + 0.5),
+    projectStanding(lane + 0.5, ahead - 0.5),
+    projectStanding(lane - 0.5, ahead - 0.5),
+  ];
 }
 
 // A rock's outline: the tile's own, with a vertex added at the middle of
@@ -165,30 +193,39 @@ function boulder(fill: ProjectedPoint[], gx: number, gy: number): ProjectedPoint
   });
 }
 
-function drawRock(g: Phaser.GameObjects.Graphics, tile: AccentTile) {
+// The wall, on the ground between the rocks, along whichever of this tile's
+// far and left edges a domain boundary runs down (the near and right edges
+// belong to the neighbours on those sides): a wide crack with a lit lip. Only
+// a plain quad has edges to draw along; a tile on the beach's own boundary
+// carries the slip without the crack.
+function drawWall(g: Phaser.GameObjects.Graphics, tile: AccentTile) {
   const { fill, gx, gy, depth, haze, detail, s } = tile;
+  if (fill.length !== 4) return;
   const air = depth * 0.75;
-  const lift = (ROCK_HEIGHT_MIN + (ROCK_HEIGHT_MAX - ROCK_HEIGHT_MIN) * hash(gx, gy, 1)) * TILE_PX * s;
+  const parity = domainParity(gx, gy);
+  const crack = (a: ProjectedPoint, b: ProjectedPoint) => {
+    g.lineStyle(3 + 4 * s, blend(WALL, haze, air), 0.95 * detail);
+    g.lineBetween(a.x, a.y, b.x, b.y);
+    g.lineStyle(1, blend(WALL_LIP, haze, air), 0.35 * detail);
+    g.lineBetween(a.x, a.y + 2 + 2 * s, b.x, b.y + 2 + 2 * s);
+  };
+  if (domainParity(gx, gy - 1) !== parity) crack(fill[0], fill[1]);
+  if (domainParity(gx - 1, gy) !== parity) crack(fill[0], fill[3]);
+}
+
+function drawRock(g: Phaser.GameObjects.Graphics, tile: AccentTile) {
+  const { gx, gy, depth, haze, detail } = tile;
+  const air = depth * 0.75;
+  // How tall the rock stands, in tile-widths. Each corner of the top is
+  // lifted by that height at the corner's own distance, as a vertical edge of
+  // one height is on screen.
+  const height = (ROCK_HEIGHT_MIN + (ROCK_HEIGHT_MAX - ROCK_HEIGHT_MIN) * hash(gx, gy, 1)) * TILE_PX;
   const top = sublattice(gx, gy) ? ROCK_B : ROCK_A;
 
-  // The wall first, on the ground between the rocks, along whichever of this
-  // tile's far and left edges a domain boundary runs down (the near and right
-  // edges belong to the neighbours on those sides): a wide crack with a lit
-  // lip. Only a plain quad has edges to draw along; a tile on the beach's own
-  // boundary carries the slip without the crack.
-  if (fill.length === 4) {
-    const parity = domainParity(gx, gy);
-    const crack = (a: ProjectedPoint, b: ProjectedPoint) => {
-      g.lineStyle(3 + 4 * s, blend(WALL, haze, air), 0.95 * detail);
-      g.lineBetween(a.x, a.y, b.x, b.y);
-      g.lineStyle(1, blend(WALL_LIP, haze, air), 0.35 * detail);
-      g.lineBetween(a.x, a.y + 2 + 2 * s, b.x, b.y + 2 + 2 * s);
-    };
-    if (domainParity(gx, gy - 1) !== parity) crack(fill[0], fill[1]);
-    if (domainParity(gx - 1, gy) !== parity) crack(fill[0], fill[3]);
-  }
-
-  const base = boulder(fill, gx, gy);
+  const base = boulder(groundOutline(tile), gx, gy);
+  const raised = base.map((p) => ({ x: p.x, y: p.y - height * p.scale, scale: p.scale }));
+  // A rock whose whole top has dropped below the frame.
+  if (tile.lane !== null && raised.every((p) => p.y > CANVAS_H)) return;
 
   // The front faces: every edge of the outline that runs leftward is on the
   // rock's near side (the outline is wound far-left, far-right, near-right,
@@ -198,13 +235,12 @@ function drawRock(g: Phaser.GameObjects.Graphics, tile: AccentTile) {
     const p = base[i];
     const q = base[(i + 1) % base.length];
     if (q.x >= p.x - 0.5) continue;
-    fillPolygon(g, [p, q, { x: q.x, y: q.y - lift, scale: q.scale }, { x: p.x, y: p.y - lift, scale: p.scale }]);
+    fillPolygon(g, [p, q, raised[(i + 1) % base.length], raised[i]]);
   }
 
   // The top, lifted whole, with one facet of it catching the aurora: the far
   // half of the top, drawn again a little lighter, so the rock has a lit
   // side and a shaded one rather than one flat colour.
-  const raised = base.map((p) => ({ x: p.x, y: p.y - lift, scale: p.scale }));
   g.fillStyle(blend(top, haze, air), detail);
   fillPolygon(g, raised);
   let cy = 0;

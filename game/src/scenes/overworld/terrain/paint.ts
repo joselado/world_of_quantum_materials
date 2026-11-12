@@ -10,12 +10,12 @@ import { groundColor } from './color';
 import { GROUND_MOTIFS_ENABLED, decorateTile } from './decoration';
 import { fillPolygon, triangulate } from '../../../art/shapes';
 import type { TriangulatedPoints } from '../../../art/shapes';
-import { TERRAIN_ACCENTS } from './materials';
+import { TERRAIN_MATERIALS } from './materials';
 import { drawStormStrikes } from './materials/charged';
 import { drawEventHorizon, drawGroundNetwork } from './materials/consuming';
 import { drawVortices } from './materials/ice';
 import { offPathKindOf } from './plan';
-import type { AccentTile, TerrainKind, TerrainTile, TerrainView, TileFeature } from './types';
+import type { AccentDraw, AccentTile, TerrainKind, TerrainTile, TerrainView, TileFeature } from './types';
 
 // Thinnest projected row still worth painting, in screen pixels. The
 // projection is asymptotic, so rows keep compressing toward the horizon long
@@ -58,15 +58,22 @@ export function drawTerrain(view: TerrainView) {
   const minY = Math.max(farEdgeRow, deepestRow);
   // Rows behind the player are still in frame -- the camera stands
   // CAMERA_BACK_TILES behind the player's tile, so the ground the player
-  // has already walked over is what fills the bottom of the screen. The
-  // per-tile near-plane test below is what actually stops the sweep.
-  const maxY = Math.min(gridH() - 1, Math.floor(camY) + 2);
+  // has already walked over is what fills the bottom of the screen. A row's
+  // ground leaves the frame once its far edge is behind the camera's plane;
+  // the sweep runs on past that for what stands on those rows.
+  const maxY = Math.min(gridH() - 1, Math.floor(camY) + PAST_CAMERA_ROWS);
   const cols = gridW();
 
   // Farthest first, so every nearer row paints over it.
   drawMarginRows(view, deepestRow);
 
   for (let y = minY; y <= maxY; y++) {
+    // The whole row lies behind the camera's plane once its far edge does,
+    // and none of its ground is in the frame. What stands on it can be.
+    if (camY - y + 0.5 + CAMERA_BACK_TILES <= 0) {
+      drawRowPastCamera(view, tiles[y], y);
+      continue;
+    }
     drawMarginColumns(view, tiles[y], y);
     const laneClip = laneClipAt(camY - y + 0.5);
     // A tile's right lane is the next tile's left lane exactly -- both are
@@ -85,7 +92,6 @@ export function drawTerrain(view: TerrainView) {
 
       const depthFar = camY - y + 0.5;
       const depthNear = camY - y - 0.5;
-      if (depthFar + CAMERA_BACK_TILES <= 0) continue;
 
       const adjacent = carryCol === x - 1 && carryF !== null && carryN !== null;
       const pFL = adjacent ? carryF! : projectTile(laneL, depthFar);
@@ -111,7 +117,7 @@ export function drawTerrain(view: TerrainView) {
         drawBandBoundary(g, tile.biome, y, pFL, pFR, pNR, pNL, depthRatio);
         if (contour) drawContactShadow(g, contour, tile.biome, camX, camY, depthRatio);
         if (GROUND_MOTIFS_ENABLED && depthRatio < DETAIL_MAX_DEPTH && tile.decorate) {
-          decorateTile(g, view.biome, accentTile(false, null, fill, pFL, pFR, pNR, pNL, x, y, depthRatio, rg.haze, view.playerColor, view.now, tile.regionTint));
+          decorateTile(g, view.biome, accentTile(false, null, fill, contour?.outline ?? null, pFL, pFR, pNR, pNL, x, y, depthRatio, rg.haze, view, tile.regionTint));
         }
         if (tile.midHighlight) {
           // The glow falls off radially from the guardian's own tile, so the
@@ -125,6 +131,7 @@ export function drawTerrain(view: TerrainView) {
         drawOffPathTile(view, tile, fill, contour, pFL, pFR, pNR, pNL, x, y, depthRatio);
       }
     }
+    drawRowStanding(g);
   }
   // The Devouring Mirror's surround is one connected network rather than a
   // tile texture -- a link between two tiles cannot be drawn by either tile
@@ -145,6 +152,46 @@ export function drawTerrain(view: TerrainView) {
   // atmosphere for the same reason: a black disc the mist has softened is
   // not black.
   if (view.biome.wallTheme === 'consuming') drawEventHorizon(view);
+}
+
+// How many rows behind the player's own the sweep still visits. The ground of
+// a row leaves the frame a little over one row back; the tallest thing that
+// stands on it, a Stone Lattice column 2.2 tile-widths high, keeps its
+// capital in the frame until its foot is 2.7 rows back.
+const PAST_CAMERA_ROWS = 3;
+
+// A row whose ground has passed under the camera: the standing parts of its
+// materials (materials/index.ts), over the row's own tiles and the margin
+// columns either side of them. A tree or a column beside the player has its
+// foot below the frame's bottom edge and its top well inside it, so a sweep
+// that stopped with the ground would take it away a tile early, top and all.
+// Called in the sweep's own order, so these rows, the nearest there are,
+// paint over everything beyond them. Each object drops itself once none of it
+// is in the frame (standing.ts's outOfFrame).
+//
+// The tile handed to the draw has no projected outline left to give: its four
+// corners are the one point the projection holds every corner behind the
+// plane at, on the frame's bottom edge. `lane`/`ahead` and the grid-space
+// `outline` are what a standing draw reads.
+function drawRowPastCamera(view: TerrainView, row: TerrainTile[], y: number) {
+  const camX = view.camX;
+  const laneClip = laneClipAt(view.camY - y + 0.5);
+  const cols = gridW();
+  const haze = (biome: Biome) => rowGround(view, biome, y, 0).haze;
+  for (let gx = Math.floor(camX - laneClip); gx <= Math.ceil(camX + laneClip); gx++) {
+    const tile = row[Phaser.Math.Clamp(gx, 0, cols - 1)];
+    // A margin column continues its row's edge tile as impassable ground
+    // (drawMarginColumns).
+    const inGrid = gx >= 0 && gx < cols;
+    const kind = inGrid || tile.kind !== 'path' ? tile.kind : offPathKindOf(tile.biome);
+    if (kind === 'path') continue;
+    const standing = TERRAIN_MATERIALS[kind].standing;
+    if (!standing) continue;
+    const p = projectTile(gx - camX, view.camY - y);
+    const outline = inGrid ? view.plan.contours[y]?.[gx]?.outline ?? null : null;
+    holdStanding(standing, accentTile(tile.featureCore, tile.feature, [p, p, p, p], outline, p, p, p, p, gx, y, 0, haze(tile.biome), view, tile.regionTint));
+  }
+  drawRowStanding(view.gfx);
 }
 
 // Projects a cached tile-space outline (art/contours.ts) at the current
@@ -292,6 +339,7 @@ function drawMarginRows(view: TerrainView, deepestRow: number) {
         drawOffPathTile(view, tile, fill, null, pFL, pFR, pNR, pNL, x, gy, depthRatio);
       }
     }
+    drawRowStanding(g);
   }
 }
 
@@ -322,7 +370,7 @@ function drawMarginTile(view: TerrainView, edge: TerrainTile, gx: number, y: num
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
     const kind = edge.kind !== 'path' ? edge.kind : offPathKindOf(edge.biome);
-    drawAccent(g, kind, fill, pFL, pFR, pNR, pNL, gx, y, edge.featureCore, edge.feature, depthRatio, rowGround(view, edge.biome, y, depthRatio).haze, view.playerColor, view.now, edge.regionTint);
+    drawAccent(g, kind, fill, null, pFL, pFR, pNR, pNL, gx, y, edge.featureCore, edge.feature, depthRatio, rowGround(view, edge.biome, y, depthRatio).haze, view, edge.regionTint);
   }
 }
 
@@ -431,22 +479,26 @@ function drawOffPathTile(
   drawBandBoundary(g, tile.biome, gy, pFL, pFR, pNR, pNL, depthRatio);
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
-    drawAccent(g, tile.kind, fill, pFL, pFR, pNR, pNL, gx, gy, tile.featureCore, tile.feature, depthRatio, rowGround(view, tile.biome, gy, depthRatio).haze, view.playerColor, view.now, tile.regionTint);
+    drawAccent(g, tile.kind, fill, contour?.outline ?? null, pFL, pFR, pNR, pNL, gx, gy, tile.featureCore, tile.feature, depthRatio, rowGround(view, tile.biome, gy, depthRatio).haze, view, tile.regionTint);
   }
 
-  // The impassable side of the contact shadow, over the accent rather than
-  // under it, so the junction is shaded from both sides no matter which
-  // material this tile draws.
+  // The impassable side of the contact shadow, over the accent's flat part
+  // rather than under it, so the junction is shaded from both sides no matter
+  // which material this tile draws. What a material stands on the tile is
+  // drawn at the end of the row (drawRowStanding) and so rises over the
+  // shadow, which lies on the ground at its foot.
   if (contour) drawContactShadow(g, contour, tile.biome, view.camX, view.camY, depthRatio);
 }
 
-// Hands one tile to its off-path material's own module (materials/). The
-// per-tile geometry every accent works from is derived here, once, and only
+// Hands one tile to its off-path material's own module (materials/): the
+// flat part is drawn now, and the standing part is held for the end of the
+// row. The per-tile geometry both work from is derived here, once, and only
 // for a material that actually draws something.
 function drawAccent(
   g: Phaser.GameObjects.Graphics,
   kind: TerrainKind,
   fill: ProjectedPoint[],
+  outline: ContourPoint[] | null,
   pFL: ProjectedPoint,
   pFR: ProjectedPoint,
   pNR: ProjectedPoint,
@@ -457,26 +509,51 @@ function drawAccent(
   feature: TileFeature | null,
   depth: number,
   haze: number,
-  playerColor: number,
-  now: number,
+  view: TerrainView,
   regionTint: number | null
 ) {
   if (kind === 'path') return;
   // The Mirror's network is drawn whole by drawGroundNetwork; its per-tile
   // accent is for the battle arena's stand, where there is no grid to link.
   if (kind === 'consuming') return;
-  const accent = TERRAIN_ACCENTS[kind];
-  if (!accent) return;
-  accent(g, accentTile(featureCore, feature, fill, pFL, pFR, pNR, pNL, gx, gy, depth, haze, playerColor, now, regionTint));
+  const { flat, standing } = TERRAIN_MATERIALS[kind];
+  if (!flat && !standing) return;
+  const tile = accentTile(featureCore, feature, fill, outline, pFL, pFR, pNR, pNL, gx, gy, depth, haze, view, regionTint);
+  if (flat) flat(g, tile);
+  if (standing) holdStanding(standing, tile);
+}
+
+// The standing parts of the row being swept, held until every ground fill
+// and flat accent of the row is down. A tree's crown reaches sideways over
+// the tiles next to its own, and those tiles lie at the same depth, so the
+// neighbour's ground painted after the tree would cut the crown along the
+// tile's edge. Whatever stands on a row is in front of all of that row's
+// ground and of every row beyond it, which is this order. The two arrays are
+// reused from row to row.
+const standingDraws: AccentDraw[] = [];
+const standingTiles: AccentTile[] = [];
+let standingCount = 0;
+
+function holdStanding(draw: AccentDraw, tile: AccentTile) {
+  standingDraws[standingCount] = draw;
+  standingTiles[standingCount] = tile;
+  standingCount++;
+}
+
+function drawRowStanding(g: Phaser.GameObjects.Graphics) {
+  for (let i = 0; i < standingCount; i++) standingDraws[i](g, standingTiles[i]);
+  standingCount = 0;
 }
 
 // The per-tile geometry every accent and every decoration works from: the
 // projected outline for a full-tile wash, the tile's centre and depth scale
-// on screen, where it sits on the grid, and the clock.
+// on screen, where it sits on the grid and on the ground plane under the
+// camera, and the clock.
 function accentTile(
   featureCore: boolean,
   feature: TileFeature | null,
   fill: ProjectedPoint[],
+  outline: ContourPoint[] | null,
   pFL: ProjectedPoint,
   pFR: ProjectedPoint,
   pNR: ProjectedPoint,
@@ -485,8 +562,7 @@ function accentTile(
   gy: number,
   depth: number,
   haze: number,
-  playerColor: number,
-  now: number,
+  view: TerrainView,
   regionTint: number | null
 ): AccentTile {
   return {
@@ -498,11 +574,14 @@ function accentTile(
     s: pNL.scale,
     gx,
     gy,
+    lane: gx - view.camX,
+    ahead: view.camY - gy,
+    outline,
     depth,
     haze,
     detail: detailFade(depth),
-    playerColor,
-    now,
+    playerColor: view.playerColor,
+    now: view.now,
     regionTint,
   };
 }
