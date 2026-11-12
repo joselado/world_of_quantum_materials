@@ -1114,6 +1114,8 @@ ways and comparing the two screenshots pixel by pixel.
 
 - `?vectors=phaser` loads the game with both off: every Graphics and shape
   renders through Phaser's own renderer, and the terrain is a plain Graphics.
+  It also leaves a Graphics' arcs at Phaser's hundred points (`art/arcs.ts`),
+  so the draw counts `perf-check` budgets are those of the paint pass itself.
 - In a dev build `window.__vectorCache(false)` turns the cache off in the
   running page, and `true` back on.
 
@@ -1135,10 +1137,24 @@ is the size of difference the cache's rounding
 allows: a copy holds an object's vertices as 32-bit floats before the object's
 transform is applied, where Phaser transforms the path first and rounds once,
 so an edge that passes through a pixel's centre can fall on either side of it.
-A difference larger than that is a defect. The one intended difference is `art/shapes.ts`'s `installArcSteps`,
-which gives circle shapes fewer segments than Phaser's hundred: against
-hundred-segment circles a frame differs in about one pixel in ten thousand at
-3x, all of them on circle edges.
+A difference larger than that is a defect.
+
+The one intended difference is the arc rule (`art/arcs.ts`), which gives
+everything round fewer segments than Phaser's hundred. The comparison above
+cannot see it, since both of its frames are drawn under the rule. It has a
+switch that is read when an arc is drawn: in a dev build
+`window.__sizedArcs(false)` makes the next `arc` calls Phaser's own. So the
+check builds the same art twice in one frozen frame, once each way, from one
+random seed and a fixed whole number of pixels apart, and compares the two
+crops. `.claude/skills/measure-smoothness/scripts/arc-proof.mjs` is that
+check: `node arc-proof.mjs out.png` prints the differing pixels of every pair
+and saves the frame, the rule on the left and Phaser's count on the right. At
+3x each of the ten guardian avatars differs in 0.6 to 3.0% of its drawn
+pixels and reads the same by eye; a sheet of circles of radius 1 to 120,
+filled and thinly stroked, differs along its edges only; strokes of width 3
+to 5 on small circles are identical, since the rule leaves a thick stroke
+alone; and a small circle enlarged six times shows corners, which is the
+case the script keeps on purpose so that it is seen to be able to fail.
 
 `.claude/skills/measure-smoothness/scripts/frozen-ab.mjs` is that comparison
 as a script: it takes scene ids (`title hub ow1 ow2mid ow10goal ow1panel bt1

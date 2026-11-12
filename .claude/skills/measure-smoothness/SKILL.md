@@ -46,6 +46,7 @@ THROTTLE=6 QUERY=scale=1 node walk-gaps.mjs ow1         # is the display scale t
 THROTTLE=6 QUERY=vectors=phaser node walk-gaps.mjs ow1  # Phaser's own drawing, as a reference
 OBJECTS=1 node walk-gaps.mjs ow10goal                   # which object costs the frame
 node frozen-ab.mjs title hub ow1 ow2mid ow10goal ow1panel bt1 bt6r
+node arc-proof.mjs /tmp/arcs.png                        # the arc rule against Phaser's count
 ```
 
 `walk-gaps.mjs` holds the up arrow in an overworld (`ow<N>`) and stands still
@@ -60,6 +61,12 @@ then with the cache off and every `FastGraphics` swapped for a plain Graphics,
 and compares the two frames pixel by pixel. It exits 1 when a scene differs by
 more than `ALLOW` pixels (2 by default) or when its control fails. The control
 moves one object by one pixel and requires the comparison to see it.
+
+`arc-proof.mjs` is the check for the one intended art change, the arc rule
+(`art/arcs.ts`): it builds every guardian avatar, a sheet of circles and a set
+of thick strokes twice in one frozen frame, with the rule and with Phaser's
+hundred points, and counts the differing pixels of each pair. It keeps one
+case that fails on purpose, a small circle enlarged six times.
 
 Three other tools exist. `npm run perf-check` counts draw calls per world
 against a budget and looks for leaked tweens; it measures work, not time, so
@@ -119,14 +126,18 @@ before optimizing: the three have different causes.
   twice a frame. Use `addFastGraphics(scene)` (`art/fastGraphics.ts`). The
   terrain and World 10's reflection are drawn this way. `OBJECTS=1` shows such
   an object as a Graphics with thousands of commands and milliseconds a frame.
-- `fillCircle` is a hundred segments whatever the radius. In anything drawn
-  per frame use `fillDot` or `fillOval` from `art/shapes.ts`.
-- A stroked `arc` is a hundred points however short it is. Noether's avatar,
-  rings broken into 120 dashes a cell, was about 250 000 vertices and 9 ms a
-  frame at full CPU speed, in the Lab and beside her in world 1. Use
-  `strokeArc` from `art/shapes.ts`. Art that large also fits no batch, so
-  measure the Lab and each world's middle with every guardian met: a Lab
-  with no guardians in it hides this.
+- Phaser gives every arc a hundred points, whatever its radius or sweep.
+  Noether's avatar, rings broken into 120 dashes a cell, was about 250 000
+  vertices and 9 ms a frame at full CPU speed, and the Lab with ten avatars
+  carried 54 000 vertices a frame. `art/arcs.ts` now sizes every arc under
+  WebGL (a Graphics' `arc`, `fillCircle`, `strokeCircle`, circle shapes), and
+  the Lab carries 15 000: at x6 its render cost went from 11.3 to 6.8 ms a
+  frame, and the first two frames of a panel from about 60 to 28 ms, measured
+  as alternating pairs. A stroke wider than 2 is left at Phaser's count, since
+  few segments show spokes at the joins of a thick translucent stroke. In anything drawn per frame still use `fillDot` or
+  `fillOval` from `art/shapes.ts`, which need no triangulator. Measure the Lab
+  and each world's middle with every guardian met: a Lab with no guardians in
+  it hides this kind of cost.
 - Art drawn once needs nothing: `art/graphicsCache.ts` keeps its triangles,
   up to 262 144 vertices an object. What still costs is its vertex count and,
   for large translucent stacks, the fill (bake those, see `STYLE.md`).
@@ -135,6 +146,37 @@ before optimizing: the three have different causes.
 - A display-scale trial on every scene change. The governor keeps its verdict
   per scene for the session.
 
+## Tried, measured, and taken out again
+
+These looked right and were not. Do not repeat them without a new reason.
+
+- Canvas renderer, one multi-stop gradient for a stack of gradient bands and
+  one path for a strip of translucent triangles: fills fell from 1993 to 673
+  a frame in world 1 and gradients from 54 to 3, and the terrain got 10 to
+  50% slower. On a software canvas the cost is not the number of fills.
+- Canvas renderer, the terrain at half resolution: 23% faster for a blurred
+  terrain. The cost is half pixels and half per-command work, so no single
+  lever halves it.
+- Canvas renderer, repainting the terrain every other frame: it lowers the
+  rate at which the world moves, which is the thing a player feels.
+- Deferring a Text's raster or its texture upload to its first render: the
+  same work lands in the first frame, and a panel opens no faster.
+- Copying a new object into the cache on its first frame: no measurable gain
+  on a panel (8.3 against 8.9 ms for its first two frames), for a subtle
+  alpha case.
+
+What a panel costs to open, for reference (Bloch's, 2026-11-12): about 20 ms
+at full speed and 125 ms at x6 once warm, about 350 ms at x6 the first time.
+A panel is destroyed and rebuilt at every click inside it, so that is also
+the cost of a click. Text is over half of the build. The remaining fix is to
+keep a built panel and update it, which touches every panel.
+
+What the software canvas costs, for reference: the terrain alone is 9 to 21
+ms a frame at full CPU speed, spread over sky and mist fades (54 gradient
+rects), trees, off-path tiles and the horizon silhouette. Whatever is left to
+gain there changes the look (fewer trees and margins, a shorter draw
+distance, a lower resolution) and is the owner's choice.
+
 ## A change that claims to keep the picture
 
 Run `frozen-ab.mjs` over a title, the Lab, three overworld spots, an open
@@ -142,8 +184,15 @@ panel and both kinds of battle, at `SCALE=2` and `SCALE=3`. Zero differing
 pixels is the expected result. One pixel on the edge of a moving object in an
 occasional battle frame is the cache's rounding and is allowed; more is a
 defect. A change that is meant to alter the art (fewer segments on a circle)
-is judged by eye at 3x on top of that, and the difference is reported as a
-fraction of pixels.
+cannot be seen by that script, since both of its frames are drawn the new
+way. Give the change a switch that is read at draw time (`__sizedArcs` is the
+model), build the same art twice in one frozen frame from one random seed, a
+whole number of pixels apart, compare the two crops, and look at them at 3x
+(`arc-proof.mjs` is the model). Include the worst cases on purpose. The arc
+rule fails on a small circle enlarged six times, so measure how far the game
+enlarges anything before trusting it (1.8 at most on 2026-11-12). The first
+version of the proof had no thick translucent stroke in it and missed the
+spokes those show with few segments.
 
 ## Gates before reporting
 

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { circleSteps, eachArcPoint } from './arcs';
 import { FastGraphics } from './fastGraphics';
 
 // Phaser runs every filled path through earcut, a general polygon
@@ -192,25 +193,16 @@ export function ellipseSteps(width: number, height: number): number {
   return MAX_ELLIPSE_STEPS;
 }
 
-// Phaser draws a circle shape (`scene.add.circle`, an Arc) as a hundred
-// segments whatever its radius, and a sprite built from a dozen small circles
-// (a pickup is nine) is over a thousand triangles that way; a screen of them
-// is tens of thousands of vertices carried through a matrix on every frame.
-// So an Arc that has not been given a step count of its own takes one from
-// its radius: the fewest segments that keep the polygon within
-// ARC_MAX_ERROR_PX of the true circle at the shape's own size, never more
-// than Phaser's hundred. The bound is that tight because these shapes are
-// scaled up by the containers they stand in and drawn at the display's own
-// resolution: a twentieth of a pixel here is still a third of a drawn pixel
-// on a shape enlarged twice on a 3x display. A circle of radius 5 comes to 23
-// segments, one of radius 20 to 45, and from a radius of 100 the count is
-// Phaser's. Unlike the buckets of `ellipseSteps` this is a smooth function of
-// the radius, which is fine for a shape tessellated once when it is made.
-// Installed before any Arc exists (main.ts); the Canvas renderer draws an arc
-// as an arc and never reads the step count.
+// A circle shape (`scene.add.circle`, an Arc) that has not been given a step
+// count of its own takes art/arcs.ts's: the fewest segments within a
+// twentieth of a pixel of the true circle, in place of Phaser's hundred
+// whatever the radius. A sprite built from a dozen small circles (a pickup is
+// nine) is over a thousand triangles at Phaser's count. Unlike the buckets of
+// `ellipseSteps` the count is a smooth function of the radius, which is fine
+// for a shape tessellated once when it is made. Installed before any Arc
+// exists (main.ts); the Canvas renderer draws an arc as an arc and never
+// reads the step count.
 const ARC_DEFAULT_ITERATIONS = 0.01;
-const ARC_MAX_ERROR_PX = 0.05;
-const ARC_MIN_STEPS = 8;
 
 export function installArcSteps(): void {
   type SizedArc = Phaser.GameObjects.Arc & { _iterations: number; __sizedIterations?: number };
@@ -220,43 +212,23 @@ export function installArcSteps(): void {
     // Only while the count is Phaser's default or one this function set: a
     // caller's own `setIterations` is left alone.
     if (this._iterations === ARC_DEFAULT_ITERATIONS || this._iterations === this.__sizedIterations) {
-      const radius = this.geom.radius;
-      // An n-gon inscribed in a circle of radius r lies r * (1 - cos(PI / n))
-      // inside it at the middle of each side.
-      const steps = radius > ARC_MAX_ERROR_PX ? Math.ceil(Math.PI / Math.acos(1 - ARC_MAX_ERROR_PX / radius)) : ARC_MIN_STEPS;
-      this._iterations = Math.max(ARC_DEFAULT_ITERATIONS, 1 / Math.max(ARC_MIN_STEPS, steps));
+      this._iterations = Math.max(ARC_DEFAULT_ITERATIONS, 1 / circleSteps(this.geom.radius));
       this.__sizedIterations = this._iterations;
     }
     return updateData.call(this);
   };
 }
 
-// A stroked arc, as the polyline its length needs. Phaser's `arc` is expanded
-// by the renderer into a hundred points whatever the arc's sweep, so a short
-// dash of a broken ring costs what a full circle does, and a figure drawn as
-// a hundred such dashes (Noether's streamlines, art/noether.ts) is a quarter
-// of a million vertices that fit no batch and are rebuilt on every frame. The
-// step here is the one `installArcSteps` gives a circle of the same radius,
-// the polyline staying within ARC_MAX_ERROR_PX of the true arc, so a dash a
-// fifth of a radian long at radius 20 is two segments. The angles follow
-// Phaser's own reading of `arc(x, y, radius, startAngle, endAngle,
+// A stroked arc as the polyline its length needs, at art/arcs.ts's count: a
+// dash a fifth of a radian long at radius 20 is two segments. Under WebGL a
+// Graphics' own `arc` comes to the same polyline; this draws it under the
+// Canvas renderer as well, and reads as what it is where a ring is broken
+// into a hundred dashes (Noether's streamlines, art/noether.ts). The angles
+// follow Phaser's own reading of `arc(x, y, radius, startAngle, endAngle,
 // anticlockwise)`. The line style is the caller's, set beforehand.
 export function strokeArc(g: Phaser.GameObjects.Graphics, x: number, y: number, radius: number, startAngle: number, endAngle: number, anticlockwise = false) {
-  const full = Math.PI * 2;
-  let sweep = endAngle - startAngle;
-  if (anticlockwise) {
-    if (sweep < -full) sweep = -full;
-    else if (sweep > 0) sweep = -full + (sweep % full);
-  } else if (sweep > full) sweep = full;
-  else if (sweep < 0) sweep = full + (sweep % full);
-  const stepAngle = radius > ARC_MAX_ERROR_PX ? 2 * Math.acos(1 - ARC_MAX_ERROR_PX / radius) : full / ARC_MIN_STEPS;
-  const steps = Math.max(1, Math.ceil(Math.abs(sweep) / stepAngle));
   g.beginPath();
-  g.moveTo(x + Math.cos(startAngle) * radius, y + Math.sin(startAngle) * radius);
-  for (let i = 1; i <= steps; i++) {
-    const a = startAngle + (sweep * i) / steps;
-    g.lineTo(x + Math.cos(a) * radius, y + Math.sin(a) * radius);
-  }
+  eachArcPoint(x, y, radius, startAngle, endAngle, anticlockwise, 0, (px, py) => g.lineTo(px, py));
   g.strokePath();
 }
 

@@ -7,6 +7,7 @@ import { checkDataIntegrity } from './data/integrity';
 import { CANVAS_W, CANVAS_H } from './config/screen';
 import { installCanvasRenderer } from './art/canvasRenderer';
 import { installGraphicsCache, setGraphicsCacheEnabled } from './art/graphicsCache';
+import { installGraphicsArcs, setSizedArcs } from './art/arcs';
 import { installArcSteps } from './art/shapes';
 import { installCrispText } from './ui/crispText';
 import { installDisplayScale, followDisplayScale, displayScaleFromUrl } from './art/displayScale';
@@ -26,8 +27,10 @@ installCanvasRenderer();
 // Every Graphics that is drawn once and then only moved keeps its triangles
 // from one frame to the next, under WebGL (art/graphicsCache.ts).
 installGraphicsCache();
-// Every circle shape tessellated to its size, not to a fixed hundred segments
+// Every circle and arc tessellated to its size, not to a fixed hundred
+// segments: a Graphics' `arc` (art/arcs.ts) and a circle shape
 // (art/shapes.ts).
+installGraphicsArcs();
 installArcSteps();
 // Every Text drawn on a whole pixel, in either renderer (ui/crispText.ts).
 installCrispText();
@@ -102,5 +105,6 @@ void loadGameFont().then(() => {
   if (import.meta.env.DEV) {
     (window as unknown as { __game: Phaser.Game }).__game = game;
     (window as unknown as { __vectorCache: (on: boolean) => void }).__vectorCache = setGraphicsCacheEnabled;
+    (window as unknown as { __sizedArcs: (on: boolean) => void }).__sizedArcs = setSizedArcs;
   }
 });

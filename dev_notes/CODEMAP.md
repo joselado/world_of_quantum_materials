@@ -12,7 +12,8 @@ stale, fix it rather than leaving it wrong.
 ```
 game/src/
   main.ts                    Phaser game config, scene list, boot order; installCanvasRenderer(),
-                               the vector installs (graphicsCache, shapes.ts's arc steps)
+                               the vector installs (graphicsCache, arcs.ts's and shapes.ts's
+                               arc steps)
                                and the Text installs (crispText, displayScale, gameFont, plates)
                                before the game exists; chooseRenderer() -- Canvas when the only
                                WebGL is a software rasterizer, ?renderer=webgl|canvas to pin one;
@@ -311,15 +312,22 @@ game/src/
                                  strokeRoundedRect -- a rounded rect at a radius-sized corner
                                  count (see "Ellipse tessellation" and "Filled shapes and the
                                  triangulator" below); installArcSteps() -- every circle shape
-                                 (`scene.add.circle`) tessellated to its radius, within 0.05 px
-                                 of the true circle, in place of Phaser's fixed hundred
-                                 segments; strokeArc(g, x, y, r, start, end, anticlockwise) --
-                                 a stroked arc as a polyline at the same error bound, where
-                                 Phaser's `arc` is a hundred points however short the arc is
+                                 (`scene.add.circle`) at arcs.ts's segment count;
+                                 strokeArc(g, x, y, r, start, end, anticlockwise) -- a stroked
+                                 arc as a polyline at that count, under either renderer
+    arcs.ts                    how many segments anything round is drawn with: circleSteps(r)/
+                                 arcSteps(r, sweep) -- the fewest within 0.05 px of the true
+                                 circle, between eight and Phaser's hundred a full turn;
+                                 eachArcPoint(...) -- the points of an arc at that count;
+                                 installGraphicsArcs() -- under WebGL every Graphics' `arc`
+                                 (so fillCircle, strokeCircle, Phaser's rounded rects) lays
+                                 those points down as lineTos in place of Phaser's fixed
+                                 hundred, except while the line is wider than 2;
+                                 setSizedArcs(on) -- the switch a comparison flips
     fastGraphics.ts            addFastGraphics(scene)/FastGraphics -- a Graphics for art that
                                  is cleared and drawn again every frame (the overworld's
                                  terrain, World 10's reflection): each drawing call writes finished triangles into a
-                                 vertex array, with Phaser's own tessellation, and a frame is
+                                 vertex array, with a plain Graphics' tessellation, and a frame is
                                  one block copy into the batch (see "Vectors are tessellated
                                  once" below)
     graphicsCache.ts           installGraphicsCache() -- every other Graphics and every path
@@ -1388,7 +1396,8 @@ everything else by absence, so only two things in it carry meaning.
   reflection in the event horizon, a few hundred links and nodes redrawn on every frame the
   disc is in view) is another. It supports the path, fill
   and stroke calls and refuses the transform stack, `lineGradientStyle` and `strokeTriangle`
-  in a dev build. Both follow Phaser's own tessellation exactly, and both stand down under
+  in a dev build. Both give the triangles a plain Graphics would, arcs at `art/arcs.ts`'s
+  count included, and both stand down under
   the Canvas renderer, which fills paths natively. `?vectors=phaser` loads the game with
   both off, and `window.__vectorCache(false)` turns the cache off in a running dev build:
   the reference a frozen frame is compared against (DEVELOPMENT.md's "Checking the vector
@@ -2738,17 +2747,31 @@ ellipses: a vortex's discs and rings are polygons of ground points projected one
 fixed `CIRCLE_STEPS`, since a circle on the ground is not an ellipse on screen once it is wide
 enough for the projection to bend it.)
 
-`fillDot(g, x, y, r)` is the same budget for a filled circle: Phaser's own `fillCircle` goes
-through `arc`, which the renderer expands into about a hundred segments whatever the radius is,
-so a two-pixel spark costs what a screen-filling disc costs. Every per-frame circle uses it --
-the bog's moments and counter-lights, the star network, the passive halos, and the attack and
-ultimate effects. Phaser's `fillRoundedRect`/`strokeRoundedRect` build each corner from that
-same hundred-point `arc`, so a live rounded rect goes through `fillRoundedRect(g, ...)`/
-`strokeRoundedRect(g, ...)` instead, a quarter of `ellipseSteps`' count per corner: the battle
-nameplates (`scenes/battle/hud.ts`) and Landau's ladder (`art/landau.ts`). A `circle` shape
-(`Phaser.GameObjects.Arc`) takes a hundred points too unless told otherwise, so a live one
-sets `setIterations(1 / ellipseSteps(d, d))` -- the battle's turn-preview rings. Art that is
-baked (the Lab's station motifs) keeps Phaser's own calls, since it is drawn once.
+`fillDot(g, x, y, r)` is the same budget for a filled circle, drawn as a fan with no
+triangulator behind it. Every per-frame circle uses it -- the bog's moments and counter-lights,
+the star network, the passive halos, the reflection's nodes, and the attack and ultimate
+effects. A live rounded rect goes through `fillRoundedRect(g, ...)`/`strokeRoundedRect(g, ...)`,
+a quarter of `ellipseSteps`' count per corner: the battle nameplates (`scenes/battle/hud.ts`)
+and Landau's ladder (`art/landau.ts`).
+
+**Arc tessellation.** Phaser's WebGL renderer expands every `arc` of a Graphics into a hundred
+points whatever its radius or sweep, and gives a `circle` shape (`Phaser.GameObjects.Arc`) a
+hundred segments. `art/arcs.ts` is the one rule that replaces that count under WebGL: the
+fewest segments within `0.05` px of the true circle, between eight and a hundred for a full
+turn. `installGraphicsArcs()` (in `main.ts`) makes a Graphics' `arc` lay its points down as
+`lineTo`s at that count, which covers `fillCircle`, `strokeCircle` and Phaser's rounded rects
+and is what Phaser's renderer does with an arc command at its own count: the first point opens
+a subpath where none is open and continues the open one otherwise. `FastGraphics.arc` and
+`shapes.ts`'s `installArcSteps` (circle shapes without a `setIterations` of their own) and
+`strokeArc` read the same rule, so the same call is the same polygon whatever it is drawn into.
+So an avatar or an icon is built from circles as before and needs no helper. An arc laid down
+while the line width set since the last `clear` is over 2 (`ARC_THICK_STROKE`) keeps Phaser's
+hundred points: a thick stroke carries a triangle over every join, which shows as a spoke
+wherever the stroke is translucent, and a hundred of them read as an even tone where twenty do
+not. Under the Canvas renderer an arc stays an arc, and `?vectors=phaser` leaves Phaser's count
+in place. A shape
+that sets its own count keeps it: the battle's turn-preview rings set
+`setIterations(1 / ellipseSteps(d, d))`.
 
 **Filled shapes and the triangulator.** Phaser runs every filled *path* through earcut on each
 frame the shape renders, so every fill in the paint pass says what it already knows about its

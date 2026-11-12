@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ARC_THICK_STROKE, eachArcPoint, sizedArcs } from './arcs';
 
 // A Graphics for art that is drawn again on every frame.
 //
@@ -14,11 +15,12 @@ import Phaser from 'phaser';
 // This is the same object with the list taken out. Each drawing call writes
 // its finished triangles straight into a vertex array, in the layout Phaser's
 // own batch uses, and rendering is one block copy of that array into the
-// batch. The triangles are the ones Phaser would have made: every fill and
-// stroke below follows the renderer's own tessellation (GraphicsWebGLRenderer
-// and MultiPipeline in Phaser's source), vertex for vertex, so a frame drawn
-// through this and a frame drawn through a plain Graphics are the same
-// picture. Shader, blending, batching, context loss and the display scale are
+// batch. The triangles are the ones a plain Graphics would have made: every
+// fill and stroke below follows the renderer's own tessellation
+// (GraphicsWebGLRenderer and MultiPipeline in Phaser's source), vertex for
+// vertex, and an arc takes the same points a plain Graphics' does
+// (art/arcs.ts), so a frame drawn through this and a frame drawn through a
+// plain Graphics are the same picture. Shader, blending, batching, context loss and the display scale are
 // all still Phaser's.
 //
 // What it supports is what a path-and-fill painter needs: fillStyle,
@@ -103,6 +105,9 @@ export class FastGraphics extends Phaser.GameObjects.Graphics {
   private fillBR = 0xffffffff;
   private strokeTint = 0xffffffff;
   private lineW = 1;
+  // The line width set since the last clear, which is what decides how an
+  // arc is tessellated (art/arcs.ts).
+  private arcLine = 0;
 
   // The path under construction: one flat list of x, y, line width per
   // subpath, as the renderer keeps one point list per moveTo.
@@ -174,6 +179,7 @@ export class FastGraphics extends Phaser.GameObjects.Graphics {
 
   clear(): this {
     this.count = 0;
+    this.arcLine = 0;
     this.paths.length = 0;
     this.path = null;
     this.pathOpen = true;
@@ -212,6 +218,7 @@ export class FastGraphics extends Phaser.GameObjects.Graphics {
 
   lineStyle(lineWidth: number, color: number, alpha = 1): this {
     this.lineW = lineWidth;
+    this.arcLine = lineWidth;
     this.strokeTint = getTint(color, alpha * this.alpha);
     // What Graphics.strokeRect reads for its half-width overhang.
     (this as unknown as { _lineWidth: number })._lineWidth = lineWidth;
@@ -284,6 +291,11 @@ export class FastGraphics extends Phaser.GameObjects.Graphics {
   }
 
   arc(x: number, y: number, radius: number, startAngle: number, endAngle: number, anticlockwise = false, overshoot = 0): this {
+    // The same points a plain Graphics lays down for this call (art/arcs.ts).
+    if (sizedArcs() && this.arcLine <= ARC_THICK_STROKE) {
+      eachArcPoint(x, y, radius, startAngle, endAngle, anticlockwise, overshoot, (px, py) => this.lineTo(px, py));
+      return this;
+    }
     let sweep = endAngle - startAngle;
     if (anticlockwise) {
       if (sweep < -PI2) sweep = -PI2;

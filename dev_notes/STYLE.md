@@ -111,24 +111,41 @@ What this means in practice:
     triangulator drops to a recovery path quadratic in the point count. An
     outline whose two sides can meet (a crest line clamped against its own
     floor) is the case to watch.
-  - **`fillCircle` tessellates to about a hundred segments whatever its
-    radius.** Use `art/shapes.ts`'s `fillDot`, which sizes the count off the
-    radius the way `ellipseSteps` does for every other round shape.
-    `fillEllipse` takes 32 segments at any size, so a filled ellipse is
-    `fillOval`, and `strokeEllipse` takes `ellipseSteps` as its `smoothness`.
-  - **`fillRoundedRect`/`strokeRoundedRect` build each corner from that same
-    hundred-point arc.** A live rounded rect goes through `art/shapes.ts`'s
-    `fillRoundedRect`/`strokeRoundedRect`. Two nameplates drawn at Phaser's
-    count cost a battle as much render time as everything else on its screen
-    together. A `circle` shape is a hundred points in Phaser as well; here it
-    takes its count from its radius without being asked (`installArcSteps`:
-    the fewest segments within `0.05` px of the true circle), and a shape that
-    sets its own with `setIterations` keeps it. An `arc` that is stroked is a
-    hundred points too, however short it is: a ring broken into dashes goes
-    through `strokeArc`, which gives each dash the two or three segments its
-    length needs. Noether's avatar, a hundred and twenty such dashes a cell,
-    is a quarter of a million vertices at Phaser's count, more than
-    everything else in the Lab together, and a few thousand this way.
+  - **Phaser gives every arc a hundred points, whatever its radius or its
+    sweep.** `fillCircle`, `strokeCircle`, each corner of its
+    `fillRoundedRect`/`strokeRoundedRect`, a `circle` shape and every `arc`
+    call are that hundred. A two-pixel dot then costs what a screen-filling
+    disc does, and Noether's avatar, rings broken into a hundred and twenty
+    dashes a cell, is a quarter of a million vertices. Under WebGL the game
+    replaces the count everywhere with one rule (`art/arcs.ts`): the fewest
+    segments that keep the polygon within `0.05` px of the true circle,
+    between eight and Phaser's hundred for a full turn and the same share of
+    that for a partial arc. So a circle of radius 5 is 23 segments, one of
+    radius 20 is 45, and a short dash is two or three. Nothing has to be
+    asked for: a Graphics' `arc` and the calls built on it, the per-frame
+    layer's `arc`, a circle shape that has not set its own `setIterations`,
+    and `strokeArc` all read it. With it the Lab carries fifteen thousand
+    vertices a frame where Phaser's count carries fifty-four thousand.
+  - **The rule is measured at the shape's own size.** A twentieth of a pixel
+    is still a third of a drawn pixel on a shape enlarged twice on a 3x
+    display. Across the Lab, the ten guardian panels, the worlds and the
+    battles at rest, the largest enlargement of any Graphics or circle shape
+    is 1.8 (one pulsing marker on Bloch's map) and everything else stays
+    under 1.2. A circle drawn small and scaled up six times shows its
+    corners: draw art at the size it is shown at.
+  - **A stroke wider than 2 keeps Phaser's hundred points.** Phaser lays a
+    triangle over every join of a thick stroke, and where the stroke is
+    translucent, by its own alpha or its object's, each one shows as a faint
+    spoke. A hundred blur into an even tone and twenty stand out, so the rule
+    leaves an arc alone while the line is that wide. A thick ring that is
+    redrawn every frame is worth drawing as two filled ovals instead.
+  - **Per-frame circles still go through `fillDot` and `fillOval`.** They are
+    drawn as a fan with no triangulator behind them, at `ellipseSteps`'
+    bucketed count, and they hold under the Canvas renderer as well, where an
+    `arc` stays an arc. `fillEllipse` takes 32 segments at any size, so a
+    filled ellipse is `fillOval`, and `strokeEllipse` takes `ellipseSteps` as
+    its `smoothness`. A live rounded rect goes through `art/shapes.ts`'s
+    `fillRoundedRect`/`strokeRoundedRect`, a quarter of that count a corner.
 - **Art that is drawn again every frame goes through a `FastGraphics`.** The
   overworld's terrain is cleared and repainted on every frame the camera
   moves, three to seven thousand triangles of it, and a plain Graphics would
