@@ -19,8 +19,9 @@ import { drawConsumingAccent } from './consuming';
 //
 // An accent has two parts, and a material may have either or both. `flat` is
 // what lies on the tile's ground: a wash, a crack, a light on the water. It is
-// drawn with the tile, from the tile's outline and centre as the ground fill
-// draws them. `standing` is what rises off the ground: a tree, a column, a
+// drawn with the tile, from the tile's outline as the ground fill draws it and
+// about the tile's centre, which is a point of the ground (`cx`/`cy`).
+// `standing` is what rises off the ground: a tree, a column, a
 // boulder, a clump of reeds, the rubble. It stands on a ground point of its
 // own, found from the tile's `lane`/`ahead` with no clamp at the camera's
 // plane (../standing.ts), and the paint pass (../paint.ts) treats it two ways
@@ -29,9 +30,10 @@ import { drawConsumingAccent } from './consuming';
 // down before the object that reaches over it. And it still draws them on a
 // row whose ground has passed under the camera (drawRowPastCamera), where the
 // foot is below the frame and the top is not. Something that stands but is
-// placed off the tile's `cx`/`cy` slides against the ground on the last row
-// and is removed while still in view, so a new standing object belongs in
-// `standing`.
+// drawn in the flat part is cut by the ground of the tile beside it and is
+// removed with its tile's ground, while still in view, so a new standing
+// object belongs in `standing`. A tall one also asks ../standing.ts which
+// layer it goes in, since it can stand in front of the player's crystal.
 //
 // Adding a material means adding a module here and a `wallTheme` in
 // art/biomes.ts (plus the matching TerrainKind in ../types.ts) -- nothing in

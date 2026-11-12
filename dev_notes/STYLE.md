@@ -636,7 +636,10 @@ under one figure reads as floating even when neither is wrong on its own.
   ground and is sized by that point's distance, so it moves on screen exactly as the ground under
   it does and leaves the frame by the bottom edge with it, and a row's objects are painted after
   all of the row's ground, so none is cut by the tile beside it. Beside the road an object's foot
-  is held on its own tile's ground, so the road's edge stays clear. A world whose surround is a *place* rather than
+  is held on its own tile's ground, so the road's edge stays clear. A tall object that stands
+  nearer the camera than the player's crystal passes in front of it, at 40% strength while it
+  crosses the crystal and solid otherwise, with the strength coming on over a few frames: the
+  depth reads right and the crystal is never hidden. A world whose surround is a *place* rather than
   a surface needs this: a canopy that never leaves the floor is not a wood, and reeds that never
   leave the water are not reeds. `terrain/paint.ts`'s `drawOffPathTile`
   paints the tile in that biome's own `ground` color (hazed for depth, tinted toward a
@@ -649,9 +652,9 @@ under one figure reads as floating even when neither is wrong on its own.
     there to draw.
   - **'forest'** (the Mean Fields, world 1): dense summer canopy, drawn as a wood rather than
     a hazard -- no glow, no motion. Its tree sprites are the game's one shared terrain sprite
-    (`art/trees.ts`). A tree keeps its full three-lobe crown for as long as it is drawn at full
-    strength, and sheds crown detail only as the depth fade takes it -- a lit cap over the shaded
-    mass once the fade has started, a single blob near the end of it. The wood stays at full
+    (`art/trees.ts`). A tree keeps its three-lobe crown through the depth fade and becomes a single
+    blob only near the end of it, a blob that fills the same box as the crown it replaces, so no
+    line of crowns changes shape at a fixed distance as the player walks. The wood stays at full
     density throughout: what recedes is how much shape each far crown is given, never how many
     trees there are.
   - **'columns'** (the Stone Lattice, world 2): rows of identical sandstone columns, lit from

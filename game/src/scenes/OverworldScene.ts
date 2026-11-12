@@ -34,7 +34,7 @@ import type { GateView } from './overworld/sky';
 import { buildTerrainPlan, sampleBattleLocale } from './overworld/terrain/plan';
 import { drawTerrain } from './overworld/terrain/paint';
 import { drawReflectionNet, eventHorizonAt } from './overworld/terrain/materials/consuming';
-import type { BattleLocale, TerrainPlan, TerrainView } from './overworld/terrain/types';
+import type { AvatarBox, BattleLocale, TerrainPlan, TerrainView } from './overworld/terrain/types';
 import {
   PLAYER_MATERIAL,
   worldName,
@@ -160,6 +160,18 @@ const PLAYER_FOOT = PLAYER_CRYSTAL_SIZE;
 // its own tile centre, so the fixed on-screen avatar and the scrolling ground
 // under it always agree about which tile the player is standing on.
 const PLAYER_GROUND_Y = project(0, CAMERA_BACK_TILES * TILE_SCALE).y;
+// The avatar's depth, and the layer just over it for a standing object that
+// is nearer the camera than the avatar (terrain/standing.ts). Under the
+// prompts at 50.
+const PLAYER_DEPTH = 40;
+const FRONT_LAYER_DEPTH = 41;
+// Where the avatar is on screen, bob included, for that layer's see-through.
+const PLAYER_BOX: AvatarBox = {
+  x: CANVAS_W / 2,
+  halfWidth: PLAYER_CRYSTAL_SIZE * 0.7,
+  top: PLAYER_GROUND_Y - PLAYER_CRYSTAL_SIZE * 2,
+  ground: PLAYER_GROUND_Y,
+};
 // The walkable width of a pass throat, in tiles (world/generators/shared.ts's
 // taper). Everything sized against the aperture reads off this.
 const PASS_APERTURE_TILES = PASS_HALF_WIDTH * 2 + 1;
@@ -721,6 +733,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // stands once the rival has fallen; the backward one always does.
   private gateSprites: WorldSprite[] = [];
   private worldGfx!: Phaser.GameObjects.Graphics;
+  private frontGfx!: Phaser.GameObjects.Graphics;
   // What lies below the Devouring Mirror's cliff (overworld/sky.ts's
   // drawOverlook), in a layer of its own under the terrain so the cliff covers
   // whatever of it the cliff is in front of. Only the last world has one.
@@ -1089,6 +1102,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // Cleared and painted again on every frame (drawWorld), which is what a
     // FastGraphics is for.
     this.worldGfx = addFastGraphics(this);
+    // What stands in front of the player's crystal, over it and under every
+    // prompt (terrain/standing.ts's standingLayer). Painted with the ground.
+    this.frontGfx = addFastGraphics(this).setDepth(FRONT_LAYER_DEPTH);
     this.spawnCrystalSprites();
     this.spawnTokenSprites();
     this.spawnGuardianSprite();
@@ -1257,7 +1273,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       dopant: getPlayerDopantLook(this.game.registry),
     });
     this.player.add([playerShadow, this.playerCrystalGfx]);
-    this.player.setDepth(40);
+    this.player.setDepth(PLAYER_DEPTH);
     this.idleBob();
     this.buildMirrorGhost();
 
@@ -1856,6 +1872,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   private terrainView(): TerrainView {
     return {
       gfx: this.worldGfx,
+      front: this.frontGfx,
+      avatar: this.player?.visible ? PLAYER_BOX : null,
       plan: this.terrainPlan(),
       camX: this.camPos.x,
       camY: this.camPos.y,

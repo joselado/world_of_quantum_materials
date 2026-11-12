@@ -99,6 +99,13 @@ export interface TerrainPlan {
 // `biome`, which World 9's defect patches override per tile.
 export interface TerrainView extends AtmosphereView {
   gfx: Phaser.GameObjects.Graphics;
+  // The layer over the player's crystal, and where the crystal is on screen
+  // (null while it is not shown). A standing object nearer the camera than
+  // the crystal is drawn into this layer while it crosses the crystal, see-
+  // through, so it passes in front of the crystal as it does in the world
+  // without hiding it (standing.ts's standingLayer). Cleared with the ground.
+  front: Phaser.GameObjects.Graphics;
+  avatar: AvatarBox | null;
   plan: TerrainPlan;
   camX: number;
   camY: number;
@@ -110,6 +117,15 @@ export interface TerrainView extends AtmosphereView {
   // world contains things like the player, immediately before the last world
   // turns out to be one.
   playerColor: number;
+}
+
+// The player's crystal on screen: the column it stands in, how far it reaches
+// to either side, its top, and the ground line under it.
+export interface AvatarBox {
+  x: number;
+  halfWidth: number;
+  top: number;
+  ground: number;
 }
 
 // One impassable tile, ready for its material's accent: the tile's projected
@@ -138,15 +154,15 @@ export interface AccentTile {
   gy: number;
   // Where the tile's centre lies on the ground plane as the camera sees it,
   // in tiles: `lane` to the right of the camera and `ahead` in front of the
-  // player's own tile, the two arguments of projectTile. What a material that
-  // stands something on the tile offsets and projects (projection.ts's
-  // projectStanding) to find the one ground point the thing stands on: `cx`/
-  // `cy`/`s` are the mean of the tile's corners as drawn, which is not a
-  // point of the ground, and an offset from them in screen pixels is a
-  // different distance on the ground at every depth, so whatever is placed
-  // that way drifts over the ground as the player walks. Null in the battle
-  // arena's stand, whose tiles are placed on screen and seen from one spot
-  // (BattleScene.arenaAccentTile).
+  // player's own tile, the two arguments of projectTile. `cx`/`cy`/`s` are
+  // that centre on screen and the scale there, which is all a mark drawn
+  // about the centre needs. Whatever is thrown off the centre reads these two
+  // instead, adds its throw in tiles and projects the one ground point it
+  // stands on (standing.ts's standingPoint): an offset from `cx`/`cy` in
+  // screen pixels is a different distance on the ground at every depth, so
+  // whatever is placed that way drifts over the ground as the player walks.
+  // Null in the battle arena's stand, whose tiles are placed on screen and
+  // seen from one spot (BattleScene.arenaAccentTile).
   lane: number | null;
   ahead: number | null;
   // The tile's traced outline in grid coordinates where it lies on the

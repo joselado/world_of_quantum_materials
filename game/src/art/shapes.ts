@@ -54,6 +54,28 @@ export function fillPolygon(g: Phaser.GameObjects.Graphics, pts: TriangulatedPoi
   }
 }
 
+// Fills a stored outline moved to (x, y) and scaled by `scale`, which is how a
+// shape drawn hundreds of times a frame from one outline is placed (a tree
+// crown, art/trees.ts). Under WebGL the outline's own triangles are written
+// straight from the stored points, so no moved copy of the points is built
+// for each one; a Canvas frame, or an outline with no triangulation, builds
+// the copy and fills it as fillPolygon would.
+export function fillPlacedPolygon(g: Phaser.GameObjects.Graphics, outline: TriangulatedPoints, x: number, y: number, scale: number) {
+  const tris = outline.tris;
+  if (!tris || !drawnByWebGL(g)) {
+    const pts: TriangulatedPoints = outline.map((p) => ({ x: x + p.x * scale, y: y + p.y * scale }));
+    pts.tris = tris;
+    fillPolygon(g, pts);
+    return;
+  }
+  for (let i = 0; i < tris.length; i += 3) {
+    const a = outline[tris[i]];
+    const b = outline[tris[i + 1]];
+    const c = outline[tris[i + 2]];
+    g.fillTriangle(x + a.x * scale, y + a.y * scale, x + b.x * scale, y + b.y * scale, x + c.x * scale, y + c.y * scale);
+  }
+}
+
 // Fills a shape known to be convex, its points in order around it, as a fan
 // of triangles from the first point -- under WebGL; a path under Canvas (see
 // above).

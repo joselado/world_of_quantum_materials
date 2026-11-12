@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
 import { blend } from './colors';
 import { LANE_PX } from './perspective';
-import { ellipseSteps, fillOval, fillPolygon, triangulate } from './shapes';
+import { ellipseSteps, fillOval, fillPlacedPolygon, triangulate } from './shapes';
 import type { TriangulatedPoints } from './shapes';
 import { TILE_SCALE } from '../scenes/overworld/projection';
-import { outOfFrame, standingPoint } from '../scenes/overworld/terrain/standing';
+import { standingAlpha, standingLayer, standingPoint } from '../scenes/overworld/terrain/standing';
 import type { AccentTile } from '../scenes/overworld/terrain/types';
 
 // The Mean Fields' dense summer canopy (terrain/materials/forest.ts), and
@@ -54,18 +54,29 @@ export function hasTree(gx: number, gy: number): boolean {
 }
 
 // How much crown a tree gets is tiered on the tile's own `detail`, the fade
-// the paint pass already applies over the last stretch before accents stop
-// being drawn (terrain/paint.ts). Half the crowns in a frame sit in that
-// stretch, and each one otherwise costs a near tree's price to draw structure
-// the haze is busy dissolving.
+// the paint pass applies over the last stretch before accents stop being
+// drawn (terrain/paint.ts). A tree keeps its lobed crown through the fade,
+// and below CROWN_SILHOUETTE_DETAIL, where it is a smudge against the haze,
+// it collapses to one blob. Keying the tier to `detail` rather than to a
+// distance of this file's own keeps the rule safe: the tier moves with the
+// fade if its range ever moves.
 //
-// Keying the tiers to `detail` rather than to a distance of this file's own is
-// what keeps the rule safe: `detail` is exactly 1 across the whole range where
-// a tree is drawn at full strength, so the near wood always gets the full
-// lobed crown, and the tiers move with the fade if its range ever moves.
-// Below this much of it left, the tree is a smudge against the haze and none
-// of its shape survives, so it collapses to one blob.
+// A tier switch happens on one frame, so the two shapes either side of it
+// have to agree, or a line of crowns jumps at a fixed distance as the player
+// walks. So the blob is the ellipse that fills the lobed crown's own box, in
+// the mean of its two colours, and the trunk has faded out by the time the
+// blob takes over (TRUNK_FADE_DETAIL): what changes on the switch is the
+// notches between the lobes, at under half strength.
+//
+// The battle arena's stand uses `detail` as its distance control and is seen
+// from one spot, so nothing in it switches tier in view. Its far rows take a
+// plainer crown on purpose, one lit cap over the shaded mass, and its
+// furthest a smaller blob: a far row drawn at the near row's fidelity is what
+// makes a wood look like wallpaper (BattleScene.arenaAccentTile).
 const CROWN_SILHOUETTE_DETAIL = 0.45;
+// The trunk is at full strength above this much `detail` and gone at
+// CROWN_SILHOUETTE_DETAIL, fading in between.
+const TRUNK_FADE_DETAIL = 0.7;
 
 // The three lobes of a full-strength crown, in units of `size`: centre offset,
 // and semi-axes -- half the width and height an ellipse of that lobe would be
@@ -76,6 +87,24 @@ const CROWN_LOBES = [
   { dx: 0.12, dy: 0, rx: 0.135, ry: 0.105 },
   { dx: 0, dy: -0.12, rx: 0.155, ry: 0.115 },
 ];
+
+// The box around the whole crown, the three lobes and the shaded mass under
+// them (an ellipse 0.46 by 0.32 of `size`, centred 0.05 below the crown's
+// centre): its centre and its width and height, in units of `size`. What the
+// far tier's blob fills.
+const CROWN_BOX = (() => {
+  let x0 = -0.23;
+  let x1 = 0.23;
+  let y0 = 0.05 - 0.16;
+  let y1 = 0.05 + 0.16;
+  for (const l of CROWN_LOBES) {
+    x0 = Math.min(x0, l.dx - l.rx);
+    x1 = Math.max(x1, l.dx + l.rx);
+    y0 = Math.min(y0, l.dy - l.ry);
+    y1 = Math.max(y1, l.dy + l.ry);
+  }
+  return { x: (x0 + x1) / 2, y: (y0 + y1) / 2, w: x1 - x0, h: y1 - y0 };
+})();
 
 // The outline of those three lobes fused into one, worked out once at load and
 // scaled per tree. The lobes are a single colour at full alpha, so their union
@@ -143,7 +172,7 @@ const TREE_HALF_WIDTH = 0.28;
 // tiles: the trunk and a little more. The crown may hang over the road.
 const TREE_FOOT_REACH = 0.08;
 
-export function drawTree(g: Phaser.GameObjects.Graphics, tile: AccentTile, style: TreeStyle) {
+export function drawTree(ground: Phaser.GameObjects.Graphics, tile: AccentTile, style: TreeStyle) {
   const { gx, gy, depth, haze, detail } = tile;
   if (detail <= 0) return;
   // Jitter off the tile centre, so the wood is not visibly a grid.
@@ -156,7 +185,10 @@ export function drawTree(g: Phaser.GameObjects.Graphics, tile: AccentTile, style
   const base = foot.y;
   const u = TILE_PX * foot.scale;
   const size = (0.6 + hash(gx, gy, 4) * 0.85) * u;
-  if (outOfFrame(tile, x, TREE_HALF_WIDTH * size, base - TREE_TOP * size * TREE_HEIGHT)) return;
+  // The ground layer, or the layer over the player's crystal for a tree that
+  // stands in front of it.
+  const g = standingLayer(ground, tile, foot, TREE_HALF_WIDTH * size, base - TREE_TOP * size * TREE_HEIGHT);
+  if (!g) return;
   const trunkH = 0.3 * size * TREE_HEIGHT;
   const crownY = base - trunkH - 0.16 * size * TREE_HEIGHT;
 
@@ -164,18 +196,20 @@ export function drawTree(g: Phaser.GameObjects.Graphics, tile: AccentTile, style
   // the far trees keep their full summer green against a hazed field and the
   // canopy reads as a decal laid over the world.
   const air = depth * 0.8;
-  const alpha = style.alpha * detail;
+  const alpha = style.alpha * detail * standingAlpha;
 
+  const arena = tile.lane === null;
   if (detail < CROWN_SILHOUETTE_DETAIL) {
-    // One blob in the mean of the two crown colours, trunk included: at this
-    // strength the trunk is a thread the haze has already taken, and drawing
-    // it costs a fill to change nothing.
+    // One blob in the mean of the two crown colours, with no trunk: at this
+    // strength the trunk is a thread the haze has already taken.
     g.fillStyle(blend(blend(style.canopyShade, style.canopy, 0.5), haze, air), alpha);
-    ellipse(g, x, crownY, 0.46 * size, 0.34 * size);
+    if (arena) ellipse(g, x, crownY, 0.46 * size, 0.34 * size);
+    else ellipse(g, x + CROWN_BOX.x * size, crownY + CROWN_BOX.y * size, CROWN_BOX.w * size, CROWN_BOX.h * size);
     return;
   }
 
-  g.fillStyle(blend(style.trunk, haze, air), alpha);
+  const trunkFade = arena ? 1 : Math.min(1, (detail - CROWN_SILHOUETTE_DETAIL) / (TRUNK_FADE_DETAIL - CROWN_SILHOUETTE_DETAIL));
+  g.fillStyle(blend(style.trunk, haze, air), alpha * trunkFade);
   g.fillRect(x - 0.035 * size, base - trunkH, 0.07 * size, trunkH + 0.02 * size);
 
   // Crown: a shaded lower mass with a lit cap over it, which is enough
@@ -185,22 +219,16 @@ export function drawTree(g: Phaser.GameObjects.Graphics, tile: AccentTile, style
   g.fillStyle(blend(style.canopyShade, haze, air), alpha);
   ellipse(g, x, crownY + 0.05 * size, 0.46 * size, 0.32 * size);
   g.fillStyle(blend(style.canopy, haze, air), alpha);
-  if (detail < 1) {
-    // Once the fade has started on a tree, the gaps between the three lobes
-    // are finer than the contrast it has left against the haze, so one cap
-    // over the shaded mass carries the crown.
+  if (arena && detail < 1) {
+    // A far row of the arena's stand: one cap over the shaded mass carries
+    // the crown.
     ellipse(g, x, crownY - 0.04 * size, 0.4 * size, 0.28 * size);
     return;
   }
   // The three lobes as one shape (CROWN_OUTLINES). Sized off the widest lobe,
   // so the point count tracks what the crown actually spans on screen.
   const outline = crownOutline(ellipseSteps(0.55 * size, 0.35 * size));
-  const pts: TriangulatedPoints = new Array<{ x: number; y: number }>(outline.length);
-  for (let i = 0; i < outline.length; i++) {
-    pts[i] = { x: x + outline[i].x * size, y: crownY + outline[i].y * size };
-  }
-  pts.tris = outline.tris;
-  fillPolygon(g, pts);
+  fillPlacedPolygon(g, outline, x, crownY, size);
 }
 
 function ellipse(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number) {

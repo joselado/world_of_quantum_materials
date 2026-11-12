@@ -4,13 +4,14 @@ import type { Biome } from '../../../art/biomes';
 import { MAX_OFFSET } from '../../../art/contours';
 import type { ContourPoint, TileContour } from '../../../art/contours';
 import type { ProjectedPoint } from '../../../art/perspective';
-import { CAMERA_BACK_TILES, DRAW_DISTANCE_TILES, gridH, gridW, laneClipAt, projectTile } from '../projection';
+import { CAMERA_BACK_TILES, DRAW_DISTANCE_TILES, gridH, gridW, laneClipAt, projectStanding, projectTile } from '../projection';
 import { drawDepthHaze, hazeTarget } from '../sky';
 import { groundColor } from './color';
 import { GROUND_MOTIFS_ENABLED, decorateTile } from './decoration';
 import { fillPolygon, triangulate } from '../../../art/shapes';
 import type { TriangulatedPoints } from '../../../art/shapes';
 import { TERRAIN_MATERIALS } from './materials';
+import { setStandingFront } from './standing';
 import { drawStormStrikes } from './materials/charged';
 import { drawEventHorizon, drawGroundNetwork } from './materials/consuming';
 import { drawVortices } from './materials/ice';
@@ -45,6 +46,8 @@ const DETAIL_MAX_DEPTH = 0.75;
 export function drawTerrain(view: TerrainView) {
   const g = view.gfx;
   g.clear();
+  view.front.clear();
+  setStandingFront(view.front, view.avatar);
   // The camera has moved since the last frame, so no row's cached colors
   // survive into this one.
   rowGroundRow = NaN;
@@ -117,7 +120,7 @@ export function drawTerrain(view: TerrainView) {
         drawBandBoundary(g, tile.biome, y, pFL, pFR, pNR, pNL, depthRatio);
         if (contour) drawContactShadow(g, contour, tile.biome, camX, camY, depthRatio);
         if (GROUND_MOTIFS_ENABLED && depthRatio < DETAIL_MAX_DEPTH && tile.decorate) {
-          decorateTile(g, view.biome, accentTile(false, null, fill, contour?.outline ?? null, pFL, pFR, pNR, pNL, x, y, depthRatio, rg.haze, view, tile.regionTint));
+          decorateTile(g, view.biome, accentTile(false, null, fill, contour?.outline ?? null, x, y, depthRatio, rg.haze, view, tile.regionTint));
         }
         if (tile.midHighlight) {
           // The glow falls off radially from the guardian's own tile, so the
@@ -189,7 +192,7 @@ function drawRowPastCamera(view: TerrainView, row: TerrainTile[], y: number) {
     if (!standing) continue;
     const p = projectTile(gx - camX, view.camY - y);
     const outline = inGrid ? view.plan.contours[y]?.[gx]?.outline ?? null : null;
-    holdStanding(standing, accentTile(tile.featureCore, tile.feature, [p, p, p, p], outline, p, p, p, p, gx, y, 0, haze(tile.biome), view, tile.regionTint));
+    holdStanding(standing, accentTile(tile.featureCore, tile.feature, [p, p, p, p], outline, gx, y, 0, haze(tile.biome), view, tile.regionTint));
   }
   drawRowStanding(view.gfx);
 }
@@ -370,7 +373,7 @@ function drawMarginTile(view: TerrainView, edge: TerrainTile, gx: number, y: num
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
     const kind = edge.kind !== 'path' ? edge.kind : offPathKindOf(edge.biome);
-    drawAccent(g, kind, fill, null, pFL, pFR, pNR, pNL, gx, y, edge.featureCore, edge.feature, depthRatio, rowGround(view, edge.biome, y, depthRatio).haze, view, edge.regionTint);
+    drawAccent(g, kind, fill, null, gx, y, edge.featureCore, edge.feature, depthRatio, rowGround(view, edge.biome, y, depthRatio).haze, view, edge.regionTint);
   }
 }
 
@@ -479,7 +482,7 @@ function drawOffPathTile(
   drawBandBoundary(g, tile.biome, gy, pFL, pFR, pNR, pNL, depthRatio);
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
-    drawAccent(g, tile.kind, fill, contour?.outline ?? null, pFL, pFR, pNR, pNL, gx, gy, tile.featureCore, tile.feature, depthRatio, rowGround(view, tile.biome, gy, depthRatio).haze, view, tile.regionTint);
+    drawAccent(g, tile.kind, fill, contour?.outline ?? null, gx, gy, tile.featureCore, tile.feature, depthRatio, rowGround(view, tile.biome, gy, depthRatio).haze, view, tile.regionTint);
   }
 
   // The impassable side of the contact shadow, over the accent's flat part
@@ -499,10 +502,6 @@ function drawAccent(
   kind: TerrainKind,
   fill: ProjectedPoint[],
   outline: ContourPoint[] | null,
-  pFL: ProjectedPoint,
-  pFR: ProjectedPoint,
-  pNR: ProjectedPoint,
-  pNL: ProjectedPoint,
   gx: number,
   gy: number,
   featureCore: boolean,
@@ -518,7 +517,7 @@ function drawAccent(
   if (kind === 'consuming') return;
   const { flat, standing } = TERRAIN_MATERIALS[kind];
   if (!flat && !standing) return;
-  const tile = accentTile(featureCore, feature, fill, outline, pFL, pFR, pNR, pNL, gx, gy, depth, haze, view, regionTint);
+  const tile = accentTile(featureCore, feature, fill, outline, gx, gy, depth, haze, view, regionTint);
   if (flat) flat(g, tile);
   if (standing) holdStanding(standing, tile);
 }
@@ -549,15 +548,19 @@ function drawRowStanding(g: Phaser.GameObjects.Graphics) {
 // projected outline for a full-tile wash, the tile's centre and depth scale
 // on screen, where it sits on the grid and on the ground plane under the
 // camera, and the clock.
+//
+// The centre is the tile's own centre on the ground, projected with no clamp
+// at the camera's plane (projection.ts's projectStanding), and the scale is
+// the scale there. So a mark drawn about `cx`/`cy` lies on one ground point
+// and leaves the frame by the bottom edge with the ground under it. The mean
+// of the outline's corners would not do: the projection holds every corner
+// behind the plane on the frame's bottom edge, and their mean then moves at
+// under half the ground's speed.
 function accentTile(
   featureCore: boolean,
   feature: TileFeature | null,
   fill: ProjectedPoint[],
   outline: ContourPoint[] | null,
-  pFL: ProjectedPoint,
-  pFR: ProjectedPoint,
-  pNR: ProjectedPoint,
-  pNL: ProjectedPoint,
   gx: number,
   gy: number,
   depth: number,
@@ -565,17 +568,20 @@ function accentTile(
   view: TerrainView,
   regionTint: number | null
 ): AccentTile {
+  const lane = gx - view.camX;
+  const ahead = view.camY - gy;
+  const centre = projectStanding(lane, ahead);
   return {
     featureCore,
     feature,
     fill,
-    cx: (pFL.x + pFR.x + pNR.x + pNL.x) / 4,
-    cy: (pFL.y + pFR.y + pNR.y + pNL.y) / 4,
-    s: pNL.scale,
+    cx: centre.x,
+    cy: centre.y,
+    s: centre.scale,
     gx,
     gy,
-    lane: gx - view.camX,
-    ahead: view.camY - gy,
+    lane,
+    ahead,
     outline,
     depth,
     haze,

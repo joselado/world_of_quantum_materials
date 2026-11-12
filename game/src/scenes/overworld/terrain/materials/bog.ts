@@ -3,7 +3,7 @@ import { blend } from '../../../../art/colors';
 import { LANE_PX } from '../../../../art/perspective';
 import { fillOval, fillPolygon, fillDot } from '../../../../art/shapes';
 import { gridH, TILE_SCALE } from '../../projection';
-import { outOfFrame, standingPoint } from '../standing';
+import { standingAlpha, standingLayer, standingPoint } from '../standing';
 import type { AccentTile } from '../types';
 
 // 'bog' (the Screened Swamp, world 8): the open water punched into the peat
@@ -69,7 +69,7 @@ function smoothstep(from: number, to: number, t: number): number {
 }
 
 export function drawBogAccent(g: Phaser.GameObjects.Graphics, tile: AccentTile) {
-  const { cx, cy, s, gx, gy, depth, haze, detail, now } = tile;
+  const { s, gx, gy, depth, haze, detail, now } = tile;
   if (detail <= 0) return;
   const u = TILE_PX * s;
   const air = depth * 0.8;
@@ -77,10 +77,14 @@ export function drawBogAccent(g: Phaser.GameObjects.Graphics, tile: AccentTile) 
   // A glint lying flat on the surface: without one the water is a matte dark
   // fill and reads as mud rather than as a medium something could sink into.
   // Horizontal, always, because a still water surface has no other direction.
+  // Thrown along the tile, so it lies on a ground point of its own
+  // (standing.ts's standingPoint), held on the tile's own water.
   if (hash(gx, gy, 17) < GLINT_RATE) {
-    const y = cy + (hash(gx, gy, 19) - 0.5) * 0.5 * u;
+    const jy = (hash(gx, gy, 19) - 0.5) * 0.5;
+    const at = standingPoint(tile, 0, jy, 0, jy, 0.3);
+    const w = TILE_PX * at.scale;
     g.lineStyle(1, blend(0x9fb4a6, haze, air), 0.3 * detail);
-    g.lineBetween(cx - 0.3 * u, y, cx + 0.28 * u, y);
+    g.lineBetween(at.x - 0.3 * w, at.y, at.x + 0.28 * w, at.y);
   }
 
   if (hash(gx, gy, 11) < REFLECTION_RATE) drawReflection(g, tile, u, air);
@@ -162,7 +166,7 @@ const REED_SILHOUETTE_DETAIL = 0.45;
 // mist of their whole row, so they stand out of the mist instead of under it.
 // Stalks only -- a reed is a line, and the clump is what reads, so nothing
 // here is tessellated.
-export function drawBogReeds(g: Phaser.GameObjects.Graphics, tile: AccentTile) {
+export function drawBogReeds(ground: Phaser.GameObjects.Graphics, tile: AccentTile) {
   const { gx, gy, depth, haze, detail } = tile;
   if (detail <= 0 || hash(gx, gy, 3) >= REED_RATE) return;
   const air = depth * 0.8;
@@ -179,8 +183,11 @@ export function drawBogReeds(g: Phaser.GameObjects.Graphics, tile: AccentTile) {
   const root = foot.x;
   const base = foot.y;
   const u = TILE_PX * foot.scale;
-  if (outOfFrame(tile, root, 0.5 * u, base - 0.85 * u)) return;
-  g.lineStyle(1.2, blend(0x0d120e, haze, air), 0.85 * detail);
+  // The ground layer, or the layer over the player's crystal for a clump
+  // that stands in front of it.
+  const g = standingLayer(ground, tile, foot, 0.5 * u, base - 0.85 * u);
+  if (!g) return;
+  g.lineStyle(1.2, blend(0x0d120e, haze, air), 0.85 * detail * standingAlpha);
   // The whole clump as one path. Every stalk is the same stroke, and the reeds
   // are the most numerous stroke in the game, so one path per clump rather
   // than one per stalk cuts the stroke calls to a fifth for the same drawing.

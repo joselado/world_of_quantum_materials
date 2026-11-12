@@ -102,9 +102,10 @@ game/src/
         paint.ts               drawTerrain(TerrainView) -- the per-frame projection and painting
                                  of that plan, including the lateral/depth margins, the contact
                                  shadow and the chokepoint glow
-        standing.ts            standingPoint()/outOfFrame() -- the one ground point a standing
-                                 object is placed and sized by, and whether any of the object
-                                 is in the frame
+        standing.ts            standingPoint()/outOfFrame()/standingLayer() -- the one ground
+                                 point a standing object is placed and sized by, whether any
+                                 of it is in the frame, and which layer it is drawn into
+                                 (the ground, or see-through over the player's crystal)
         color.ts               groundColor(), the depth haze every ground fill goes through
         decoration.ts          decorateTile(), the per-biome floor motif, and
                                  GROUND_MOTIFS_ENABLED, the default-off switch that decides
@@ -314,7 +315,9 @@ game/src/
                                  ~100-segment fillCircle; fillPolygon(g, pts) -- a filled
                                  polygon: two triangles for the four-point case, the point
                                  list's own stored triangulation (TriangulatedPoints.tris,
-                                 from triangulate(pts)) where it carries one; fillConvex(g, pts)
+                                 from triangulate(pts)) where it carries one;
+                                 fillPlacedPolygon(g, outline, x, y, scale) -- a stored
+                                 outline filled moved and scaled; fillConvex(g, pts)
                                  -- a convex shape as a fan; roundedRectPoints/fillRoundedRect/
                                  strokeRoundedRect -- a rounded rect at a radius-sized corner
                                  count (see "Ellipse tessellation" and "Filled shapes and the
@@ -2716,12 +2719,17 @@ the last stretch before accents stop being drawn at all, which is what keeps a m
 on a visible line across the middle distance -- most obvious with trees, where the cutoff otherwise
 reads as the wood being mown flat at a fixed range.
 
-**A standing object stands on one ground point.** `cx`/`cy`/`s` are the mean of the tile's corners
-as drawn. That is not a point of the ground: the projection holds every corner behind the camera's
-plane on the frame's bottom edge, so on the row at the player's feet the mean moves at under half
-the ground's speed. An offset from it in screen pixels is also a different distance on the ground
-at every depth, since a tile's width on screen goes as the scale and its depth as the scale
-squared. So everything that rises off a tile is a material's `standing` part and is placed through
+**Everything on a tile lies on a ground point.** `cx`/`cy`/`s` are the tile's own centre on the
+ground, projected with no clamp at the camera's plane (`projection.ts`'s `projectStanding`), and
+the scale there. A flat mark drawn about them (a crack, a light on the water, a scar) therefore
+lies on one point of the ground and leaves the frame by the bottom edge with it. The mean of the
+tile's corners as drawn would not do: the projection holds every corner behind the camera's plane
+on the frame's bottom edge, so on the row at the player's feet that mean moves at under half the
+ground's speed. An offset from the centre in screen pixels is also a different distance on the
+ground at every depth, since a tile's width on screen goes as the scale and its depth as the scale
+squared, so whatever is thrown off the centre (the Screened Swamp's glint, every standing object)
+adds its throw in tiles and projects that point instead.
+Everything that rises off a tile is a material's `standing` part and is placed through
 `terrain/standing.ts`. `AccentTile.lane`/`ahead` give the tile's centre on the ground plane
 relative to the camera, in tiles (the arguments of `projectTile`); `standingPoint(tile, dLane,
 dNear)` adds the object's own offset in tiles (under half a tile either way, so the object stays
@@ -2754,21 +2762,38 @@ since a tree or a column beside the player has its foot below the frame and its 
 The sweep runs `PAST_CAMERA_ROWS` (3) rows behind the player's own for this, which is how long the
 tallest object, a column 2.2 tile-widths high, keeps its capital in view. Each standing draw
 drops its object once none of it is in the frame (`outOfFrame`: below the bottom edge or past
-either side). Something that stands but is placed off `cx`/`cy` slides against the ground on the
-last row and is removed while still in view, so a new standing object belongs in its material's
-`standing` part.
+either side). Something that stands but is drawn in a material's flat part is cut by the
+ground of the tile beside it and is removed with its tile's ground, while still in view, so a new
+standing object belongs in its material's `standing` part.
+
+**In front of the player's crystal.** A tall object whose foot is nearer the camera than the
+crystal's own ground point stands in front of the crystal. `standing.ts`'s `standingLayer(g, tile,
+foot, halfWidth, top)` is what a tall standing draw asks for its layer (the trees, the columns, the
+reeds; rubble, boulders and drums are too low to reach the crystal from behind it and stay on the
+ground). It returns the ground layer, or `TerrainView.front` (`OverworldScene.frontGfx`, a second
+per-frame layer one depth over the avatar, cleared with the ground) for an object that is nearer
+than the crystal while its box crosses the crystal's (`TerrainView.avatar`, null while the crystal
+is not shown), or null for an object with none of it in the frame. It also sets `standingAlpha`,
+which every fill and stroke of the object multiplies its alpha by: 1 on the ground layer, falling
+to 0.4 as the object comes squarely in front of the crystal, so the depth reads right and the
+crystal stays in view. The strength is continuous in how far nearer the foot is and in how far the
+two boxes overlap, and both are zero where the object changes layer, so the change of layer is at
+full strength and only the pixels the object shares with the crystal change hands.
 
 `art/trees.ts` holds the Mean Fields' tree sprite, drawn by that world's `forest` material and
 nowhere else. A wood is an expensive surround to draw -- a tree is three or four fills where most
 materials lay one or two on a tile, and trees are about a fifth of the terrain layer's draw calls
 in World 1 -- so the crown is tiered on the
-tile's own `detail`: the full three-lobe crown while `detail`
-is 1, a single lit cap over the shaded mass once the fade has started, and one trunkless blob below
-`CROWN_SILHOUETTE_DETAIL`. Keying the tiers to `detail` rather than to a distance of the file's own
-is what makes that safe -- `detail` is exactly 1 across the whole range where a tree is drawn at
-full strength, so a crown is only ever simplified once the frame is already dissolving it, and a
-threshold keyed to a tree's *on-screen size*
-instead would snap crowns between tiers as the player walked into them. Trees, columns, boulders and
+tile's own `detail`: the three-lobe crown, filled as one fused outline, down through the fade, and
+one trunkless blob below `CROWN_SILHOUETTE_DETAIL`. A tier switch happens on one frame, so the two
+shapes either side of it have to agree, or a line of crowns jumps at a fixed distance as the player
+walks: the blob is the ellipse filling the lobed crown's own box (`CROWN_BOX`), in the mean of its
+two colours, and the trunk fades out between `TRUNK_FADE_DETAIL` and the switch, which leaves about
+a tenth of the crown's pixels changing, at under half strength. Keying the tier to `detail` rather
+than to a tree's *on-screen size* keeps it moving with the fade. The battle arena's stand, seen
+from one spot, uses `detail` as its distance control: its far rows take a plainer crown on purpose
+(one lit cap over the shaded mass, then a smaller blob), since a far row drawn at the near row's
+fidelity makes a wood look like wallpaper. Trees, columns, boulders and
 reeds stand up off the ground plane; the plane itself stays
 flat everywhere (`STYLE.md`'s "Overworld path"). They get their occlusion free from the sweep
 painting far-to-near, row by row, with no height field and no repaint pass. Adding a material means adding
@@ -2840,7 +2865,9 @@ camera's plane (where `project` clamps depth to zero) takes the triangulator, an
 shadow strip whose offset edges cross at a tight turn -- `triangulate` returns null for any
 polygon that crosses itself or that its triangles do not cover exactly, since only for a simple
 polygon does every triangulation fill the same pixels. `art/trees.ts`'s crown outline carries
-its triangulation the same way, one per point count. A shape that is convex by construction is
+its triangulation the same way, one per point count, and `fillPlacedPolygon(g, outline, x, y,
+scale)` writes those triangles straight from the stored outline, moved and scaled, so a crown
+builds no point list of its own. A shape that is convex by construction is
 a fan (`fillConvex`): every `fillOval`/`fillDot`, and `materials/deadFloor.ts`'s rubble, whose
 outline turns the same way at every lean. All of these apply under WebGL only; a Canvas frame
 fills the shape as a path, since the 2D context has no triangulator to save and antialiases a
@@ -2857,11 +2884,15 @@ across a rect's corners.
 "Overworld terrain rendering" above) at the default depth 0; qumatessence token bodies at 19;
 every other `WorldSprite` body (wild-encounter crystal, guardian, boss, door) at 20; every
 `WorldSprite`'s name label at 22; the player's own crystal container at a fixed 40
-(`this.player.setDepth(40)`); corner HUD text at 50; and every dialogue/panel container at 100.
-Every actor's depth is fixed rather than computed from its position, which is sound because the
-terrain is drawn entirely in the ground plane: `worldGfx` has nothing standing up out of it that
-an actor could be behind, so painting it first and every actor over it is always correct, and no
-actor can ever appear to float in front of terrain it should be occluded by.
+(`PLAYER_DEPTH`); `frontGfx` at 41 (`FRONT_LAYER_DEPTH`); corner HUD text at 50; and every
+dialogue/panel container at 100.
+Every actor's depth is fixed rather than computed from its position: the ground is one plane, and
+every actor stands over it. What a material stands on that plane is drawn into `worldGfx` too,
+under every actor, with one exception. The player's crystal is always at the same place on
+screen, so a tall object that stands nearer the camera than the crystal and crosses it is drawn
+into `frontGfx`, over the crystal and see-through ("In front of the player's crystal" above). The
+other actors keep the simple rule: a wild crystal or a guardian is always over the terrain, also
+over a tree that stands nearer the camera than it does.
 
 ### Epochs
 

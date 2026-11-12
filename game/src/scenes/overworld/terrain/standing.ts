@@ -1,9 +1,10 @@
+import Phaser from 'phaser';
 import type { ContourPoint } from '../../../art/contours';
 import { LANE_PX } from '../../../art/perspective';
 import type { ProjectedPoint } from '../../../art/perspective';
 import { CANVAS_H, CANVAS_W } from '../../../config/screen';
 import { TILE_SCALE, projectStanding } from '../projection';
-import type { AccentTile } from './types';
+import type { AccentTile, AvatarBox } from './types';
 
 // What every material that stands an object on its tile places the object
 // with (materials/index.ts's `standing` draws): the one ground point the
@@ -91,6 +92,57 @@ function inOutline(outline: ContourPoint[], x: number, y: number): boolean {
     if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
   }
   return inside;
+}
+
+// The layer over the player's crystal and the crystal's place on screen, for
+// the frame being painted (paint.ts's drawTerrain sets them).
+let frontLayer: Phaser.GameObjects.Graphics | null = null;
+let avatar: AvatarBox | null = null;
+
+export function setStandingFront(front: Phaser.GameObjects.Graphics | null, box: AvatarBox | null) {
+  frontLayer = front;
+  avatar = box;
+}
+
+// How solid the object standingLayer last placed is to be drawn: every fill
+// and stroke of it multiplies its alpha by this.
+export let standingAlpha = 1;
+// How solid an object is while it stands squarely in front of the crystal.
+const SEE_THROUGH = 0.4;
+// The see-through comes on over these distances, so nothing changes on one
+// frame of walking: how far below the crystal's ground line the object's foot
+// is, which is how much nearer the camera it stands, and how far its box
+// reaches into the crystal's, sideways and from below. All are zero where the
+// object changes layer, so it changes layer at full strength and only the few
+// pixels it shares with the crystal change hands. The reach from below is the
+// longest: an object leaving by the bottom edge drops fastest of all.
+const SEE_THROUGH_NEARER_PX = 30;
+const SEE_THROUGH_SIDE_PX = 16;
+const SEE_THROUGH_BELOW_PX = 48;
+
+// Which layer a tall standing object is drawn into, or null when none of it
+// is in the frame (outOfFrame). The object is centred on its foot's x,
+// reaches `halfWidth` to either side and up to `top`.
+//
+// An object whose foot is nearer the camera than the crystal's own ground
+// point is in front of the crystal. While its box crosses the crystal's it
+// goes into the layer over the crystal, at a strength (`standingAlpha`) that
+// falls to SEE_THROUGH as it comes squarely in front: the depth reads right
+// and the crystal stays in view. Everything else stays on the ground layer,
+// under every actor. Only what is tall enough to reach the crystal from
+// behind it needs this: a column, a tree, a clump of reeds.
+export function standingLayer(g: Phaser.GameObjects.Graphics, tile: AccentTile, foot: ProjectedPoint, halfWidth: number, top: number): Phaser.GameObjects.Graphics | null {
+  standingAlpha = 1;
+  if (outOfFrame(tile, foot.x, halfWidth, top)) return null;
+  if (tile.lane === null || !frontLayer || !avatar) return g;
+  const nearer = foot.y - avatar.ground;
+  if (nearer <= 0) return g;
+  const side = halfWidth + avatar.halfWidth - Math.abs(foot.x - avatar.x);
+  const below = avatar.ground - top;
+  if (side <= 0 || below <= 0) return g;
+  const across = Math.min(1, side / SEE_THROUGH_SIDE_PX, below / SEE_THROUGH_BELOW_PX);
+  standingAlpha = 1 - (1 - SEE_THROUGH) * Math.min(1, nearer / SEE_THROUGH_NEARER_PX) * across;
+  return frontLayer;
 }
 
 // Whether an object centred on `x`, reaching `halfWidth` to either side and
