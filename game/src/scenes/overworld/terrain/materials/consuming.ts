@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { blend } from '../../../../art/colors';
 import { HORIZON_Y, LANE_PX } from '../../../../art/perspective';
-import { fillOval } from '../../../../art/shapes';
+import { fillDot, fillOval } from '../../../../art/shapes';
 import { CAMERA_BACK_TILES, DRAW_DISTANCE_TILES, gridH, gridW, projectTile, TILE_SCALE } from '../../projection';
 import { hazeTarget } from '../../sky';
 import type { AccentTile, TerrainPlan, TerrainView } from '../types';
@@ -707,9 +707,9 @@ export function drawNetDisc(g: Phaser.GameObjects.Graphics, x: number, y: number
       const glow = 0.5 + 0.5 * Math.sin(now / 700 + h * Math.PI * 2);
       const nr = step * (0.13 + 0.1 * h);
       g.fillStyle(nodeC, (0.12 + 0.2 * glow) * alpha);
-      g.fillCircle(p.x, p.y, nr * 2.6);
+      fillDot(g, p.x, p.y, nr * 2.6);
       g.fillStyle(blend(nodeC, SPARK_LIGHT, glow * 0.6), (0.75 + 0.25 * glow) * alpha);
-      g.fillCircle(p.x, p.y, nr);
+      fillDot(g, p.x, p.y, nr);
     }
   }
 }

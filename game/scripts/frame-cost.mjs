@@ -63,6 +63,11 @@
 //                                           for a player: it follows the window
 //                                           on a real GPU and stays at 1 on a
 //                                           software one.
+//   QM_FRAME_THROTTLE=4                      slow the page's CPU by this factor
+//                                           (Chrome's own CPU throttling), to
+//                                           see the frame rate a machine that
+//                                           much slower than this one would
+//                                           hold. The GPU is not slowed.
 // At the default window the display scale is 1 in every mode, so the numbers
 // are the game's cost at its own resolution. What drawing at a monitor's
 // resolution adds is two runs at the same larger window, one with
@@ -85,6 +90,7 @@ const SECS = Number(process.env.QM_FRAME_SECS || 4);
 const JSON_OUT = process.env.QM_FRAME_JSON || null;
 const [VIEW_W, VIEW_H] = (process.env.QM_FRAME_VIEWPORT || '854x480').split('x').map(Number);
 const SCALE = process.env.QM_FRAME_SCALE || null;
+const THROTTLE = Number(process.env.QM_FRAME_THROTTLE || 1);
 const SEED = 12345;
 
 const ALL_SCENES = [
@@ -210,6 +216,10 @@ async function runMode(chromeBin, mode) {
     }, SEED);
     await page.goto(`${URL}?renderer=${MODE_RENDERER[mode]}${SCALE ? `&scale=${SCALE}` : ''}`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.__game && window.__game.scene.getScenes(true).length, { timeout: 60000 });
+    if (THROTTLE > 1) {
+      const cdp = await page.createCDPSession();
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: THROTTLE });
+    }
 
     const renderer = await page.evaluate(() => {
       const r = window.__game.renderer;

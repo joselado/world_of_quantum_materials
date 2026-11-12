@@ -11,6 +11,8 @@
 // since such a panel shows no balance of its own (showBalanceOver): there it
 // rides above the panel on an opaque plate, in its own corner while that
 // corner is clear of what the panel has laid out and in a clear one otherwise.
+// One more label can ride the same way: the overworld's way back to the Lab
+// when it is a touchscreen's only one (PanelChrome's `tapTarget`).
 import Phaser from 'phaser';
 import { CANVAS_W, CANVAS_H } from '../../config/screen';
 
@@ -20,15 +22,15 @@ export const SCRIM_DEPTH = 99;
 export const SCRIM_NAME = 'panelScrim';
 const SCRIM_COLOR = 0x04040a;
 const SCRIM_ALPHA = 0.6;
-const COUNTER_DEPTH = 101;
+const RIDER_DEPTH = 101;
 // The clear band kept between the counter's plate and anything in the panel.
 const COUNTER_CLEARANCE = 4;
-// The counter's plate while it rides above a panel. Over the open world it
-// is a translucent readout; over a panel's border, or over a dimmed label
-// left in a corner of the Lab, a translucent plate lets both read through
-// the digits.
-const COUNTER_PLATE = 'rgba(4,4,10,0.92)';
+// A label's plate while it rides above a panel. Over the open world it is a
+// translucent readout; over a panel's border, or over a dimmed label left in
+// a corner of the Lab, a translucent plate lets both read through the text.
+const RIDER_PLATE = 'rgba(4,4,10,0.92)';
 const SHOWS_BALANCE = 'showsBalance';
+const WORLD_STAYS_LIT = 'worldStaysLit';
 
 // Marks `panel` as one where qumatessence is spent, so the counter stays
 // readable above it. Called by the block every guardian's panel opens with
@@ -36,6 +38,14 @@ const SHOWS_BALANCE = 'showsBalance';
 // a panel that rebuilds itself is marked again by building that block again.
 export function showBalanceOver(panel: Phaser.GameObjects.Container) {
   panel.setData(SHOWS_BALANCE, true);
+}
+
+// Marks `panel` as one that takes no scrim, for a panel whose words are about
+// what lies behind it: the finale is read at the cliff's edge, over the worlds
+// it speaks of. Called on the container before it is assigned to
+// `dialogueContainer`, since that write is where the scrim is decided.
+export function keepWorldLit(panel: Phaser.GameObjects.Container) {
+  panel.setData(WORLD_STAYS_LIT, true);
 }
 
 // Not interactive: what lies under a panel is already inert (each scene
@@ -55,6 +65,9 @@ export function addScrim(scene: Phaser.Scene): Phaser.GameObjects.Rectangle {
 export class PanelChrome {
   private scrim?: Phaser.GameObjects.Rectangle;
   private panel?: Phaser.GameObjects.Container;
+  private covered = false;
+  private readonly tapPlate?: string;
+  private readonly tapDepth: number = 0;
   private readonly homeX: number;
   private readonly homeY: number;
   private readonly homeDepth: number;
@@ -65,16 +78,25 @@ export class PanelChrome {
 
   // `counter` is anchored by its top-right corner (origin 1, 0) in the
   // canvas's top-right; `labels` are the HUD texts that stand on screen
-  // whenever no panel is open.
+  // whenever no panel is open. `tapTarget` is a label that is also the only
+  // way to do what it says (the overworld's "Tap here for the Lab" with the
+  // touch controls up, where no Enter key exists): it stays where it is,
+  // above the panel, for as long as nothing the panel lays out reaches it,
+  // and goes with the other labels otherwise.
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly counter: Phaser.GameObjects.Text,
-    private readonly labels: Phaser.GameObjects.Text[]
+    private readonly labels: Phaser.GameObjects.Text[],
+    private readonly tapTarget?: Phaser.GameObjects.Text
   ) {
     this.homeX = counter.x;
     this.homeY = counter.y;
     this.homeDepth = counter.depth;
     this.homePlate = counter.style.backgroundColor as string;
+    if (tapTarget) {
+      this.tapPlate = tapTarget.style.backgroundColor as string;
+      this.tapDepth = tapTarget.depth;
+    }
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, this.release, this);
   }
 
@@ -86,38 +108,53 @@ export class PanelChrome {
     this.panel = panel;
     if (panel && !wasOpen) this.open(covered);
     else if (!panel && wasOpen) this.close();
+    // On every write, not only the first: one panel can hand over to another
+    // without the screen ever being bare between them, and the two need not
+    // agree on the scrim.
+    if (panel) this.setScrim(!this.covered && !panel.data?.get(WORLD_STAYS_LIT));
+  }
+
+  private setScrim(on: boolean) {
+    if (on === !!this.scrim) return;
+    if (on) this.scrim = addScrim(this.scene);
+    else {
+      this.scrim?.destroy();
+      this.scrim = undefined;
+    }
   }
 
   private open(covered: boolean) {
+    this.covered = covered;
     this.labels.forEach((label) => label.setVisible(false));
-    // Off until a panel that spends is found under it (placeCounter).
+    // Both off until the panel under them has been looked at (place).
     this.counter.setVisible(false);
+    this.tapTarget?.setVisible(false);
     if (covered) return;
-    this.scrim = addScrim(this.scene);
-    this.counter.setDepth(COUNTER_DEPTH).setBackgroundColor(COUNTER_PLATE);
+    this.counter.setDepth(RIDER_DEPTH).setBackgroundColor(RIDER_PLATE);
+    this.tapTarget?.setDepth(RIDER_DEPTH).setBackgroundColor(RIDER_PLATE);
     // After the scene's own update and before the frame is drawn: a panel is
     // filled in after its container is assigned, and most rebuild part of
-    // themselves in place on every row picked, so the counter is placed
+    // themselves in place on every row picked, so the riders are placed
     // against whatever the panel holds at the moment it is drawn.
-    this.scene.events.on(Phaser.Scenes.Events.POST_UPDATE, this.placeCounter, this);
+    this.scene.events.on(Phaser.Scenes.Events.POST_UPDATE, this.place, this);
   }
 
   private close() {
-    this.scene.events.off(Phaser.Scenes.Events.POST_UPDATE, this.placeCounter, this);
-    this.scrim?.destroy();
-    this.scrim = undefined;
+    this.scene.events.off(Phaser.Scenes.Events.POST_UPDATE, this.place, this);
+    this.setScrim(false);
     this.labels.forEach((label) => label.setVisible(true));
     this.counter
       .setVisible(true)
       .setDepth(this.homeDepth)
       .setPosition(this.homeX, this.homeY)
       .setBackgroundColor(this.homePlate);
+    this.tapTarget?.setVisible(true).setDepth(this.tapDepth).setBackgroundColor(this.tapPlate as string);
   }
 
   // A scene left with a panel still open takes every object here down with
   // it; only the listener, which outlives a shutdown, is this class's to drop.
   private release() {
-    this.scene.events.off(Phaser.Scenes.Events.POST_UPDATE, this.placeCounter, this);
+    this.scene.events.off(Phaser.Scenes.Events.POST_UPDATE, this.place, this);
     this.panel = undefined;
     this.scrim = undefined;
   }
@@ -128,17 +165,26 @@ export class PanelChrome {
   // top-left corner is not a candidate: a guardian's portrait stands there,
   // and it is drawn rather than measurable. A panel that leaves none of
   // these clear takes the counter off rather than wearing it across its own
-  // text, and so does a panel nothing is bought in.
-  private placeCounter() {
+  // text, and so does a panel nothing is bought in. The tap target is looked
+  // at first and, where it stays, counts as one more piece the counter has to
+  // keep clear of: both would otherwise want the bottom-right corner under a
+  // tall panel.
+  private place() {
     const panel = this.panel;
     if (!panel || !panel.active) return;
+    this.boxes.length = 0;
+    this.collect(panel);
+    const backdrop = this.largestBox();
+    if (this.tapTarget) {
+      const b = this.tapTarget.getBounds(this.measured);
+      const stays = this.isClear(b.x, b.y, b.width, b.height, backdrop);
+      this.tapTarget.setVisible(stays);
+      if (stays) this.boxes.push(b.x, b.y, b.right, b.bottom);
+    }
     if (!panel.data?.get(SHOWS_BALANCE)) {
       this.counter.setVisible(false);
       return;
     }
-    this.boxes.length = 0;
-    this.collect(panel);
-    const backdrop = this.largestBox();
     const w = this.counter.width;
     const h = this.counter.height;
     const margin = CANVAS_W - this.homeX;

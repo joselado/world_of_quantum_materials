@@ -59,7 +59,11 @@ const URL = process.env.QM_URL || 'http://localhost:5173/';
 // software one, which the game would otherwise pass over for its Canvas
 // renderer (src/main.ts's chooseRenderer), and this script measures the
 // WebGL path players with a GPU get.
-const GAME_URL = `${URL}${URL.includes('?') ? '&' : '?'}renderer=webgl`;
+// And with ?vectors=phaser: the overworld's terrain is then painted into a
+// plain Graphics (src/art/fastGraphics.ts's addFastGraphics), whose methods are
+// the ones counted below. The count is of what the paint pass asks to be
+// drawn, which is the same whichever object carries it to the screen.
+const GAME_URL = `${URL}${URL.includes('?') ? '&' : '?'}renderer=webgl&vectors=phaser`;
 const CANVAS_W = 854;
 const CANVAS_H = 480;
 

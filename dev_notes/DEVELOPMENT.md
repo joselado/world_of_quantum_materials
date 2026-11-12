@@ -811,7 +811,11 @@ Run a subset with `npm run shots -- worlds guardians`. The groups are `title`,
 of them.
 
 Every shot is taken at the game's own 854x480 canvas and driven through the
-scene's own methods rather than by clicking, so it is reproducible. Every group
+scene's own methods rather than by clicking, so it is reproducible. The one
+larger image is `title.png`, the picture at the head of the README: it is
+3416x1920, taken from a page loaded with `?scale=4` at `deviceScaleFactor` 4
+(`TITLE_SCALE` in the script), which is the frame the game's display scale
+draws on a 4K screen and not an enlargement. Every group
 first seeds a mid-run Story Mode save straight into the registry
 (`seedProgress` in the script): materials defeated and discovered, every
 guardian met, tutorial tips consumed, a Kondo buff held, a Franklin passive
@@ -886,9 +890,22 @@ pyftsubset JetBrainsMonoNL-Regular.ttf --flavor=woff2 --output-file=game-regular
 
 and the same for `Italic` and `Bold`. The ranges are wider than the font: it has no
 superscript minus (`⁻`), no `∝`, no `★` or sparkle glyphs, and none of the subscript and
-superscript letters, so those draw from the fallback behind the face, in whatever the
-machine has. A character the game starts using outside the ranges does the same; when the
-font holds it, add its range and rebuild rather than leaving it.
+superscript letters. Those come from a second face, `fonts/symbols-{regular,bold}.woff2`:
+a subset of DejaVu Sans Mono 2.37 (`DejaVuSansMono.ttf` and `DejaVuSansMono-Bold.ttf`, under
+the Bitstream Vera licence in `fonts/DEJAVU-LICENSE.txt`) holding exactly the characters the
+game's text uses and the first face lacks,
+
+```bash
+pyftsubset DejaVuSansMono.ttf --flavor=woff2 --output-file=symbols-regular.woff2 \
+  --layout-features='*' --name-IDs='*' --name-languages='*' --notdef-outline \
+  --unicodes='U+1D62-1D65,U+1DBB,U+2071,U+207B,U+207D-207F,U+208A-208B,U+208D-208E,U+2090-2093,U+2095-209C,U+221D,U+2605,U+2726-2727,U+274B,U+2C7C'
+```
+
+and the same for `Bold`. A character the game starts using that neither face holds still
+draws, from the machine's own fonts and so differently on each one: add it to the range of
+whichever font has it and rebuild rather than leaving it. A character added to the symbols
+face has to stand inside `ASCENT` and `DESCENT` at `SYMBOLS_SIZE_ADJUST`, since a `Text`'s
+canvas is sized from those two numbers and a taller glyph is cut.
 
 `gameFont.ts` holds three numbers that belong to the face and have to be re-derived if the
 face changes: `SIZE_ADJUST` (how much smaller than a style's nominal size it is drawn, since
@@ -974,7 +991,10 @@ come back around 100ms whatever the game is doing — an absolute frame-time
 gate would be flaky and meaningless. Draw-call counts, live object
 counts and tween counts are the same on every machine and catch what actually
 causes lag: an effect that draws per tile with no falloff, or a panel that
-leaks an endless tween per rebuild.
+leaks an endless tween per rebuild. The page is loaded with `?vectors=phaser`,
+so the overworld's terrain is painted into a plain Graphics whose calls can be
+counted: the count is of what the paint pass asks for, which does not depend
+on what carries it to the screen.
 
 Three checks:
 
@@ -1070,6 +1090,63 @@ machine where ANGLE over OpenGL gives no WebGL context (the page fails with
 "Cannot create WebGL context"), `QM_FRAME_GPU_ARGS="--use-angle=vulkan
 --enable-features=Vulkan --enable-gpu --ignore-gpu-blocklist"` reaches the GPU
 through Vulkan.
+
+`QM_FRAME_THROTTLE=4` slows the page's CPU by that factor (Chrome's own
+throttling; the GPU is not slowed), which is how the game is looked at as a
+machine several times slower than the one at hand would run it. The scenes
+that are CPU-bound show there first: the overworld while walking is the one to
+watch, since its terrain is rebuilt on every frame the camera moves. `frame-cost`
+stands still in each scene; the walking measurement is
+`.claude/skills/measure-smoothness/scripts/walk-gaps.mjs`, which holds the up
+arrow through the measured window on the machine's real GPU and prints the
+gaps between shown frames (`THROTTLE=6` for the slowed CPU, `OBJECTS=1` to
+list what each object's own render call costs). The `measure-smoothness` skill
+is the procedure around both.
+
+## Checking the vector layers
+
+Two modules change how vector art reaches the screen without changing the art:
+`src/art/graphicsCache.ts` keeps the triangles of every Graphics and path shape
+that does not change, and `src/art/fastGraphics.ts` is the per-frame layer the
+overworld's terrain is drawn into. Both are meant to give the frame Phaser
+itself would have drawn, and that is checked by drawing one frozen frame both
+ways and comparing the two screenshots pixel by pixel.
+
+- `?vectors=phaser` loads the game with both off: every Graphics and shape
+  renders through Phaser's own renderer, and the terrain is a plain Graphics.
+- In a dev build `window.__vectorCache(false)` turns the cache off in the
+  running page, and `true` back on.
+
+A frame is frozen by pausing the scene's tweens and clock
+(`scene.tweens.pauseAll()`, `scene.time.paused = true`), putting the loop to
+sleep (`game.loop.sleep()`) and stepping it by hand at one fixed time
+(`game.loop.step(t)`), several times over: the cache takes an object's copy
+on the second frame it sees it unchanged, eight objects a frame. Screenshot,
+call `__vectorCache(false)`, step once more at the same time, screenshot
+again. For the terrain layer the second frame is drawn by replacing
+`scene.worldGfx` with `scene.add.graphics()` at the same place in the display
+list before that step. Across the title, the Lab, overworld frames at the
+start, the guardian and the rival of several worlds, an open guardian panel
+and wild and rival battles, at display scales 1 to 3, the terrain layer's
+frames are identical to a plain Graphics's, and the cache's are identical to
+Phaser's except for a single pixel on the edge of a moving object in an
+occasional frame (the title, a rival battle, World 10's far end at 3x). That
+is the size of difference the cache's rounding
+allows: a copy holds an object's vertices as 32-bit floats before the object's
+transform is applied, where Phaser transforms the path first and rounds once,
+so an edge that passes through a pixel's centre can fall on either side of it.
+A difference larger than that is a defect. The one intended difference is `art/shapes.ts`'s `installArcSteps`,
+which gives circle shapes fewer segments than Phaser's hundred: against
+hundred-segment circles a frame differs in about one pixel in ten thousand at
+3x, all of them on circle edges.
+
+`.claude/skills/measure-smoothness/scripts/frozen-ab.mjs` is that comparison
+as a script: it takes scene ids (`title hub ow1 ow2mid ow10goal ow1panel bt1
+bt6r`), swaps every `FastGraphics` a scene holds for a plain Graphics, allows
+two differing pixels a scene, and moves one object by a pixel as a control
+that the comparison can see a change at all. After a change to either module,
+or a Phaser upgrade, run it at `SCALE=2` and `SCALE=3`; a stale tessellation
+shows as a difference at once.
 
 ## Checking arena legibility
 

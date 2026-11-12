@@ -58,7 +58,8 @@ import { getWorldQuestion } from '../data/quiz';
 import type { MaterialQuestion } from '../data/quiz';
 import { hasMath, makeQuestionText, makeFormulaButton } from '../ui/mathtext';
 import { encounterGreeting } from '../data/greetings';
-import { PanelChrome } from './panels/scrim';
+import { PanelChrome, keepWorldLit } from './panels/scrim';
+import { addFastGraphics } from '../art/fastGraphics';
 import { TUTORIAL_TIPS, hasSeenTip, markTipSeen, tipBodyFor } from '../data/tutorial';
 import type { TutorialTipId } from '../data/tutorial';
 import { worldGoalTextFor, FINALE_TITLE, storyBeatFor, finaleBodyFor, afterStoryFor } from '../data/story';
@@ -1085,7 +1086,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.overlookDrawnAt = '';
     this.overlookCoast = null;
     this.overlookZone = this.overlookGfx ? this.makeOverlookZone() : undefined;
-    this.worldGfx = this.add.graphics();
+    // Cleared and painted again on every frame (drawWorld), which is what a
+    // FastGraphics is for.
+    this.worldGfx = addFastGraphics(this);
     this.spawnCrystalSprites();
     this.spawnTokenSprites();
     this.spawnGuardianSprite();
@@ -1185,11 +1188,14 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       .setDepth(50);
     labHint.setInteractive({ useHandCursor: true });
     labHint.on('pointerdown', () => this.returnToHub());
-    // The three labels that stand on screen whenever no panel is open; the
-    // prompts and the far-edge line below come and go with where the player
-    // is standing, and already stand down for a panel in update().
-    hudLabels.push(labHint);
-    this.panelChrome = new PanelChrome(this, this.tokenText, hudLabels);
+    // The labels that stand on screen whenever no panel is open; the prompts
+    // and the far-edge line below come and go with where the player is
+    // standing, and already stand down for a panel in update(). The Lab hint
+    // is one of them at a keyboard, where Enter leaves for the Lab from
+    // inside any panel. On a touchscreen the hint is that Enter key, so there
+    // it stays tappable above a panel wherever the panel leaves it room.
+    if (!touchOn) hudLabels.push(labHint);
+    this.panelChrome = new PanelChrome(this, this.tokenText, hudLabels, touchOn ? labHint : undefined);
     // Interface, not scenery: fixed on screen, sized by the text preset, and
     // sitting low and centred where the pass itself is, so the offer reads as
     // attached to what the player is looking at without being painted into
@@ -1958,7 +1964,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       seed: this.playerMaterial.name,
       hybrid: this.playerMaterial.hybridParents,
     });
-    this.mirrorNet = this.add.graphics().setDepth(MIRROR_GHOST_DEPTH).setVisible(false);
+    // Redrawn on every frame the horizon is in view, a few hundred links and
+    // nodes of it: the per-frame layer (art/fastGraphics.ts).
+    this.mirrorNet = addFastGraphics(this).setDepth(MIRROR_GHOST_DEPTH).setVisible(false);
     this.mirrorNet.setMask(this.mirrorSilhouette.createGeometryMask());
     // The mask source is never on the display list, so the scene's own
     // teardown does not reach it.
@@ -3248,7 +3256,10 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const topPad = 14;
     const bottomPad = 24;
     const bottomMargin = 16;
+    // No scrim under this one: it is read at the cliff's edge, and what it
+    // says is about the worlds lying below, which stay lit behind it.
     const container = this.add.container(0, 0).setDepth(100);
+    keepWorldLit(container);
     this.dialogueContainer = container;
 
     // Capped the same way renderWorldLorePage caps its own multi-paragraph

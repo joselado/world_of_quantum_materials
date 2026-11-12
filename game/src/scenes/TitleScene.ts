@@ -12,6 +12,7 @@ import type { MaterialType } from '../data/types';
 import { fontPx, fontScale } from '../ui/text';
 import { installFullscreenKey } from '../ui/fullscreen';
 import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../ui/theme';
+import { addScrim } from './panels/scrim';
 
 type ShowcaseEntry = { type: MaterialType; size: number; dx: number; dy: number; duration: number; delay: number };
 
@@ -423,12 +424,17 @@ export class TitleScene extends Phaser.Scene {
     const top = 20;
     const container = this.add.container(0, 0).setDepth(200);
     this.eraseConfirm = container;
+    // The same dark layer every other panel in the game stands on
+    // (scenes/panels/scrim.ts), directly under this one.
+    const scrim = addScrim(this).setDepth(199);
     const close = () => {
+      scrim.destroy();
       container.destroy();
       this.eraseConfirm = null;
     };
 
-    let y = top;
+    // The same air above the question as the buttons get below them.
+    let y = top + top;
 
     const text = this.add
       .text(CANVAS_W / 2, y, 'Erase your current save and start over?\nThis cannot be undone.', {

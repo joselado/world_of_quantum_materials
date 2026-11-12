@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import regularUrl from './fonts/game-regular.woff2';
 import italicUrl from './fonts/game-italic.woff2';
 import boldUrl from './fonts/game-bold.woff2';
+import symbolsUrl from './fonts/symbols-regular.woff2';
+import symbolsBoldUrl from './fonts/symbols-bold.woff2';
 
 // The face every word in the game is set in, carried by the game itself.
 //
@@ -18,10 +20,19 @@ import boldUrl from './fonts/game-bold.woff2';
 // game's text can contain -- Latin with its accents, Greek, the super- and
 // subscripts of a chemical formula, arrows, the mathematical operators -- at
 // about 30 kB a style; DEVELOPMENT.md's "The game's typeface" says how the
-// subset is made. A character the face lacks (the sparkle glyphs and the
-// star, the proportional-to sign, the superscript minus of an anion, the
-// subscript and superscript letters) falls through to the rest of the stack
-// and is drawn by whatever the machine has behind it.
+// subset is made.
+//
+// The characters of the game's text that face lacks (the sparkle glyphs and
+// the star, the proportional-to sign, the superscript minus of an anion, the
+// subscript and superscript letters) are carried too, in a second face that
+// stands behind the first in the stack: a subset of DejaVu Sans Mono 2.37
+// holding exactly those characters, regular and bold (fonts/
+// DEJAVU-LICENSE.txt). It is drawn at SYMBOLS_SIZE_ADJUST, the size at which
+// its advance equals the first face's, so a column padded with spaces stays
+// a column whichever face a character came from; at that size every glyph in
+// it stands inside ASCENT and DESCENT. It is registered under a name of the
+// game's own, not as DejaVu Sans Mono, which ui/mathtext.ts's formula stack
+// asks for by name and has to keep getting from the machine.
 //
 // It stays a monospace on purpose: panels pad columns with spaces and
 // measure wraps by the character, and the advance is the same 0.6 em
@@ -44,6 +55,10 @@ import boldUrl from './fonts/game-bold.woff2';
 // for), so a panel that fits here fits everywhere.
 const FACE = 'WQM Mono';
 const SIZE_ADJUST = 0.88;
+const SYMBOLS_FACE = 'WQM Symbols';
+// The first face advances 0.6 em and DejaVu Sans Mono 0.602 em: this is
+// SIZE_ADJUST * 0.6 / 0.602.
+const SYMBOLS_SIZE_ADJUST = 0.877;
 // How far the face's ASCII reaches above and below the baseline once
 // adjusted: brackets and the bar are its tallest characters (0.87 em of the
 // face), `g`/`y`/`|` its lowest (0.18 em).
@@ -52,9 +67,9 @@ const DESCENT = 0.16;
 
 // The family a Text gets when its style names none, and the one ui/mathtext.ts
 // sets the prose around a formula in so the two are the same face. Courier
-// stays behind it for the characters the face lacks, and for a browser that
-// could not load it at all.
-export const GAME_FONT_FAMILY = `"${FACE}", Courier, monospace`;
+// stays behind the two bundled faces for a character neither holds, and for
+// a browser that could not load them at all.
+export const GAME_FONT_FAMILY = `"${FACE}", "${SYMBOLS_FACE}", Courier, monospace`;
 
 let loaded = false;
 
@@ -78,6 +93,19 @@ export async function loadGameFont(): Promise<void> {
     loaded = true;
   } catch {
     loaded = false;
+  }
+  // The symbols are on their own: without them the few characters they hold
+  // come from the machine's fonts, and nothing about the first face changes.
+  const symbol = (url: string, weight: string) =>
+    new FontFace(SYMBOLS_FACE, `url(${url}) format('woff2')`, { weight, sizeAdjust: `${SYMBOLS_SIZE_ADJUST * 100}%` } as FontFaceDescriptors);
+  const symbols = [symbol(symbolsUrl, '400'), symbol(symbolsBoldUrl, '700')];
+  try {
+    const all = Promise.all(symbols.map((f) => f.load()));
+    const late = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('font load timed out')), 4000));
+    await Promise.race([all, late]);
+    for (const f of symbols) document.fonts.add(f);
+  } catch {
+    // Left to the fallback.
   }
 }
 

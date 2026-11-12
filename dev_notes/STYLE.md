@@ -91,9 +91,12 @@ What this means in practice:
   computed once when a scene or panel is built costs almost nothing; the same
   effect recomputed every frame is what ends up being cut.
 - **Know what a Phaser draw call costs before reaching for it.** Phaser
-  re-tessellates a Graphics object's whole command list on every frame it
-  renders, and four of its convenience calls carry a price their signature
-  does not show:
+  tessellates a Graphics object's whole command list when it renders it. Under
+  WebGL the game keeps the result for as long as the object does not change
+  (`art/graphicsCache.ts`), so these prices are paid once for a sprite and on
+  every frame for anything redrawn every frame, and in both cases they decide
+  how many vertices are carried each frame afterwards. Four of Phaser's
+  convenience calls carry a price their signature does not show:
   - **A filled path runs through a general polygon triangulator**, so a shape
     whose triangles are already known should say so. `art/shapes.ts`'s
     `fillPolygon` fills a four-point convex shape (every projected tile) as two
@@ -114,15 +117,31 @@ What this means in practice:
     `fillEllipse` takes 32 segments at any size, so a filled ellipse is
     `fillOval`, and `strokeEllipse` takes `ellipseSteps` as its `smoothness`.
   - **`fillRoundedRect`/`strokeRoundedRect` build each corner from that same
-    hundred-point arc**, and a `circle` shape takes a hundred points too. A
-    live rounded rect goes through `art/shapes.ts`'s `fillRoundedRect`/
-    `strokeRoundedRect`, and a live circle shape sets its iterations from
-    `ellipseSteps`. Two nameplates drawn at Phaser's count cost a battle as
-    much render time as everything else on its screen together.
-- **A Graphics drawn once is still paid for on every frame.** The
-  re-tessellation above does not care whether the command list ever changes,
-  and on a machine without a GPU every stacked translucent layer is also
-  filled again in software. Art that is painted once and then left alone is
+    hundred-point arc.** A live rounded rect goes through `art/shapes.ts`'s
+    `fillRoundedRect`/`strokeRoundedRect`. Two nameplates drawn at Phaser's
+    count cost a battle as much render time as everything else on its screen
+    together. A `circle` shape is a hundred points in Phaser as well; here it
+    takes its count from its radius without being asked (`installArcSteps`:
+    the fewest segments within `0.05` px of the true circle), and a shape that
+    sets its own with `setIterations` keeps it. An `arc` that is stroked is a
+    hundred points too, however short it is: a ring broken into dashes goes
+    through `strokeArc`, which gives each dash the two or three segments its
+    length needs. Noether's avatar, a hundred and twenty such dashes a cell,
+    is a quarter of a million vertices at Phaser's count, more than
+    everything else in the Lab together, and a few thousand this way.
+- **Art that is drawn again every frame goes through a `FastGraphics`.** The
+  overworld's terrain is cleared and repainted on every frame the camera
+  moves, three to seven thousand triangles of it, and a plain Graphics would
+  tessellate all of it a second time at render. `art/fastGraphics.ts`'s
+  `addFastGraphics` gives a Graphics whose calls write their triangles
+  directly, and whose frame is one copy. World 10's reflection in the event
+  horizon, a net of links and nodes that sways on every frame, is drawn the
+  same way. A new per-frame layer of any size uses it.
+- **A large stack drawn once is still filled on every frame.** Keeping an
+  object's triangles does not make its pixels free: every stacked translucent
+  layer is blended again each frame, and on a machine without a GPU it is
+  filled again in software, where the Canvas renderer also re-walks every
+  path. Art that is painted once and then left alone is
   baked (`art/bake.ts`'s `bakeLayers`): flattened into one texture by the same
   renderer, supersampled to stand in for the canvas's antialiasing, and shown
   as a single image in the layers' own place. The battle backdrop, the Lab
@@ -188,7 +207,10 @@ under one figure reads as floating even when neither is wrong on its own.
 ## Typeface and label plates (`ui/gameFont.ts`, `ui/plates.ts`)
 
 - One face for every word: JetBrains Mono NL, shipped with the game in regular, italic and
-  bold, so a label has the same glyphs, width and line height on every machine. No style
+  bold, so a label has the same glyphs, width and line height on every machine. The few
+  characters it lacks (`⁻`, `∝`, `★`, the sparkle glyphs, the subscript and superscript
+  letters) ship as well, in a small second file cut from DejaVu Sans Mono and drawn at the
+  same advance, so they too are the same on every machine and keep a padded column straight. No style
   names a family; a new `Text` gets the game's face by leaving `fontFamily` out. It is a
   monospace on purpose (panels align columns with spaces) and the cut without ligatures, so
   `->` and `!=` stay the characters that were typed.
@@ -1415,11 +1437,19 @@ station motifs are deliberately not tunnels with a visible far end.
   dimmed by it. One layer, never two: a panel that replaces another hands the same dimming on,
   and the story beat between worlds, which opens over the pass crossing's own fade, takes none.
   It appears and goes with the panel, without a fade of its own, because one panel closing is
-  as often another opening in the same frame.
+  as often another opening in the same frame. The title screen's erase-save confirm takes the
+  same layer at depth `199`, under its own `200`. The one panel that takes none is the finale
+  at World 10's cliff: its words are about the worlds lying below, so they stay lit behind it
+  (`keepWorldLit`); the map menu it leads to covers the canvas and takes the layer again.
 - The HUD is off while a panel is up. In the overworld that is the world's name, the epoch
   line under it and the Lab hint in the bottom-right corner (the pass and guardian prompts and
   the far-edge line already stand down for a panel); in the Lab it is the room's name and the
-  line under it. These are placed for the open screen, and a panel opens across them. What
+  line under it. These are placed for the open screen, and a panel opens across them. With
+  the touch controls up the Lab hint is the exception: it reads "Tap here for the Lab" and is
+  the only way to leave for the Lab from inside a panel, where a keyboard has Enter. There
+  it stays in its corner above the panel, on the same opaque plate the counter rides on,
+  for as long as nothing the panel lays out comes within `4` px of it, and is hidden under a
+  panel that does. What
   belongs to the place itself stays and is dimmed with it: the world, its sprites and their
   name labels, the Lab's stations and its guardian gallery.
 - The qumatessence counter goes with the rest of the HUD over a panel that is only read: a

@@ -1600,9 +1600,9 @@ function modernScore(key: string): Score | undefined {
   return derived;
 }
 
-// A track's notes must sum to exactly its score's loopBeats -- scheduleLoop
+// A track's notes must sum to exactly its score's loopBeats -- the scheduler
 // advances its own audio-clock cursor by exactly loopBeats*secPerBeat each
-// iteration (see MusicEngine.play), so a mismatch isn't cumulative drift,
+// pass through the loop (see MusicEngine.play), so a mismatch isn't cumulative drift,
 // it's a voice that cuts out early or overlaps itself at every loop seam.
 // Checked over every authored score at module load, and over each derived
 // Modern arrangement as it is built, since this is the one class of bug that
@@ -1621,6 +1621,16 @@ for (const [key, score] of Object.entries(SCORES)) assertLoopBeats(key, score);
 // Fades between the previous track's session gain and a new one instead of
 // hard-cutting, so a long pad note doesn't ring on top of the next scene's
 // track and switching tracks never clicks.
+// How far ahead of the audio clock the live engine schedules notes, and how
+// often it tops that up. The gap between the two is what a late timer has to
+// eat before a note is missed. Two things make a timer late: a browser holds
+// the timers of a tab in the background to one a second, and a scene being
+// built blocks the main thread, for about a second on a machine a sixth as
+// fast as a current laptop. This clears both with a second to spare, and
+// still keeps the graph to a few seconds of notes.
+const SCHEDULE_AHEAD_S = 2.5;
+const SCHEDULE_TICK_MS = 250;
+
 class MusicEngine {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -1828,40 +1838,52 @@ class MusicEngine {
 
     const secPerBeat = 60 / score.bpm;
     const loopBeatsSeconds = score.loopBeats * secPerBeat;
-    const loopMs = loopBeatsSeconds * 1000;
     const token = ++this.stopToken;
 
-    // nextLoopAt is this session's own audio-clock cursor, advanced by
-    // exactly one loop's duration each time a batch is scheduled -- not
-    // recomputed from ctx.currentTime on every call. ctx.currentTime stays
-    // frozen while the AudioContext is suspended (e.g. before the page's
-    // first user gesture) even though window.setTimeout keeps firing on its
-    // own wall-clock schedule regardless, so a cursor read fresh from
-    // ctx.currentTime each iteration would schedule a duplicate copy of the
-    // whole score at the same stale audio time on every re-arm. The three
-    // branches below are a standard lookahead scheduler: if the audio clock
-    // hasn't reached the cursor yet, wait and recheck rather than schedule;
-    // if the cursor has fallen behind the audio clock (a throttled
-    // background tab's timer firing late), resync it forward first so a
-    // catch-up doesn't dump every missed loop's notes at once with
-    // start times in the past; otherwise schedule at the cursor and advance
-    // it by exactly one loop.
-    let nextLoopAt = ctx.currentTime + 0.05;
-    const scheduleLoop = () => {
+    // Notes are handed to the audio graph a little ahead of when they sound,
+    // never a whole loop at a time. A scheduled note is a handful of live
+    // nodes (an oscillator, its envelope, often a waveshaper) from the moment
+    // it is created until it has finished sounding, and the audio thread
+    // processes every live node on every block whether it is sounding yet or
+    // not: a battle loop scheduled in one go is about two thousand of them,
+    // which costs the audio thread half a core, and creating them stalls the
+    // frame the battle starts on. Scheduled SCHEDULE_AHEAD_S ahead, the graph
+    // holds the few dozen notes that are sounding or about to.
+    //
+    // `loopStart` is the audio-clock time the loop being scheduled began at,
+    // and `scheduledTo` the time up to which its notes have been handed
+    // over. Both are this session's own cursors, advanced by what was
+    // scheduled, not re-read from ctx.currentTime: that clock stays frozen
+    // while the AudioContext is suspended (before the page's first user
+    // gesture) although the timer keeps firing, so a cursor read fresh from
+    // it would hand the same notes over again on every tick. While it is
+    // frozen the horizon does not move and a tick schedules nothing. A timer
+    // that fired late enough for the clock to pass the cursor (a throttled
+    // background tab) drops what it missed and carries on from the present,
+    // still on the loop's own beat, rather than dumping the missed notes at
+    // once with start times in the past.
+    let loopStart = ctx.currentTime + 0.05;
+    let scheduledTo = loopStart;
+    const scheduleAhead = () => {
       if (token !== this.stopToken) return;
-      if (ctx.currentTime + 0.2 < nextLoopAt) {
-        this.timer = window.setTimeout(scheduleLoop, 200);
-        return;
+      const now = ctx.currentTime;
+      if (scheduledTo < now) {
+        scheduledTo = now + 0.05;
+        while (loopStart + loopBeatsSeconds <= scheduledTo) loopStart += loopBeatsSeconds;
       }
-      if (nextLoopAt < ctx.currentTime + 0.05) nextLoopAt = ctx.currentTime + 0.05;
-      const startAt = nextLoopAt;
-      for (const track of score.tracks) {
-        this.scheduleTrack(ctx, track, startAt, secPerBeat, sessionGain, ambience);
+      const horizon = now + SCHEDULE_AHEAD_S;
+      while (scheduledTo < horizon) {
+        const loopEnd = loopStart + loopBeatsSeconds;
+        const to = Math.min(horizon, loopEnd);
+        for (const track of score.tracks) {
+          this.scheduleTrack(ctx, track, loopStart, secPerBeat, sessionGain, ambience, scheduledTo, to);
+        }
+        scheduledTo = to;
+        if (to === loopEnd) loopStart = loopEnd;
       }
-      nextLoopAt += loopBeatsSeconds;
-      this.timer = window.setTimeout(scheduleLoop, loopMs);
+      this.timer = window.setTimeout(scheduleAhead, SCHEDULE_TICK_MS);
     };
-    scheduleLoop();
+    scheduleAhead();
   }
 
   // The mix play() makes, rendered instead of played: `seconds` of the score
@@ -1954,13 +1976,27 @@ class MusicEngine {
     return { ctx, dest: this.master!, noiseBuffer: this.getNoiseBuffer(ctx), driveCurve: this.getDriveCurve() };
   }
 
-  private scheduleTrack(ctx: BaseAudioContext, track: Track, startAt: number, secPerBeat: number, dest: GainNode, ambience: GainNode) {
+  // Schedules the notes of one pass through `track`, the pass that begins at
+  // `startAt`, whose own start time falls in [from, to). A note's time is the
+  // running sum of the durations before it, the same sum whichever window it
+  // is scheduled from, so a loop handed over in slices lands on exactly the
+  // times it would land on handed over whole.
+  private scheduleTrack(
+    ctx: BaseAudioContext,
+    track: Track,
+    startAt: number,
+    secPerBeat: number,
+    dest: GainNode,
+    ambience: GainNode,
+    from = -Infinity,
+    to = Infinity
+  ) {
     let t = startAt;
     if (track.kind === 'tone') {
       const envelope = { attack: track.attack, release: track.release, wet: track.wet };
       for (const note of track.notes) {
         const dur = note.beats * secPerBeat;
-        if (note.midi !== null) {
+        if (note.midi !== null && t >= from && t < to) {
           if (track.unison) {
             const spread = track.unisonSpread ?? 7;
             this.scheduleTone(ctx, track.wave, track.gain * 0.6, note.midi, t, dur, dest, -spread, !!track.drive, envelope, ambience);
@@ -1974,25 +2010,25 @@ class MusicEngine {
     } else if (track.kind === 'kick') {
       for (const note of track.notes) {
         const dur = note.beats * secPerBeat;
-        if (note.hit) this.scheduleKick(ctx, track.gain, t, dest);
+        if (note.hit && t >= from && t < to) this.scheduleKick(ctx, track.gain, t, dest);
         t += dur;
       }
     } else if (track.kind === 'snare') {
       for (const note of track.notes) {
         const dur = note.beats * secPerBeat;
-        if (note.hit) this.scheduleSnare(ctx, track.gain, t, dest);
+        if (note.hit && t >= from && t < to) this.scheduleSnare(ctx, track.gain, t, dest);
         t += dur;
       }
     } else if (track.kind === 'crash') {
       for (const note of track.notes) {
         const dur = note.beats * secPerBeat;
-        if (note.hit) this.scheduleCrash(ctx, track.gain, t, dest);
+        if (note.hit && t >= from && t < to) this.scheduleCrash(ctx, track.gain, t, dest);
         t += dur;
       }
     } else {
       for (const note of track.notes) {
         const dur = note.beats * secPerBeat;
-        if (note.hit) this.scheduleHat(ctx, track.gain, t, dest);
+        if (note.hit && t >= from && t < to) this.scheduleHat(ctx, track.gain, t, dest);
         t += dur;
       }
     }

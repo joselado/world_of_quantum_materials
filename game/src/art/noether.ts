@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { shade } from './colors';
+import { strokeArc } from './shapes';
 import { GOLD_ACCENT } from '../ui/theme';
 
 // Noether's own avatar -- world 1's guardian (Noether's theorem: every
@@ -90,9 +91,7 @@ export function makeNoetherAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameOb
       const per = segs / cycles;
       const seg = (i: number, w: number, color: number, alpha: number) => {
         g.lineStyle(w, color, alpha);
-        g.beginPath();
-        g.arc(0, 0, r, spin * i * step, spin * (i * step + step * 0.88), spin < 0);
-        g.strokePath();
+        strokeArc(g, 0, 0, r, spin * i * step, spin * (i * step + step * 0.88), spin < 0);
       };
       for (let i = 0; i < segs; i++) {
         const t = (i % per) / (per - 1);

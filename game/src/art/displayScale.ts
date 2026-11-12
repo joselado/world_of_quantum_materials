@@ -57,7 +57,14 @@ import { liftScratchTexelBudget, setBakeOutputScale } from './bake';
 // around the one it cannot. Frames that are as slow at 1 say it was not (a
 // display refreshing at 30 Hz, a browser's energy saver holding the page to
 // 30 frames a second, a CPU that is the limit): the scale goes back to the
-// display's and is left alone for the session.
+// display's and is left alone in that scene for the rest of the session. The
+// verdict is the scene's, not the session's: what makes the overworld slow
+// says nothing about a battle, so a scene not yet judged is watched afresh,
+// and one already judged is not tried again, since each change of scale
+// re-rasterizes every Text and a trial on every return to the overworld
+// would be two stalls each time on exactly the machines that are slow. A
+// trial the player walks out of, into another scene, is dropped without a
+// verdict: its frames would be the new scene's.
 export const MAX_DISPLAY_SCALE = 3;
 
 // Frames slower than this on average, over GOVERNOR_FRAMES frames, are slow.
@@ -130,6 +137,12 @@ export function followDisplayScale(game: Phaser.Game, options: DisplayScaleOptio
     // is, 'off' once slow frames have turned out not to be the scale's doing.
     let governor: 'watch' | 'trial' | 'off' = 'watch';
     let slowAt = 1;
+    // The ceiling a trial started from, put back when the trial clears the
+    // scale or is dropped.
+    let held = ceiling;
+    let watched: Phaser.Scene | null = null;
+    // The scenes whose slow frames were not the scale's doing.
+    const cleared = new Set<Phaser.Scene | null>();
     let candidate = '';
     let candidateSince = 0;
     let frames = 0;
@@ -155,6 +168,14 @@ export function followDisplayScale(game: Phaser.Game, options: DisplayScaleOptio
 
       const dt = now - last;
       last = now;
+      const running = runningScene(game);
+      if (running !== watched) {
+        watched = running;
+        if (governor === 'trial') ceiling = held;
+        governor = cleared.has(running) ? 'off' : 'watch';
+        frames = 0;
+        frameMs = 0;
+      }
       if (governor === 'off' || dt > STALL_MS) return;
       if (governor === 'watch' && scaleY <= 1) return;
       if (governor === 'trial' && scaleY > 1) return;
@@ -167,11 +188,13 @@ export function followDisplayScale(game: Phaser.Game, options: DisplayScaleOptio
       if (governor === 'watch') {
         if (!slow) return;
         slowAt = wholeScale();
+        held = ceiling;
         ceiling = 1;
         governor = 'trial';
       } else if (slow) {
-        ceiling = MAX_DISPLAY_SCALE;
+        ceiling = held;
         governor = 'off';
+        cleared.add(watched);
       } else {
         ceiling = Math.max(1, slowAt - 1);
         governor = 'watch';
@@ -180,6 +203,15 @@ export function followDisplayScale(game: Phaser.Game, options: DisplayScaleOptio
   };
   if (game.isBooted) start();
   else game.events.once(Phaser.Core.Events.BOOT, start);
+}
+
+// The scene the player is in: the first one running, without building a list
+// of them on every frame.
+function runningScene(game: Phaser.Game): Phaser.Scene | null {
+  for (const scene of game.scene.scenes) {
+    if (scene.sys.settings.status === Phaser.Scenes.RUNNING) return scene;
+  }
+  return null;
 }
 
 // The drawing buffer at which one drawn pixel is one device pixel: the size

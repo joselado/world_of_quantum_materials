@@ -11,7 +11,8 @@ stale, fix it rather than leaving it wrong.
 
 ```
 game/src/
-  main.ts                    Phaser game config, scene list, boot order; installCanvasRenderer()
+  main.ts                    Phaser game config, scene list, boot order; installCanvasRenderer(),
+                               the vector installs (graphicsCache, shapes.ts's arc steps)
                                and the Text installs (crispText, displayScale, gameFont, plates)
                                before the game exists; chooseRenderer() -- Canvas when the only
                                WebGL is a software rasterizer, ?renderer=webgl|canvas to pin one;
@@ -309,7 +310,22 @@ game/src/
                                  -- a convex shape as a fan; roundedRectPoints/fillRoundedRect/
                                  strokeRoundedRect -- a rounded rect at a radius-sized corner
                                  count (see "Ellipse tessellation" and "Filled shapes and the
-                                 triangulator" below)
+                                 triangulator" below); installArcSteps() -- every circle shape
+                                 (`scene.add.circle`) tessellated to its radius, within 0.05 px
+                                 of the true circle, in place of Phaser's fixed hundred
+                                 segments; strokeArc(g, x, y, r, start, end, anticlockwise) --
+                                 a stroked arc as a polyline at the same error bound, where
+                                 Phaser's `arc` is a hundred points however short the arc is
+    fastGraphics.ts            addFastGraphics(scene)/FastGraphics -- a Graphics for art that
+                                 is cleared and drawn again every frame (the overworld's
+                                 terrain, World 10's reflection): each drawing call writes finished triangles into a
+                                 vertex array, with Phaser's own tessellation, and a frame is
+                                 one block copy into the batch (see "Vectors are tessellated
+                                 once" below)
+    graphicsCache.ts           installGraphicsCache() -- every other Graphics and every path
+                                 shape (Arc, Ellipse, Polygon, Star, Triangle, Curve) keeps
+                                 the triangles Phaser made for it for as long as it does not
+                                 change, and renders by carrying them through its matrix
     bake.ts                    bakeLayers(scene, key, layers, region) -- flattens painted-once
                                  Graphics into one DynamicTexture (painted at BAKE_SUPERSAMPLE and
                                  averaged down to 1:1, even-sized, on a whole pixel) shown by one
@@ -681,6 +697,13 @@ game/src/
                                   picks the table + restarts the current track,
                                   makeBattleScore() generates worlds 2-10's battle themes
                                   (classic world 1 is hand-written), duck() for attack beats.
+                                  play() hands notes to the audio graph SCHEDULE_AHEAD_S ahead
+                                  of the audio clock, topped up every SCHEDULE_TICK_MS, never a
+                                  whole loop at once: a scheduled note is live nodes on the
+                                  audio thread until it has sounded, and a battle loop in one
+                                  go is about two thousand of them. scheduleTrack takes the
+                                  window of start times to schedule, and a note's time is the
+                                  same running sum whichever window it falls in.
                                   renderScore(which, style, seconds) renders a score offline
                                   into an AudioBuffer through the same master bus, ambience
                                   bus and schedulers play() uses (every loop scheduled up
@@ -958,8 +981,10 @@ game/src/
                                    monospace face the game ships (fonts/game-*.woff2, a subset of
                                    JetBrains Mono NL under fonts/OFL.txt), made the default family
                                    of every Text, with its ascent and descent computed from the
-                                   face instead of measured (see "One typeface, carried by the
-                                   game" below)
+                                   face instead of measured, and behind it the few characters it
+                                   lacks (fonts/symbols-*.woff2, a subset of DejaVu Sans Mono
+                                   under fonts/DEJAVU-LICENSE.txt; see "One typeface, carried by
+                                   the game" below)
     plates.ts                     installTextPlates()/PLATE_RADIUS -- the background plate of
                                    every Text (a button, a HUD readout, a list row) filled with
                                    rounded corners where Phaser draws it
@@ -1183,7 +1208,14 @@ everything else by absence, so only two things in it carry meaning.
   frame, so the screen under it looks the same from one frame to the next. So a new panel gets the scrim by doing
   what every panel already does (assign `scene.dialogueContainer`, close through
   `closeDialogue`/`destroyPanel`), and a new HUD label that stands on screen all the time
-  joins the list its scene passes to `new PanelChrome(...)` in `create()`. `dialogueContainer`
+  joins the list its scene passes to `new PanelChrome(...)` in `create()`. Two marks set on a
+  panel's container change what the screen does under it: `keepWorldLit(container)`, set
+  before the container is assigned, leaves the scrim off (the finale, read over the worlds it
+  speaks of), and `sync` reconciles the scrim against it on every write, so two panels that
+  hand over to each other need not agree. `PanelChrome`'s optional fourth argument is a label
+  that is also a tap target with no key behind it (the overworld's Lab hint with the touch
+  controls up): it stays above the panel while its own box is clear of what the panel lays
+  out, and its box then counts as taken when the counter looks for a corner. `dialogueContainer`
   rather than `dialogueActive` is the signal because `dialogueActive` is the overworld's wider
   movement lock (the pass crossing holds it with no panel up) and the Lab's panels do not all
   set it. While a marked panel is open the counter is placed every frame (the scene's `postupdate`
@@ -1335,8 +1367,35 @@ everything else by absence, so only two things in it carry meaning.
   first wild *encounter*, feeds the Hub's Qumatex) and `defeatedMaterials`
   (`BattleScene.endBattle`, written on an ordinary wild *win*, feeds Dresselhaus's transmutation
   panel). Don't conflate them -- a material can be encountered without being defeated.
-- **Painted-once art is baked.** A Graphics object is re-tessellated on every frame it renders,
-  whether or not its commands ever change, so art drawn once and then left alone goes through
+- **Vectors are tessellated once.** Phaser turns a Graphics' command list into triangles
+  again on every frame it renders, and pushes a shape object's triangles into the batch one
+  call at a time. Under WebGL the game does neither. `art/graphicsCache.ts`
+  (`installGraphicsCache()`, in `main.ts`) wraps the WebGL renderer of `Graphics` and of the
+  path shapes: an object renders through Phaser on the first frame of a given state, and if
+  the state is unchanged on the next, Phaser's renderer is run once with the object's transform
+  set aside and its vertices are copied out of the batch rather than drawn. From then on a
+  frame is those vertices through the object's current matrix. The state is the command list
+  for a Graphics (its length, and a count of `clear` calls) and the path, colours, line width
+  and origin for a shape; alpha is part of it, so the copy is retaken once an object settles
+  at a new alpha and scaled while it fades. An object that changes every frame never gets a
+  copy, and neither does one filled from a texture or one of more than 262144 vertices
+  (`MAX_KEPT_VERTICES`); art larger than one batch is taken a batch at a time. So a new sprite is built from Graphics and shapes as before and costs a matrix
+  multiply a vertex; what still matters is how many vertices it has, and that anything redrawn
+  every frame is tessellated every frame. For that case there is `art/fastGraphics.ts`:
+  `addFastGraphics(scene)` returns a Graphics whose drawing calls write their triangles
+  directly, with no command list, and whose frame is one block copy. `OverworldScene.worldGfx`
+  (the terrain, three to seven thousand triangles a frame) is one, and `mirrorNet` (World 10's
+  reflection in the event horizon, a few hundred links and nodes redrawn on every frame the
+  disc is in view) is another. It supports the path, fill
+  and stroke calls and refuses the transform stack, `lineGradientStyle` and `strokeTriangle`
+  in a dev build. Both follow Phaser's own tessellation exactly, and both stand down under
+  the Canvas renderer, which fills paths natively. `?vectors=phaser` loads the game with
+  both off, and `window.__vectorCache(false)` turns the cache off in a running dev build:
+  the reference a frozen frame is compared against (DEVELOPMENT.md's "Checking the vector
+  layers").
+- **Painted-once art is baked.** Tessellated once or not, a stack of large translucent
+  layers is still filled again on every frame,
+  so art drawn once and then left alone goes through
   `art/bake.ts`'s `bakeLayers` once it is finished: `BattleScene.drawRealisticBackdrop` bakes
   everything from the sky through the last horizon veil (`BACKDROP_TEXTURE`),
   `HubScene.drawRoom` bakes the room's structure (`lab-room`), and `HubScene.addStationRow`
@@ -1381,8 +1440,11 @@ everything else by absence, so only two things in it carry meaning.
   the display on a software WebGL too. A machine whose frames run slow is
   first tried at scale 1 for a few seconds: if they are quick there, the scale was the cost,
   and its ceiling drops to the whole scale below the slow one for the session (and can drop
-  again); if they are as slow at 1 (a 30 Hz display, a browser's energy saver), the scale
-  goes back to the display's and is left alone. Anything new that paints its own
+  again); if they are as slow at 1 (a 30 Hz display, a browser's energy saver, a CPU that is
+  the limit), the scale goes back to the display's and is left alone in that scene for the
+  rest of the session: a scene not yet judged is watched afresh, one already judged is not tried
+  again (each change of scale re-rasterizes every `Text`), and a trial the player leaves for
+  another scene is dropped without a verdict. Anything new that paints its own
   raster (a canvas texture, a render texture) reads `displayScale()` for how many texels a
   game pixel needs; `art/fxTextures.ts`'s soft particle textures are the one deliberate
   exception, having no edge to sharpen. None of the check scripts reaches a scale above 1
@@ -1391,11 +1453,16 @@ everything else by absence, so only two things in it carry meaning.
   context driven through a running battle.
 - **One typeface, carried by the game.** No text style in the game names a font family.
   `ui/gameFont.ts`'s `installGameFont()` gives every `Text` created without one
-  `GAME_FONT_FAMILY`: the bundled face first, then `Courier` and `monospace` for the characters
-  it lacks (the sparkle glyphs and the star, `∝`, the superscript minus of an anion, the
-  subscript and superscript letters). `main.ts` awaits `loadGameFont()`
+  `GAME_FONT_FAMILY`: the bundled face first, then the bundled symbols face (`WQM Symbols`, a
+  DejaVu Sans Mono subset holding exactly the characters of the game's text the first face
+  lacks: the sparkle glyphs and the star, `∝`, the superscript minus of an anion, the
+  subscript and superscript letters, at a size whose advance equals the first face's), then
+  `Courier` and `monospace`. The symbols face has a name of the game's own because
+  `ui/mathtext.ts`'s formula stack asks for DejaVu Sans Mono by name and has to keep getting
+  the machine's. `main.ts` awaits `loadGameFont()`
   before creating the game, because a `Text` made before its font is ready is measured and
-  rasterized in the fallback and stays that way. The three files (regular, italic, bold) are
+  rasterized in the fallback and stays that way. The font files (regular, italic and bold of the first face, regular
+  and bold of the symbols) are
   imported as assets, so the site build serves them beside the script and the single-file
   build inlines them. The face is drawn at `SIZE_ADJUST` of the size a style asks for (it is
   larger on the body than Courier), and a `Text` in it takes its ascent and descent from

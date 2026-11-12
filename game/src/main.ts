@@ -6,6 +6,8 @@ import { BattleScene } from './scenes/BattleScene';
 import { checkDataIntegrity } from './data/integrity';
 import { CANVAS_W, CANVAS_H } from './config/screen';
 import { installCanvasRenderer } from './art/canvasRenderer';
+import { installGraphicsCache, setGraphicsCacheEnabled } from './art/graphicsCache';
+import { installArcSteps } from './art/shapes';
 import { installCrispText } from './ui/crispText';
 import { installDisplayScale, followDisplayScale, displayScaleFromUrl } from './art/displayScale';
 import { installGameFont, loadGameFont } from './ui/gameFont';
@@ -21,6 +23,12 @@ if (import.meta.env.DEV) {
 // Before the game exists, so a browser without WebGL gets a Canvas renderer
 // that draws gradients and tints as the WebGL one does (art/canvasRenderer.ts).
 installCanvasRenderer();
+// Every Graphics that is drawn once and then only moved keeps its triangles
+// from one frame to the next, under WebGL (art/graphicsCache.ts).
+installGraphicsCache();
+// Every circle shape tessellated to its size, not to a fixed hundred segments
+// (art/shapes.ts).
+installArcSteps();
 // Every Text drawn on a whole pixel, in either renderer (ui/crispText.ts).
 installCrispText();
 // Every Text rasterized at the display's own resolution (art/displayScale.ts).
@@ -93,5 +101,6 @@ void loadGameFont().then(() => {
   // UI to reach it -- see DEVELOPMENT.md's "Verifying UI changes".
   if (import.meta.env.DEV) {
     (window as unknown as { __game: Phaser.Game }).__game = game;
+    (window as unknown as { __vectorCache: (on: boolean) => void }).__vectorCache = setGraphicsCacheEnabled;
   }
 });

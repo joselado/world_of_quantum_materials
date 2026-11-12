@@ -15,7 +15,11 @@
 // all of them.
 //
 // Every shot is taken at the game's own 854x480 canvas, so the images match what
-// a player actually sees rather than a scaled-up capture. Each is driven into
+// a player actually sees rather than a scaled-up capture. The one exception is
+// `title.png`, the image at the head of the README, which is taken at four
+// drawn pixels per game pixel (TITLE_SCALE below): the game draws at any whole
+// scale it is asked for (`?scale=N`, src/art/displayScale.ts), so this is the
+// frame a 4K display shows, not an enlargement. Each is driven into
 // its state through the scene's own methods -- the same approach
 // component-check.mjs takes -- rather than by clicking through the UI, so a shot
 // is reproducible and does not depend on a run of play going a particular way.
@@ -105,6 +109,9 @@ const ENCOUNTERS = [
   // README's Nickel Oxide, so the two docs don't show the same frame twice.
   ['docs-crystals-encounter', 'Yttrium Iron Garnet', 6],
 ];
+
+// Drawn pixels per game pixel in `title.png`: 3416x1920.
+const TITLE_SCALE = 4;
 
 const SHOT_GROUPS = ['title', 'hub', 'worlds', 'guardians', 'battle', 'encounters'];
 
@@ -395,9 +402,20 @@ async function main() {
 
     if (groups.includes('title')) {
       log('=== title ===');
-      await page.evaluate(() => window.__game.scene.start('Title'));
-      await sleep(1200);
-      await shoot('title');
+      const titlePage = await browser.newPage();
+      await titlePage.setViewport({ width: CANVAS_W, height: CANVAS_H, deviceScaleFactor: TITLE_SCALE });
+      await titlePage.goto(`${GAME_URL}&scale=${TITLE_SCALE}`, { waitUntil: 'domcontentloaded' });
+      await titlePage.waitForFunction(() => window.__game && window.__game.scene.isActive('Title'), {
+        timeout: 30000,
+      });
+      await titlePage.evaluate(() => document.fonts.ready);
+      await sleep(1500);
+      const file = path.join(SHOT_DIR, 'title.png');
+      await titlePage.screenshot({ path: file });
+      await titlePage.close();
+      const kb = (fs.statSync(file).size / 1024).toFixed(0);
+      written.push({ name: 'title', kb: Number(kb) });
+      log(`  wrote title.png (${kb} kB, ${CANVAS_W * TITLE_SCALE}x${CANVAS_H * TITLE_SCALE})`);
     }
 
     if (groups.includes('hub')) {
@@ -877,7 +895,13 @@ async function main() {
       const menu = await page.evaluate(async () => {
         const b = window.__game.scene.getScene('Battle');
         if (!b || !b.scene.isActive()) return false;
+        // The question panel of the shot above is still open, and a question
+        // hides the menu and dims the field (BattleScene.renderQuestionPanel):
+        // put the battle back the way an answer leaves it.
+        b.children.list.filter((o) => o.type === 'Container' && o.depth === 100).forEach((o) => o.destroy(true));
         b['dialogueContainer']?.destroy(true);
+        b['setScrim'](false);
+        b['moveMenu']?.setVisible(true);
         const bounds = b['moveMenu']?.getBounds();
         if (!bounds) return false;
         return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
