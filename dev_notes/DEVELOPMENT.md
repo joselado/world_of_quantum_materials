@@ -482,13 +482,24 @@ a small in-page helper that does that for you.
 
 **Gotcha:** when what's being measured is how far a piece of art actually
 *paints* rather than where a container's bounds claim it does (`battle/hud.ts`'s
-`*_HEAD_RISE`/`BOSS_FOOT_DROP` are all derived this way), hide every other
+`*_HEAD_RISE`/`BOSS_FOOT_DROP` and the turn row's `TURN_PREVIEW_ICON_RISE`/`DROP`
+are all derived this way), hide every other
 object in the scene, put a flat **mid-grey** behind it, and scan several
 seconds of frames for any pixel that differs from that grey -- so the idle
 motion is included in the reach and a dark contact shadow counts as painted
 as much as a bright rim does. A black backdrop with a brightness threshold
 misses every shadow the art drops, which is exactly the half of a standing
-figure's extent a layout has to clear.
+figure's extent a layout has to clear. The turn row's pair is the largest
+reach over the whole roster (`allCrystals()`, each plain and doped, plus the
+golem, record and cloud icons), so a compound added with a taller habit is
+worth one more scan.
+
+**Gotcha:** an open panel has a scrim under it (`scenes/panels/scrim.ts`), a
+full-canvas `Rectangle` at the scene's top level named `panelScrim`
+(`SCRIM_NAME`). A script that walks `scene.children.list` for full-canvas
+shapes will meet it, and "no panel left anything behind" is a lookup:
+`scene.children.list.filter((o) => o.name === 'panelScrim')` is empty
+whenever no panel is open.
 
 **Gotcha:** the default `fontScale` preset (`data/settings.ts`'s
 `defaultFontScale()`) is never `1`: it is `1.5` on a desktop and `2`, the
@@ -536,6 +547,17 @@ canvas runs the game at three times the frame rate for a fraction of the CPU.
 Headless Chrome's WebGL is exactly such a software one, so a script that did
 not pin WebGL would silently be testing the Canvas path instead. The one place
 the Canvas path is tested on purpose is `component-check`'s parity test.
+
+**Every check runs at display scale 1.** On a real GPU the game draws its frame
+with the display's own pixels (`src/art/displayScale.ts`); on a software WebGL
+it stays at the canvas's 854x480 unless the URL says otherwise, and the checks
+load the page at exactly that size anyway. So no check exercises a scale above
+1 (`frame-cost` can be asked to, see "Measuring frame cost" below). `?scale=2` pins one and `?scale=auto` follows the viewport even in headless
+Chrome, which is how a change to that module is looked at: a screenshot at
+`?scale=2` with `deviceScaleFactor: 2`, one at `?scale=auto` on a 1920x1080
+viewport, and a viewport resize and a `WEBGL_lose_context` loss driven through
+a running battle, reading back `game.canvas.width`, each `Text`'s
+`style.resolution` and the size of the `battle-backdrop` texture after each.
 
 **`npm run component-check`** (`scripts/component-check.mjs`, about four
 minutes, longer on a loaded machine) --
@@ -844,6 +866,39 @@ each driven straight from the scene.
 A PNG under 5 kB fails the run: that is an empty or black frame, a shot that
 "worked" but captured nothing, which the docs would otherwise embed silently.
 
+## The game's typeface
+
+The game ships its own monospace face, `game/src/ui/fonts/game-{regular,italic,bold}.woff2`,
+loaded and made the default by `src/ui/gameFont.ts`. The files are subsets of JetBrains Mono
+NL 2.304 (`JetBrainsMonoNL-{Regular,Italic,Bold}.ttf` from the release zip at
+github.com/JetBrains/JetBrainsMono), SIL Open Font License 1.1, whose text is
+`fonts/OFL.txt`; the font has no Reserved Font Name, so a subset may keep its name, and each
+file still carries the copyright and licence in its name table.
+
+A subset is made with fontTools (`pip install fonttools brotli`), keeping every layout
+feature and name record and only the characters the game's text can contain:
+
+```bash
+pyftsubset JetBrainsMonoNL-Regular.ttf --flavor=woff2 --output-file=game-regular.woff2 \
+  --layout-features='*' --name-IDs='*' --name-languages='*' --notdef-outline \
+  --unicodes='U+0020-007E,U+00A0-017F,U+0370-03FF,U+1D62-1D65,U+1DBB,U+2010-2027,U+2030-203A,U+2070-209F,U+2113,U+2122,U+2124,U+2190-2199,U+2200-22FF,U+25A0-25FF,U+2605-2606,U+2726-2727,U+2736,U+274B,U+27E8-27E9,U+2C7C,U+FFFD'
+```
+
+and the same for `Italic` and `Bold`. The ranges are wider than the font: it has no
+superscript minus (`⁻`), no `∝`, no `★` or sparkle glyphs, and none of the subscript and
+superscript letters, so those draw from the fallback behind the face, in whatever the
+machine has. A character the game starts using outside the ranges does the same; when the
+font holds it, add its range and rebuild rather than leaving it.
+
+`gameFont.ts` holds three numbers that belong to the face and have to be re-derived if the
+face changes: `SIZE_ADJUST` (how much smaller than a style's nominal size it is drawn, since
+it is larger on the body than Courier, whose proportions every font size in the game is
+written for), and `ASCENT` and
+`DESCENT` (how far its ASCII reaches above and below the baseline at that adjusted size, in
+em, from the glyph bounds of the font). After changing any of them, or the files, run
+`component-check` and look at the panels at all three text sizes: every panel stacks its
+content by those metrics.
+
 ## Capturing the promotional video
 
 **`npm run promo`** (`scripts/promo.mjs`) captures the three-minute trailer
@@ -874,13 +929,11 @@ however slowly headless Chrome renders it. Phaser's tweens read `Date.now()`
 rather than the loop's clock, so the page's `Date.now()` is replaced by a
 virtual clock that moves with the steps, and `Math.random()` is replaced by a
 generator seeded from the segment's name, so a recaptured segment draws the
-same map, wilds and questions. The high-resolution raster scales WebGL's
-viewport and scissor at each draw call rather than when they are set, since
-Phaser sets a viewport before binding the target it is meant for as often as
-after, reports the drawing buffer's logical size to Phaser (which flips every
-scissor box against it), rasterizes every `Text` at the scale, and asks
-`art/bake.ts` (`setBakeOutputScale`) for that many texels per pixel in every
-bake. A two-answer question is answered right by watching Phaser's
+same map, wilds and questions. The high-resolution raster is the game's own
+display scale (`src/art/displayScale.ts`), pinned by loading the page with
+`?scale=N` at `deviceScaleFactor` N: the drawing buffer, every fill, every
+`Text` and every bake come out at N times the canvas's size, by the same path
+a player's GPU takes at the size of their window. A two-answer question is answered right by watching Phaser's
 `Utils.Array.Shuffle`, through which every question panel shuffles its
 `{ text, correct }` pairs.
 
@@ -1002,6 +1055,21 @@ dumps the rows for diffing two runs, and it picks its own port (5195,
 `QM_FRAME_PORT`). It is an instrument, not a gate: its numbers move with the
 machine and with whatever else it is running, so compare two runs made back
 to back on one machine, never a run against a figure written down earlier.
+
+It is also the one script that measures a display scale above 1
+(`src/art/displayScale.ts`). `QM_FRAME_VIEWPORT=1920x1080` sets the window the
+game is shown in and `QM_FRAME_SCALE` the `?scale=` it is loaded with; each
+row prints the drawing buffer it was measured at. At the default window the
+buffer is the canvas's own 854x480 in every mode. What drawing at a monitor's
+resolution costs is two `gpu` runs at the same larger window, one with
+`QM_FRAME_SCALE=1` and one without, where the game follows the window as it
+does for a player: on an integrated GPU the two agree on fps and on both CPU
+columns up to the 3x ceiling (a 3840x2160 window, a 2562x1440 buffer), which
+is why the scale follows the display wherever the GPU is a real one. On a
+machine where ANGLE over OpenGL gives no WebGL context (the page fails with
+"Cannot create WebGL context"), `QM_FRAME_GPU_ARGS="--use-angle=vulkan
+--enable-features=Vulkan --enable-gpu --ignore-gpu-blocklist"` reaches the GPU
+through Vulkan.
 
 ## Checking arena legibility
 

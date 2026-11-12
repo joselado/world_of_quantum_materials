@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
 
-// Every Text object is drawn with its top-left corner on a whole pixel. A Text
-// is a canvas texture with one texel per game pixel, so drawn anywhere else it
-// is resampled and every glyph smears across two pixel columns or rows. The
+// Every Text object is drawn with its top-left corner on a whole game pixel. A
+// Text is a canvas texture with a whole number of texels per game pixel
+// (art/displayScale.ts), so drawn anywhere else it is resampled and every
+// glyph smears across two pixel columns or rows. The
 // usual way a Text lands off the grid is being centred: `setOrigin(0.5, ...)`
 // puts its left edge at `x - width / 2`, half a pixel off for any label an odd
 // number of pixels wide, and a panel that stacks its content at

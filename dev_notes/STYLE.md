@@ -185,6 +185,25 @@ feet, its own shadow, the arena's painted shadow and any impact rune all
 coincide. One shadow, one line. Two ellipses at slightly different heights
 under one figure reads as floating even when neither is wrong on its own.
 
+## Typeface and label plates (`ui/gameFont.ts`, `ui/plates.ts`)
+
+- One face for every word: JetBrains Mono NL, shipped with the game in regular, italic and
+  bold, so a label has the same glyphs, width and line height on every machine. No style
+  names a family; a new `Text` gets the game's face by leaving `fontFamily` out. It is a
+  monospace on purpose (panels align columns with spaces) and the cut without ligatures, so
+  `->` and `!=` stay the characters that were typed.
+- Emphasis is weight or slant, never a second face: bold for a heading or a selected name,
+  italic for a voice (a guardian's line, a greeting, lore). The one other face on screen is
+  the formula stack of `ui/mathtext.ts`, inside `$...$` only.
+- A label that needs a background takes it from its own `backgroundColor` and `padding`, and
+  the plate comes out with `PLATE_RADIUS` corners wherever it is: a button, a HUD readout, a
+  list row, a prompt. A plate built some other way (the formula answer button's, a rounded path from
+  `art/shapes.ts`'s `fillRoundedRect`, since Phaser's WebGL renderer bevels a rounded
+  `Rectangle` at this radius)
+  rounds itself by the same constant, so the two cannot be told apart.
+- Plate colours carry the role: translucent black for a readout over the world,
+  `#222244` under `#ffff88` for a button, `#1c1c30`/`#3a2a5c` for an idle/selected list row.
+
 ## Title screen (`scenes/TitleScene.ts`)
 
 - Dark indigo gradient (`0x0c1030` → `0x241a44`), no biome/perspective machinery involved --
@@ -815,7 +834,8 @@ under one figure reads as floating even when neither is wrong on its own.
   color) -- the one persistent on-screen key reminder on this screen, since the world<->Lab
   shuttle is used far more often than the other keys; movement/M/H aren't repeated here and
   stay covered only by the Lab's Tutorial station, so a fixed line for every key wouldn't stack
-  up against this corner's overflow risk.
+  up against this corner's overflow risk. While a panel is open none of this is on screen,
+  except the counter over a guardian's panel ("Behind an open panel" below).
 - Map regenerates fresh (new `Math.random` layout, retried internally up to 10 times against
   the two invariants above before falling back to a plain wide corridor) on first load and on
   an explicit world change that's genuinely new ground -- Bloch's teleport, a backward pass, a
@@ -1388,6 +1408,41 @@ station motifs are deliberately not tunnels with a visible far end.
   the fused body's base, or the front rim when both parents are plates), so the doped look
   follows the player everywhere they are drawn: overworld, battle, the Lab, panels.
 
+## Behind an open panel (`scenes/panels/scrim.ts`)
+
+- A panel is modal and the screen says so: one full-canvas dark layer (`0x04040a` at `0.6`)
+  sits directly under it, at depth `99` against the panels' `100`, and everything else is
+  dimmed by it. One layer, never two: a panel that replaces another hands the same dimming on,
+  and the story beat between worlds, which opens over the pass crossing's own fade, takes none.
+  It appears and goes with the panel, without a fade of its own, because one panel closing is
+  as often another opening in the same frame.
+- The HUD is off while a panel is up. In the overworld that is the world's name, the epoch
+  line under it and the Lab hint in the bottom-right corner (the pass and guardian prompts and
+  the far-edge line already stand down for a panel); in the Lab it is the room's name and the
+  line under it. These are placed for the open screen, and a panel opens across them. What
+  belongs to the place itself stays and is dimmed with it: the world, its sprites and their
+  name labels, the Lab's stations and its guardian gallery.
+- The qumatessence counter goes with the rest of the HUD over a panel that is only read: a
+  wild crystal's question, lore, a tip, a rival's taunt, the finale, every Lab station. It
+  stays over a panel where qumatessence is spent, which is every guardian's panel and no
+  other. Such a panel shows no balance of its own, so the counter stays readable, drawn above
+  the panel, and it changes as the player spends.
+  Above a panel its plate is opaque (`rgba(4,4,10,0.92)` against the readout's usual
+  translucent black), so a panel's border or a dimmed label under it does not read through
+  the digits. It keeps its own top-right corner while that corner is clear of everything the
+  panel has laid out (it may lie over the panel's bare background, never within `4` px of its
+  text, its buttons or its art), and otherwise moves to the bottom-right corner, then the
+  bottom-left, both empty with the HUD off: at its own `8` px margin from the canvas floor,
+  or flush against the floor under a panel tall enough to need those pixels. It is never
+  shrunk. At the Brief text length every guardian's opening line leaves the top-right corner
+  clear at all three text sizes. A Detailed line is longer and can reach that corner: at the
+  middle size it does in four panels (Noether's, Landau's, Kondo's, Skłodowska-Curie's) and
+  at the largest in all ten, and in those the counter sits in a bottom corner. A panel that left no
+  corner clear would take the counter off rather than wear it over its own text.
+- A battle's three read-me panels (the Analytic and Ultimate questions, the screen between
+  two finale stages, the closing summary) take the same layer over the arena. The battle HUD
+  stays under it, dimmed.
+
 ## Wild encounter dialogue (`OverworldScene.showEncounter`)
 
 - Appears as an overlay panel inside the overworld itself (dark `0x10101c` rectangle, `600`
@@ -1412,7 +1467,7 @@ station motifs are deliberately not tunnels with a visible far end.
   subscripts drop, superscripts rise, a square root gets a radical sign with a bar over its
   radicand, variables lean and function names stay upright (`ui/mathtext.ts`, CODEMAP.md's
   "Formulas in question text"). Only what sits between a pair of `$` is set in the
-  typesetter's own monospace stack, which covers the Greek the default face lacks; the words
+  typesetter's own monospace stack, which covers the symbols the game's face lacks; the words
   around it keep the game's default face, size and line height, so the prose of a
   formula-bearing question is indistinguishable from the prose of one without. An answer
   button carrying a formula draws its own plate in the same `[ #222244 background / #ffff88
@@ -2825,9 +2880,15 @@ world are shaped, since world N's start is world N-1's exit.
   `TURN_PREVIEW_Y = 10`), clear of both nameplates (and of a rival's boss banner, which
   starts past its last ring) and the log text further down: a bold dim
   blue-grey (`#8fa0c9`) "TURNS" label over the usual translucent-black
-  tag background, with a row of five 32px crystal icons (`makeCrystal`, 36px spacing) below
-  it, one per predicted hit: the player's own current crystal or the opponent's, each using
-  that side's real `color`/`variant`/`seed`/`hybridParents`. Each icon also carries a ring
+  tag background, with a row of five crystal icons (`makeCrystal` at size 32, 36px spacing)
+  below it, one per predicted hit: the player's own current crystal or the opponent's, each using
+  that side's real `color`/`variant`/`seed`/`hybridParents`. The label's plate and the icons
+  never share a pixel. A crystal drawn at size 32 stands taller than 32px (the size is a
+  half-height, and each compound's own habit stretches it), so the icons hang from the
+  label's measured bottom edge by the art's measured reach above its centre
+  (`TURN_PREVIEW_ICON_RISE = 36`, the tallest of the whole roster, plain and doped, and of the
+  golem, record and cloud icons) plus a `6`px gap. The label grows with the text size (to
+  `1.35` of its base), and the row moves down by exactly as much. Each icon also carries a ring
   behind the crystal shapes marking whose hit it is, independent of crystal color -- a bold
   full-opacity gold ring (`0xffe066`, 3px stroke, this project's established active/highlighted
   accent color) for the player's hits, a faint blue-grey ring (`0x8fa0c9`, 1.5px stroke, 45%
@@ -2971,6 +3032,8 @@ world are shaped, since world N's start is world N-1's exit.
   be queued underneath it, released the instant an answer is picked -- the panel itself has
   no other exit -- and hides the menu (`setVisible(false)`, shown again as the answer is
   picked, before the answer's own consequences run) so the question has the whole field. The
+  arena behind it is dimmed by the same layer every panel stands on ("Behind an open panel"
+  above), for as long as the question is up. The
   text draws at the player's own text-size preset, the title wrapping like the prompt, and only
   a question that still will not fit between `QUESTION_PANEL_MARGIN` and the field's bottom
   edge shrinks in steps (floor 0.75 of the base size).

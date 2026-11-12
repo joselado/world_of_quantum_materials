@@ -17,7 +17,7 @@ sections, and short lower-third captions over the gameplay, with the exact
 wording of every line in the shot list below. The lines are written so that they
 double as a voice-over script, should one ever be recorded. The ffmpeg build on
 this machine has no `drawtext` filter, so cards and captions are rendered in the
-browser, in the game's own Courier face and panel colours, and screenshotted
+browser, in the game's own bundled face and panel colours, and screenshotted
 like any other frame.
 
 The deliverable is one file, 1920x1080, 30 frames per second, H.264 video with
@@ -318,8 +318,8 @@ the game's panel style (the panel background and gold accent from `ui/theme.ts`)
 across the bottom of the frame over gameplay, fading the same way, and never
 covering the battle log, the move menu or either crystal: over a battle it sits
 at the top of the field, under a rival's banner it sits mid-field, and over the
-overworld and over panels that fill the top it sits low, just above the player. The face is Courier, the game's own prose face
-(`ui/mathtext.ts`), at a size that reads at 1080p from a phone.
+overworld and over panels that fill the top it sits low, just above the player. The face is the game's own bundled one
+(`ui/gameFont.ts`, loaded by `scripts/promo-cards.html` from the same files), at a size that reads at 1080p from a phone.
 
 Rules the lines obey, to be rechecked on every edit: no dashes of any kind, no
 exclamation marks, no citations, no game structure (no world numbers, no type
@@ -404,19 +404,11 @@ data.
 
 The raster. The canvas is 854x480 and the deliverable is 1920x1080, and a
 `deviceScaleFactor` alone yields a blurred upscale. The genuine high-resolution
-raster: set the viewport to 854x480 at `deviceScaleFactor` N, patch
-`HTMLCanvasElement.prototype.getContext` before the page loads, and after boot
-set `game.canvas.width` and `height` to N times the canvas size while the CSS
-size stays 854x480. The patch records `viewport` and `scissor` as Phaser asks
-for them and applies them at each draw call, multiplied by N only while the
-screen is the bound framebuffer, since Phaser sets a viewport before binding
-the offscreen target it is meant for as often as after; it also reports the
-drawing buffer's logical size, because Phaser flips every scissor box against
-`drawingBufferHeight` and re-reads it on a scene start. Every Text object is
-rasterized at N through its prototype's `updateText`, so text created mid-shot
-is sharp on the frame it appears, and `art/bake.ts`'s `setBakeOutputScale(N)`
-makes every bake (the title's map, the Lab's room, the battle backdrop) keep N
-texels per pixel. N is 4 for the final render (3416x1920 frames, downscaled to
+raster is the game's own display scale (`src/art/displayScale.ts`): the page is
+loaded with `?scale=N` at a viewport of 854x480 and `deviceScaleFactor` N, and
+the game draws its buffer, every fill, every Text and every bake (the title's
+map, the Lab's room, the battle backdrop) at N times the canvas's size from the
+first frame. N is 4 for the final render (3416x1920 frames, downscaled to
 1920x1080 with lanczos, which is crisp) and 2 for previews (1708x960, scaled up
 by 1.124, soft but fast). Before capturing the whole cut at 4x, time one
 segment: 5400 frames of 3416x1920 PNG screenshots may take 30 to 45 minutes and

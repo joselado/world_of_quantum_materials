@@ -58,6 +58,7 @@ import { getWorldQuestion } from '../data/quiz';
 import type { MaterialQuestion } from '../data/quiz';
 import { hasMath, makeQuestionText, makeFormulaButton } from '../ui/mathtext';
 import { encounterGreeting } from '../data/greetings';
+import { PanelChrome } from './panels/scrim';
 import { TUTORIAL_TIPS, hasSeenTip, markTipSeen, tipBodyFor } from '../data/tutorial';
 import type { TutorialTipId } from '../data/tutorial';
 import { worldGoalTextFor, FINALE_TITLE, storyBeatFor, finaleBodyFor, afterStoryFor } from '../data/story';
@@ -757,7 +758,24 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // owns its own text, its own hit area and its own visibility.
   private guardianPrompt!: Phaser.GameObjects.Text;
   dialogueActive = false;
-  dialogueContainer?: Phaser.GameObjects.Container;
+  // The open panel, and the one place the screen learns that a panel has
+  // opened or closed: every panel in the game assigns its container here
+  // and every way out clears it, so the scrim and the HUD follow this write
+  // (scenes/panels/scrim.ts's PanelChrome) rather than any one panel.
+  // `dialogueActive` is the wider movement lock and is not that signal: the
+  // pass crossing holds it with no panel up.
+  private openPanel?: Phaser.GameObjects.Container;
+  private panelChrome?: PanelChrome;
+  get dialogueContainer(): Phaser.GameObjects.Container | undefined {
+    return this.openPanel;
+  }
+  set dialogueContainer(panel: Phaser.GameObjects.Container | undefined) {
+    this.openPanel = panel;
+    this.panelChrome?.sync(panel, !!this.passFade);
+  }
+  // The pass crossing's own full-canvas fade (crossPass), for as long as it
+  // is up: the story beat that opens over it takes no scrim on top.
+  private passFade?: Phaser.GameObjects.Rectangle;
   // Which section of Noether's panel is showing -- reset to 'moves' on
   // every fresh scene create so re-entering the world doesn't strand the
   // player on the stats tab.
@@ -1001,6 +1019,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // clearing too.
     this.dialogueActive = false;
     this.dialogueContainer = undefined;
+    this.passFade = undefined;
     this.dresselhausPage = 0;
     this.majoranaPage = 0;
     this.andersonSelection = null;
@@ -1117,8 +1136,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // on a line of its own under the world's name: the same world can be
     // stood in at any epoch unlocked, and nothing else on screen tells them
     // apart.
+    const hudLabels = [worldLabel];
     if (getEpochUnlocked(this.game.registry) > DEFAULT_EPOCH) {
-      this.add
+      const epochLabel = this.add
         .text(8, 8 + worldLabel.height + 2, `Epoch ${getEpoch(this.game.registry)} of ${MAX_EPOCH}`, {
           fontSize: fontPx(this, 12),
           color: GOLD_ACCENT_HEX,
@@ -1126,6 +1146,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
           padding: { x: 4, y: 2 },
         })
         .setDepth(50);
+      hudLabels.push(epochLabel);
     }
     this.tokenText = this.add
       .text(CANVAS_W - 8, 8, `Qumatessence: ${this.qumatessence}`, {
@@ -1164,6 +1185,11 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       .setDepth(50);
     labHint.setInteractive({ useHandCursor: true });
     labHint.on('pointerdown', () => this.returnToHub());
+    // The three labels that stand on screen whenever no panel is open; the
+    // prompts and the far-edge line below come and go with where the player
+    // is standing, and already stand down for a panel in update().
+    hudLabels.push(labHint);
+    this.panelChrome = new PanelChrome(this, this.tokenText, hudLabels);
     // Interface, not scenery: fixed on screen, sized by the text preset, and
     // sitting low and centred where the pass itself is, so the offer reads as
     // attached to what the player is looking at without being painted into
@@ -2989,6 +3015,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const fade = this.add
       .rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, PANEL_BG, 0)
       .setDepth(90);
+    this.passFade = fade;
     this.dialogueActive = true;
     this.tweens.add({
       targets: fade,
@@ -3734,6 +3761,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       panelWidth,
       avatar: guardian.avatar,
       quote: `"${guardian.quote}"`,
+      trades: false,
     });
 
     const note = this.add

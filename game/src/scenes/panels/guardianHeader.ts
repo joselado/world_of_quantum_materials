@@ -3,6 +3,7 @@ import type { GuardianPanelHost } from '../OverworldScene';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontScale } from '../../ui/text';
+import { showBalanceOver } from './scrim';
 
 // The block every guardian panel opens with: that guardian's own avatar,
 // large, with their opening line beside it.
@@ -76,8 +77,13 @@ export function renderGuardianHeader(
     panelWidth: number;
     avatar: (scene: Phaser.Scene, scale?: number) => Phaser.GameObjects.Container;
     quote: string;
+    // False for a guardian's panel in which nothing is bought: the
+    // qumatessence counter then stands down with the rest of the HUD
+    // (scrim.ts's showBalanceOver).
+    trades?: boolean;
   }
 ): number {
+  if (opts.trades !== false) showBalanceOver(container);
   const left = CANVAS_W / 2 - opts.panelWidth / 2;
   const portraitX = left + EDGE_PAD + PORTRAIT_BOX_W / 2;
   const quoteLeft = left + EDGE_PAD + PORTRAIT_BOX_W + PORTRAIT_TO_QUOTE;

@@ -128,6 +128,7 @@ import {
   MENU_BOTTOM,
   MENU_MIN_TOP,
   TURN_PREVIEW_LENGTH,
+  turnPreviewBottom,
   LOG_X,
   LOG_Y,
   LOG_MIN_TOP,
@@ -140,6 +141,7 @@ import {
   type Nameplate,
   type OpponentIcon,
 } from './battle/hud';
+import { addScrim } from './panels/scrim';
 
 // Which backdrop the arena draws. 'realistic' is the one the game ships
 // (drawRealisticBackdrop: a projected ground plane, the world's own surround
@@ -178,6 +180,9 @@ const QUANTUM_SETTLE_MS = 900;
 const BACKDROP_TEXTURE = 'battle-backdrop';
 // The painted arena's horizontal extent.
 const ARENA_X0 = -OVERSCAN_X;
+// How far under the turn-order row's bottom edge, in screen pixels, a meteor's
+// first point of light stands (ultimateStage).
+const ULTIMATE_FAR_CLEARANCE = 4;
 const ARENA_W = FIELD_W + OVERSCAN_X * 2;
 // How long the camera takes to pull back at an Ultimate's cast, and to ease
 // back in from its strike.
@@ -598,6 +603,8 @@ export class BattleScene extends Phaser.Scene {
   private logText!: Phaser.GameObjects.Text;
   private logBasePx = 14;
   private turnPreviewRow?: Phaser.GameObjects.Container;
+  // The dark layer under whichever read-me panel is up (setScrim).
+  private scrim?: Phaser.GameObjects.Rectangle;
   private moveMenu?: Phaser.GameObjects.Container;
   // Which page drawMoveMenu is currently showing -- see drawMoveMenu's own
   // comment for why only one renders at a time now. A page is usually one
@@ -823,6 +830,7 @@ export class BattleScene extends Phaser.Scene {
     this.backdropImage = undefined;
     this.turnPreviewRow = undefined;
     this.moveMenu = undefined;
+    this.scrim = undefined;
     this.sampledName = '';
 
     // A rival fight's opponent is that world's boss -- render it with the
@@ -1352,6 +1360,7 @@ export class BattleScene extends Phaser.Scene {
     const contentWidth = panelWidth - 60;
     const shuffled = Phaser.Utils.Array.Shuffle(options.slice());
     this.moveMenu?.setVisible(false);
+    this.setScrim(true);
 
     // Laid out from y = 0 inside the container, which is then moved down to
     // wherever a panel of the measured height sits centred in the field.
@@ -1381,6 +1390,7 @@ export class BattleScene extends Phaser.Scene {
 
       const finish = (correct: boolean) => {
         container.destroy(true);
+        this.setScrim(false);
         this.moveMenu?.setVisible(true);
         onPick(correct);
       };
@@ -1408,6 +1418,17 @@ export class BattleScene extends Phaser.Scene {
       .rectangle(FIELD_W / 2, panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
       .setStrokeStyle(2, strokeColor);
     container.addAt(panel, 0);
+  }
+
+  // The three read-me panels of a battle (a question, a finale stage's
+  // screen, the closing summary) are modal, and each stands over a field of
+  // lit crystals: the same dark layer the overworld and the Lab put under a
+  // panel (scenes/panels/scrim.ts) goes under these, on the HUD side of the
+  // camera split so it covers the canvas at any arena zoom. One at a time, so
+  // a chain of questions hands the layer on rather than stacking it.
+  private setScrim(on: boolean) {
+    this.scrim?.destroy();
+    this.scrim = on ? addScrim(this) : undefined;
   }
 
   // An answer button. A label carrying a formula (ui/mathtext.ts) is typeset
@@ -1953,7 +1974,9 @@ export class BattleScene extends Phaser.Scene {
     // fills. The haze banks drift and the vignette belongs to the HUD
     // camera, so both stay live above it.
     const painted = this.children.list.slice(paintedFrom);
-    this.backdropImage = this.arena(bakeLayers(this, BACKDROP_TEXTURE, painted, { x: ARENA_X0, y: -OVERSCAN_Y, w: ARENA_W, h: FIELD_H + OVERSCAN_Y * 2 }));
+    this.backdropImage = this.arena(
+      bakeLayers(this, BACKDROP_TEXTURE, painted, { x: ARENA_X0, y: -OVERSCAN_Y, w: ARENA_W, h: FIELD_H + OVERSCAN_Y * 2 }, ARENA_ZOOM_OUT)
+    );
     this.drawArenaHaze(air);
     this.drawVignette(biome);
 
@@ -3056,8 +3079,10 @@ export class BattleScene extends Phaser.Scene {
       this.input.keyboard!.off('keydown-SPACE', finish);
       this.input.off(Phaser.Input.Events.POINTER_DOWN, finish);
       container?.destroy(true);
+      this.setScrim(false);
       onContinue();
     };
+    this.setScrim(true);
 
     const attempt = (scale: number) => {
       const c = this.add.container(0, 0).setDepth(100);
@@ -3388,6 +3413,7 @@ export class BattleScene extends Phaser.Scene {
     this.logText.setPosition(cx - b.width / 2, cy - b.height / 2);
     this.logText.setBackgroundColor('rgba(0,0,0,0)');
     this.logText.setDepth(101);
+    this.setScrim(true);
 
     this.add
       .rectangle(cx, cy, panelW, panelH, PANEL_BG, 0.94)
@@ -4006,10 +4032,17 @@ export class BattleScene extends Phaser.Scene {
   // what the pulled-back camera sees, outside what the field alone would,
   // and below where the turn-order row sits on the HUD camera, so the point
   // of light is not first seen behind it -- and the painted floor, out to
-  // the overscan, a nova gathers from.
+  // the overscan, a nova gathers from. The row is as tall as the text size
+  // makes its label, so the point's height is taken from the row's own bottom
+  // edge, carried through the pulled-back zoom into arena coordinates: the
+  // arena camera zooms about the field's centre, and ARENA_ZOOM_OUT is the
+  // least pulled-back zoom a cast settles at (pullBack), which is where an
+  // arena point stands highest on screen.
   private ultimateStage(): UltimateStage {
+    const rowBottom = this.turnPreviewRow ? turnPreviewBottom(this.turnPreviewRow) : 0;
+    const farY = FIELD_H / 2 + (rowBottom + ULTIMATE_FAR_CLEARANCE - FIELD_H / 2) / ARENA_ZOOM_OUT;
     return {
-      far: { x: ARENA_X0 + 50, y: 20 },
+      far: { x: ARENA_X0 + 50, y: farY },
       floor: { x0: ARENA_X0, x1: ARENA_X0 + ARENA_W, y1: FIELD_H + OVERSCAN_Y },
     };
   }

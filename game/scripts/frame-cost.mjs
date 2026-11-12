@@ -46,6 +46,28 @@
 //   QM_FRAME_SECS=4                          measured seconds per scene
 //   QM_FRAME_JSON=path                       dump every row as JSON for diffing runs
 //   QM_FRAME_PORT=5195                       its own dev server's port
+//   QM_FRAME_GPU_ARGS="--use-angle=vulkan --enable-features=Vulkan --enable-gpu --ignore-gpu-blocklist"
+//                                           Chrome's flags for the gpu mode, in
+//                                           place of its own, for a machine
+//                                           where ANGLE over OpenGL gives no
+//                                           WebGL context at all (the
+//                                           page then fails with "Cannot create
+//                                           WebGL context")
+//   QM_FRAME_VIEWPORT=1920x1080              the window the game is shown in
+//                                           (default: the canvas's own 854x480)
+//   QM_FRAME_SCALE=1                         the `?scale=` the game is loaded with
+//                                           (art/displayScale.ts): a number pins
+//                                           that display scale, `auto` follows
+//                                           the window in every WebGL mode.
+//                                           Unset, the game chooses as it does
+//                                           for a player: it follows the window
+//                                           on a real GPU and stays at 1 on a
+//                                           software one.
+// At the default window the display scale is 1 in every mode, so the numbers
+// are the game's cost at its own resolution. What drawing at a monitor's
+// resolution adds is two runs at the same larger window, one with
+// QM_FRAME_SCALE=1 and one without; each scene's row carries the drawing
+// buffer it was measured at.
 // CHROME_BIN auto-detects Puppeteer's cached Chrome-for-Testing binary if unset.
 
 import puppeteer from 'puppeteer-core';
@@ -61,6 +83,8 @@ const URL = `http://localhost:${PORT}/`;
 const MODES = (process.env.QM_FRAME_MODES || 'gpu,swiftshader,canvas').split(',').map((m) => m.trim());
 const SECS = Number(process.env.QM_FRAME_SECS || 4);
 const JSON_OUT = process.env.QM_FRAME_JSON || null;
+const [VIEW_W, VIEW_H] = (process.env.QM_FRAME_VIEWPORT || '854x480').split('x').map(Number);
+const SCALE = process.env.QM_FRAME_SCALE || null;
 const SEED = 12345;
 
 const ALL_SCENES = [
@@ -74,7 +98,7 @@ const ALL_SCENES = [
 const SCENES = process.env.QM_FRAME_SCENES ? process.env.QM_FRAME_SCENES.split(',').map((s) => s.trim()) : ALL_SCENES;
 
 const MODE_ARGS = {
-  gpu: ['--use-angle=gl', '--enable-gpu', '--ignore-gpu-blocklist'],
+  gpu: process.env.QM_FRAME_GPU_ARGS ? process.env.QM_FRAME_GPU_ARGS.split(/\s+/).filter(Boolean) : ['--use-angle=gl', '--enable-gpu', '--ignore-gpu-blocklist'],
   swiftshader: ['--disable-gpu', '--enable-unsafe-swiftshader'],
   canvas: ['--disable-gpu'],
 };
@@ -168,12 +192,12 @@ async function runMode(chromeBin, mode) {
   const browser = await puppeteer.launch({
     executablePath: chromeBin,
     headless: 'new',
-    args: ['--no-sandbox', ...MODE_ARGS[mode], '--window-size=854,480'],
+    args: ['--no-sandbox', ...MODE_ARGS[mode], `--window-size=${VIEW_W},${VIEW_H}`],
   });
   const rows = [];
   try {
     const page = await browser.newPage();
-    await page.setViewport({ width: 854, height: 480 });
+    await page.setViewport({ width: VIEW_W, height: VIEW_H });
     await page.evaluateOnNewDocument((seed) => {
       let s = seed >>> 0;
       Math.random = () => {
@@ -184,7 +208,7 @@ async function runMode(chromeBin, mode) {
         return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
       };
     }, SEED);
-    await page.goto(`${URL}?renderer=${MODE_RENDERER[mode]}`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${URL}?renderer=${MODE_RENDERER[mode]}${SCALE ? `&scale=${SCALE}` : ''}`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.__game && window.__game.scene.getScenes(true).length, { timeout: 60000 });
 
     const renderer = await page.evaluate(() => {
@@ -257,7 +281,8 @@ async function runMode(chromeBin, mode) {
       const R = await page.evaluate(() => {
         const R = window.__frame;
         R.on = false;
-        return { upd: R.upd, ren: R.ren, step: R.step };
+        const c = window.__game.canvas;
+        return { upd: R.upd, ren: R.ren, step: R.step, buffer: `${c.width}x${c.height}` };
       });
       const wall = (Date.now() - t0) / 1000;
       const after = cpuTicks(processTree(pid));
@@ -271,6 +296,7 @@ async function runMode(chromeBin, mode) {
       const row = {
         mode,
         scene: id,
+        buffer: R.buffer,
         fps: R.step.length / wall,
         updateMs: mean(R.upd),
         renderMs: mean(R.ren),
@@ -284,7 +310,7 @@ async function runMode(chromeBin, mode) {
       console.log(
         `${id.padEnd(6)} fps ${row.fps.toFixed(1).padStart(5)} | js/frame update ${row.updateMs.toFixed(2).padStart(5)}ms ` +
           `render ${row.renderMs.toFixed(2).padStart(5)}ms (p95 step ${row.stepP95Ms.toFixed(1).padStart(4)}ms) | ` +
-          `cpu renderer ${pct(row.rendererCpu)} gpu-process ${pct(row.gpuProcessCpu)}`
+          `cpu renderer ${pct(row.rendererCpu)} gpu-process ${pct(row.gpuProcessCpu)} | buffer ${row.buffer}`
       );
     }
   } finally {

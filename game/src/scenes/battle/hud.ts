@@ -152,6 +152,20 @@ export const TURN_PREVIEW_ICON_SPACING = 36;
 // Whose-turn ring drawn behind each icon -- radius matches half the icon
 // spacing so adjacent rings meet edge-to-edge without overlapping.
 export const TURN_PREVIEW_RING_RADIUS = TURN_PREVIEW_ICON_SPACING / 2;
+// How far an icon's painted art reaches above and below its own centre at
+// TURN_PREVIEW_ICON_SIZE, measured the way the crystal offsets above are (a
+// flat grey behind the row, several frames scanned for any pixel that
+// differs) over every compound in the roster, plain and doped, and over the
+// golem, record and cloud icons. `makeCrystal`'s size is a half-height and a
+// compound's own habit stretches it, so the art stands well past the ring;
+// the ring (TURN_PREVIEW_RING_RADIUS plus its stroke) lies inside both.
+export const TURN_PREVIEW_ICON_RISE = 36;
+export const TURN_PREVIEW_ICON_DROP = 36;
+// Between the label's plate and the tallest icon's tip. The tallest habit
+// the roster holds reaches TURN_PREVIEW_ICON_RISE; the per-compound stretch
+// (art/crystals.ts's jitterFor) can carry a habit a few pixels past that, and
+// this gap is wide enough to take it.
+const TURN_PREVIEW_LABEL_GAP = 6;
 
 // A rival's boss banner: one chip on the top rail running from just past the
 // turn-order row's last ring to the right rail, so the two share the rail
@@ -461,11 +475,11 @@ export function drawTurnPreview(
     .setOrigin(0, 0);
   container.add(label);
 
-  // Gap below the label padded out by how far the ring extends past the
-  // icon's own half-size, so the ring never touches the label tag above it
-  // at any font-scale preset (the ring is the widest thing in each icon's
-  // footprint, wider than the crystal art itself).
-  const rowY = label.height + 4 + Math.max(0, TURN_PREVIEW_RING_RADIUS - TURN_PREVIEW_ICON_SIZE / 2);
+  // The icons hang from the label's measured bottom edge by their own
+  // measured rise, so the label's plate and an icon's art never share a
+  // pixel at any text size: the label grows with the preset, and the row
+  // moves down by exactly as much.
+  const iconY = label.height + TURN_PREVIEW_LABEL_GAP + TURN_PREVIEW_ICON_RISE;
   sequence.forEach((isPlayer, i) => {
     const material = isPlayer ? playerMaterial : opponentMaterial;
     // The opponent's icons carry the figure the same opponent has on the
@@ -505,8 +519,15 @@ export function drawTurnPreview(
     if (isPlayer) ring.setStrokeStyle(3, GOLD_ACCENT, 1);
     else ring.setStrokeStyle(1.5, REFERENCE_BLUE_GREY, 0.45);
     icon.addAt(ring, 0);
-    icon.setPosition(i * TURN_PREVIEW_ICON_SPACING + TURN_PREVIEW_ICON_SIZE / 2, rowY + TURN_PREVIEW_ICON_SIZE / 2);
+    icon.setPosition(i * TURN_PREVIEW_ICON_SPACING + TURN_PREVIEW_ICON_SIZE / 2, iconY);
     container.add(icon);
   });
   return container;
+}
+
+// The screen y of the lowest pixel a row built by drawTurnPreview paints,
+// for whatever has to stay clear below it.
+export function turnPreviewBottom(row: Phaser.GameObjects.Container): number {
+  const label = row.list[0] as Phaser.GameObjects.Text;
+  return row.y + label.height + TURN_PREVIEW_LABEL_GAP + TURN_PREVIEW_ICON_RISE + TURN_PREVIEW_ICON_DROP;
 }

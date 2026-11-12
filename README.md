@@ -30,7 +30,9 @@ download and nothing to install, so a locked-down university machine plays it
 as happily as your own laptop. You only need to be online to open it. No
 graphics card? The game notices and draws with the browser's own canvas
 instead, and if it ever guesses wrong, add `?renderer=canvas` or
-`?renderer=webgl` to the address.
+`?renderer=webgl` to the address. With a graphics card the picture is drawn
+sharp at your screen's own resolution; if that ever feels slow, add `?scale=1`
+to the address for the lightest picture.
 
 **Offline, as a single file.** Download
 [`world_of_quantum_materials.html`](https://joselado.github.io/world_of_quantum_materials/world_of_quantum_materials.html)

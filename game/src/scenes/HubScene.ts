@@ -31,6 +31,7 @@ import {
 import { makeQumatexMotif, makeDoorMotif, setDoorMotifDestination } from '../art/labMotifs';
 import { blend } from '../art/colors';
 import { stopMoveEffectPreview } from '../art/moveEffectPreview';
+import { PanelChrome } from './panels/scrim';
 
 // World 0, "The Lab" (DESIGN.md's world table) -- boot destination from
 // TitleScene and the return point from Overworld (press Enter). Unlike
@@ -117,7 +118,21 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // and need to read/replace the currently-open panel, same tradeoff
   // OverworldScene's own dialogue plumbing makes for its guardian panel
   // files (see CODEMAP.md's "Guardian panels").
-  dialogueContainer?: Phaser.GameObjects.Container;
+  //
+  // An accessor because this is also what "a panel is open" means in this
+  // scene (every guard below reads it, and no panel here is required to set
+  // `dialogueActive`): the scrim and the HUD follow this write
+  // (scenes/panels/scrim.ts's PanelChrome), so a panel cannot open or close
+  // without them.
+  private openPanel?: Phaser.GameObjects.Container;
+  private panelChrome?: PanelChrome;
+  get dialogueContainer(): Phaser.GameObjects.Container | undefined {
+    return this.openPanel;
+  }
+  set dialogueContainer(panel: Phaser.GameObjects.Container | undefined) {
+    this.openPanel = panel;
+    this.panelChrome?.sync(panel);
+  }
   private materialdexTypeFilter: MaterialType | 'all' = 'all';
   // Which page of the left-column name list is showing (renderMaterialdexPanel),
   // reset to 0 whenever the station is (re)opened or the type filter changes.
@@ -273,7 +288,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.playerMaterial = getPlayerMaterial(this.game.registry);
     this.drawRoom();
 
-    this.add
+    const roomTitle = this.add
       .text(CANVAS_W / 2, 30, 'The Lab', {
         fontSize: fontPx(this, 16),
         color: '#ffffff',
@@ -282,7 +297,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
       })
       .setOrigin(0.5, 0);
 
-    this.add
+    const roomLine = this.add
       .text(
         CANVAS_W / 2,
         62,
@@ -308,6 +323,10 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
       })
       .setOrigin(1, 0)
       .setDepth(50);
+    // The room's own name and line stand down for a panel: they are centred
+    // where every panel opens, and read through its backing. The stations
+    // and the guardians are the room itself and stay, dimmed with it.
+    this.panelChrome = new PanelChrome(this, this.tokenText, [roomTitle, roomLine]);
 
     this.playerMaterial = getPlayerMaterial(this.game.registry);
     this.playerPreview = this.add.container(CANVAS_W / 2, 230);

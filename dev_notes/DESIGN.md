@@ -2096,7 +2096,11 @@ fight the after-story points at (§5).
   canvas size from there. `main.ts`'s `scale` config (`Phaser.Scale.FIT` +
   `CENTER_BOTH`) letterboxes/centers that fixed-aspect canvas to fill
   whatever browser window it's actually running in, rather than rendering at
-  a literal 854x480 pixel size.
+  a literal 854x480 pixel size. Those 854x480 are the units of the layout, not
+  the resolution of the picture: on a real GPU the frame is drawn with as many
+  pixels as the window shows it at (`src/art/displayScale.ts`, up to three
+  times the canvas each way), so text and edges are as sharp as the display
+  allows. A software renderer keeps the canvas's own size.
 - **Overworld camera:** over-the-shoulder pseudo-3D (`src/art/perspective.ts`)
   — the player's crystal floats in place at the bottom of the screen while the
   world is redrawn every frame from a camera position carried a frame at a

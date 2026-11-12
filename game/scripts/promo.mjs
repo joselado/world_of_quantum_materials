@@ -32,12 +32,10 @@
 // machine, and a segment is the same length on every run.
 //
 // The raster. The canvas is 854x480; a deviceScaleFactor alone yields a
-// blurred upscale. The page's WebGL viewport and scissor calls are multiplied
-// by the scale while the default framebuffer is bound (an offscreen
-// framebuffer, a bake or a render texture, is drawn at its own size), the
-// canvas's drawing buffer is set to the scale times its size while its CSS
-// size stays put, every Text object is rasterized at the scale, and the
-// bakes (art/bake.ts) keep that many texels per pixel.
+// blurred upscale. The game is loaded with `?scale=N`, which pins its own
+// display scale (src/art/displayScale.ts): the drawing buffer, every fill,
+// every Text and every bake are rasterized at N times the canvas's size, the
+// same path a player's GPU takes at the size of their window.
 
 import puppeteer from 'puppeteer-core';
 import fs from 'node:fs';
@@ -49,7 +47,9 @@ import { spawn, execSync, execFileSync } from 'node:child_process';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const GAME_DIR = process.env.GAME_DIR || path.resolve(__dirname, '..');
 const REPO_DIR = path.resolve(GAME_DIR, '..');
-const OUT_DIR = path.join(REPO_DIR, 'promo');
+// PROMO_OUT_DIR sends a capture somewhere else, for comparing a run against
+// the frames already under promo/ without replacing them.
+const OUT_DIR = process.env.PROMO_OUT_DIR || path.join(REPO_DIR, 'promo');
 const URL = process.env.QM_URL || 'http://localhost:5173/';
 const GAME_URL = `${URL}${URL.includes('?') ? '&' : '?'}renderer=webgl`;
 const CANVAS_W = 854;
@@ -118,11 +118,11 @@ function ffmpeg(args) {
 }
 
 // ---------------------------------------------------------------------------
-// In the page, before any of the game's code runs: the seeded Math.random, the
-// virtual Date.now, and the scaled WebGL viewport.
+// In the page, before any of the game's code runs: the seeded Math.random and
+// the virtual Date.now.
 // ---------------------------------------------------------------------------
 
-function installPageHooks(scale) {
+function installPageHooks() {
   // mulberry32: small, fast, and good enough for map generation and dice.
   let state = 0x9e3779b9;
   const rand = () => {
@@ -150,102 +150,24 @@ function installPageHooks(scale) {
       return frozenAt + virtualMs;
     },
   };
-
-  // Phaser sets a viewport before binding the target it is meant for as
-  // often as after (a texture stamp sets the source's size, then binds the
-  // destination), so whether a viewport is the screen's is only known when
-  // something is drawn. The viewport and scissor are therefore recorded as
-  // Phaser asks for them and applied at each draw: multiplied by the scale
-  // while the screen is the bound target, as asked otherwise.
-  const getContext = HTMLCanvasElement.prototype.getContext;
-  HTMLCanvasElement.prototype.getContext = function (type, ...rest) {
-    const ctx = getContext.call(this, type, ...rest);
-    if (!ctx || !/webgl/.test(type) || ctx.__promoScaled) return ctx;
-    ctx.__promoScaled = true;
-    const viewport = ctx.viewport.bind(ctx);
-    const scissor = ctx.scissor.bind(ctx);
-    // The context's own defaults: the whole canvas, at its logical size.
-    let vp = [0, 0, this.width, this.height];
-    let sc = [0, 0, this.width, this.height];
-    let applied = null;
-    ctx.viewport = (...a) => {
-      vp = a;
-      applied = null;
-    };
-    ctx.scissor = (...a) => {
-      sc = a;
-      applied = null;
-    };
-    const sync = () => {
-      const k = ctx.getParameter(ctx.FRAMEBUFFER_BINDING) === null ? scale : 1;
-      if (applied === k) return;
-      viewport(vp[0] * k, vp[1] * k, vp[2] * k, vp[3] * k);
-      scissor(sc[0] * k, sc[1] * k, sc[2] * k, sc[3] * k);
-      applied = k;
-    };
-    for (const name of ['drawArrays', 'drawElements', 'drawArraysInstanced', 'drawElementsInstanced', 'clear', 'readPixels', 'copyTexImage2D', 'copyTexSubImage2D']) {
-      const f = ctx[name];
-      if (!f) continue;
-      const bound = f.bind(ctx);
-      ctx[name] = (...a) => {
-        sync();
-        return bound(...a);
-      };
-    }
-    // Phaser flips a scissor box's y against the drawing buffer's height,
-    // which it reads at boot and again on a scene start, either side of the
-    // buffer being enlarged; it has to read the logical one both times.
-    const logical = { drawingBufferWidth: this.width, drawingBufferHeight: this.height };
-    for (const dim of Object.keys(logical)) Object.defineProperty(ctx, dim, { get: () => logical[dim] });
-    const bindFramebuffer = ctx.bindFramebuffer.bind(ctx);
-    ctx.bindFramebuffer = (...a) => {
-      applied = null;
-      return bindFramebuffer(...a);
-    };
-    return ctx;
-  };
 }
 
 // ---------------------------------------------------------------------------
 // In the page, after boot: the helpers every segment drives the game through.
 // ---------------------------------------------------------------------------
 
-async function installPromoHelpers(page, scale) {
-  await page.evaluate(async (scale) => {
+async function installPromoHelpers(page) {
+  await page.evaluate(async () => {
     const g = window.__game;
-    const bake = await import('/src/art/bake.ts');
-    bake.setBakeOutputScale(scale);
     g.loop.sleep();
     window.__promoClock.freeze();
-    g.canvas.width = 854 * scale;
-    g.canvas.height = 480 * scale;
 
-    // Every Text object, the ones created mid-frame included, is rasterized
-    // at the capture scale: the prototype's updateText is where a Text reads
-    // its resolution, on creation and on every change.
-    let textProto = null;
-    const patchText = (o) => {
-      if (textProto || o.type !== 'Text') return;
-      textProto = Object.getPrototypeOf(o);
-      const updateText = textProto.updateText;
-      textProto.updateText = function () {
-        if (this.style && this.style.resolution !== scale) this.style.resolution = scale;
-        return updateText.call(this);
-      };
-    };
     const walk = (list, fn) => {
       for (const o of list) {
         fn(o);
         if (o.list) walk(o.list, fn);
       }
     };
-    const allObjects = (fn) => {
-      for (const sc of g.scene.getScenes(true)) walk(sc.children.list, fn);
-    };
-    allObjects(patchText);
-    allObjects((o) => {
-      if (o.type === 'Text' && o.style.resolution !== scale) o.setResolution(scale);
-    });
 
     const DT = 1000 / 30;
     const P = {
@@ -264,7 +186,6 @@ async function installPromoHelpers(page, scale) {
         loop.frame += 1;
         g.step(now, DT);
         P.frame += 1;
-        if (!textProto) allObjects(patchText);
       },
       scene(key) {
         return g.scene.getScene(key);
@@ -420,7 +341,7 @@ async function installPromoHelpers(page, scale) {
       if (s?.cursors) for (const k of ['up', 'down', 'left', 'right']) s.cursors[k].isDown = false;
     };
     window.__promo = P;
-  }, scale);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1227,6 +1148,9 @@ async function renderCards(browser) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1920, height: 1080 });
   await page.goto(`file://${path.join(__dirname, 'promo-cards.html')}`);
+  // The page sets its text in the game's bundled face, which it loads from a
+  // file: a card screenshotted before that arrives is set in the fallback.
+  await page.evaluate(() => document.fonts.ready);
   const ids = await page.$$eval('section', (els) => els.map((e) => e.id));
   for (const id of ids) {
     const el = await page.$(`#${id}`);
@@ -1439,11 +1363,11 @@ async function main() {
     const page = await browser.newPage();
     page.on('pageerror', (e) => log(`  page error: ${e.message}`));
     await page.setViewport({ width: CANVAS_W, height: CANVAS_H, deviceScaleFactor: scale });
-    await page.evaluateOnNewDocument(installPageHooks, scale);
-    await page.goto(GAME_URL, { waitUntil: 'domcontentloaded' });
+    await page.evaluateOnNewDocument(installPageHooks);
+    await page.goto(`${GAME_URL}&scale=${scale}`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.__game && window.__game.scene.getScenes(true).length, { timeout: 60000 });
     await sleep(1500);
-    await installPromoHelpers(page, scale);
+    await installPromoHelpers(page);
     if (argv.includes('--cards')) {
       log('=== cards ===');
       await renderCards(browser);

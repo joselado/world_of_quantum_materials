@@ -4,8 +4,9 @@
   <section> to promo/cards/<id>.png). A .card is a full frame, white on black;
   a .caption is one line in the game's panel style laid over gameplay, on a
   transparent frame; an .overlay is a card's text over gameplay rather than
-  black. The face and colours are the game's own: Courier, PANEL_BG 0x10101c
-  and GOLD_ACCENT 0xffe066 from src/ui/theme.ts.
+  black. The face and colours are the game's own: the bundled face of
+  src/ui/gameFont.ts, loaded from the game's own files at the same size
+  adjustment, PANEL_BG 0x10101c and GOLD_ACCENT 0xffe066 from src/ui/theme.ts.
 
   Every line obeys the rules in dev_notes/PROMO_VIDEO_BUILD_TASK.md: no
   dashes, no exclamation marks, no citations, no game structure, nothing from
@@ -15,12 +16,23 @@
 <head>
 <meta charset="utf-8">
 <style>
+  @font-face {
+    font-family: 'WQM Mono'; font-weight: 400; font-style: normal; size-adjust: 88%;
+    src: url('../src/ui/fonts/game-regular.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'WQM Mono'; font-weight: 700; font-style: normal; size-adjust: 88%;
+    src: url('../src/ui/fonts/game-bold.woff2') format('woff2');
+  }
   html, body { margin: 0; padding: 0; background: transparent; }
   section {
     width: 1920px; height: 1080px; position: relative; overflow: hidden;
-    font-family: Courier, 'Courier New', monospace; box-sizing: border-box;
+    font-family: 'WQM Mono', Courier, 'Courier New', monospace; box-sizing: border-box;
   }
   .card { background: #000; display: flex; align-items: center; justify-content: center; }
+  /* A line that wraps is split into lines of about equal length, so no card
+     ends on one short word. */
+  .card p, .band { text-wrap: balance; }
   .card p {
     color: #f4f1e8; font-size: 58px; font-weight: bold; line-height: 1.35;
     max-width: 1500px; text-align: center; margin: 0;

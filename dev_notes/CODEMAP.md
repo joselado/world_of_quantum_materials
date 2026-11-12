@@ -12,8 +12,11 @@ stale, fix it rather than leaving it wrong.
 ```
 game/src/
   main.ts                    Phaser game config, scene list, boot order; installCanvasRenderer()
-                               before the game exists, and chooseRenderer() -- Canvas when the only
-                               WebGL is a software rasterizer, ?renderer=webgl|canvas to pin one
+                               and the Text installs (crispText, displayScale, gameFont, plates)
+                               before the game exists; chooseRenderer() -- Canvas when the only
+                               WebGL is a software rasterizer, ?renderer=webgl|canvas to pin one;
+                               the game created once loadGameFont() settles, then
+                               followDisplayScale(), ?scale=N|auto to pin it
   config/
     screen.ts                 CANVAS_W/CANVAS_H (854x480, 16:9) -- single source of truth for
                                  the game's canvas size, read directly by main.ts's GameConfig
@@ -113,6 +116,11 @@ game/src/
                                  guardianHeader.ts's renderGuardianHeader() is the large-portrait-
                                  plus-opening-line block all of them (and showGuardianLore) open
                                  with,
+                                 scrim.ts is what an open panel does to the screen behind it
+                                 (addScrim, the dark layer under a panel, and PanelChrome, which
+                                 also stands the HUD down and keeps the qumatessence counter
+                                 above a guardian's panel, clear of what it lays out -- see
+                                 "Panel/dialogue UI" below),
                                  tunableMoveShop.ts's hostableClasses() is the shared filter
                                  landau.ts and sklodowskaCurie.ts list as the entries under
                                  whichever of their moves is open in their own two-level left
@@ -162,7 +170,10 @@ game/src/
                                  for it (OVERSCAN_X/Y, ARENA_X0/ARENA_W), arena() (tags a world
                                  object; the vignette is left untagged so it frames the screen)
                                  and ultimateStage() (the arena corner a meteor comes in
-                                 from and the floor a nova gathers from, handed to playAttackEffect)
+                                 from, set just under the turn-order row's own bottom edge, and
+                                 the floor a nova gathers from, handed to playAttackEffect);
+                                 setScrim (the dark layer under the question, stage and
+                                 closing-summary panels, panels/scrim.ts's addScrim)
     battle/
       hud.ts                   Battle-screen layout, split out of BattleScene: the rails/positions/
                                  sizing constants every battle element is placed from (LEFT/RIGHT/
@@ -171,12 +182,15 @@ game/src/
                                  the player, the golem and the finale's two later forms
                                  (MODEL_*/SMOKE_*), BOSS_GROUND_LIFT, the OpponentIcon kind
                                  drawTurnPreview dispatches the opponent's icon on, HP-bar
-                                 dims, MENU_*, TURN_PREVIEW_*, LOG_*), plus the HUD pieces that
+                                 dims, MENU_*, TURN_PREVIEW_* including the measured
+                                 TURN_PREVIEW_ICON_RISE/DROP an icon's art reaches from its
+                                 centre, LOG_*), plus the HUD pieces that
                                  are pure geometry: drawNameplate (one floating name-over-bar plate,
                                  the player and every wild), drawBossBar (a rival's wide name-over-bar
                                  banner on the top rail; both return the same Nameplate shape, whose
                                  setHp owns the fill's width) and drawTurnPreview (the "TURNS" icon
-                                 row). Plain
+                                 row, with turnPreviewBottom for whatever has to stay clear
+                                 below it). Plain
                                  functions taking the scene, holding no battle state, the same shape
                                  panels/hubStations.ts uses. The move menu stays in BattleScene --
                                  it reads/writes that scene's paging + turn-lock state and wires up
@@ -301,9 +315,22 @@ game/src/
                                  averaged down to 1:1, even-sized, on a whole pixel) shown by one
                                  Image in the first layer's slot, and freed with that Image; the
                                  layers stay hidden in place and repaint it on RESTORE_WEBGL. See
-                                 "Painted-once art is baked" below. setBakeOutputScale(n) keeps
-                                 n texels per screen pixel, for scripts/promo.mjs's raster at n
-                                 times the canvas; 1 everywhere the game runs
+                                 "Painted-once art is baked" below. setBakeOutputScale(scale)
+                                 tells it the display scale (displayScale.ts; 1 at the canvas's
+                                 own size), each bake keeps the whole number of texels per game
+                                 pixel that scale needs, and a standing bake whose number
+                                 changed is repainted. A
+                                 scratch texture over SCRATCH_TEXEL_BUDGET (the arena at three
+                                 texels per game pixel) is skipped and the bake painted direct,
+                                 except at a scale pinned from the URL (liftScratchTexelBudget),
+                                 where a capture script is the one waiting
+    displayScale.ts            installDisplayScale()/followDisplayScale(game, options) -- the
+                                 frame drawn with the display's own pixels instead of stretched
+                                 up from 854x480: the drawing buffer follows the size the canvas
+                                 is shown at, WebGL's viewport and scissor are scaled while the
+                                 screen is the target, every Text is rasterized at the scale
+                                 rounded up and every bake near it (see "Drawn at the display's
+                                 resolution" below)
     canvasRenderer.ts          installCanvasRenderer() -- what Phaser's Canvas renderer is taught
                                  so it draws the game as WebGL does: a Graphics renderer that reads
                                  fillGradientStyle in full and fills gradient rects/triangles by
@@ -927,6 +954,15 @@ game/src/
     crispText.ts                  installCrispText() -- every Phaser Text drawn with its top-left
                                    corner on a whole pixel, in both renderers (see "Text on whole
                                    pixels" below)
+    gameFont.ts                   loadGameFont()/installGameFont()/GAME_FONT_FAMILY -- the one
+                                   monospace face the game ships (fonts/game-*.woff2, a subset of
+                                   JetBrains Mono NL under fonts/OFL.txt), made the default family
+                                   of every Text, with its ascent and descent computed from the
+                                   face instead of measured (see "One typeface, carried by the
+                                   game" below)
+    plates.ts                     installTextPlates()/PLATE_RADIUS -- the background plate of
+                                   every Text (a button, a HUD readout, a list row) filled with
+                                   rounded corners where Phaser draws it
     theme.ts                      PANEL_BG/GOLD_ACCENT(_HEX)/REFERENCE_BLUE_GREY(_HEX)/BOSS_RED(_HEX)/
                                    TUTORIAL_CYAN(_HEX)/STORY_LAVENDER(_HEX) -- colors reused for a shared
                                    UI role (a panel background, an "active" accent, etc.) across
@@ -956,8 +992,9 @@ from checking, so an unassigned one reads as `undefined` at runtime with no diag
 
 `game/scripts/promo.mjs` (`npm run promo`, see DEVELOPMENT.md's "Capturing the promotional
 video") drives the dev build the way `shots.mjs` does, on a hand-stepped loop, and reaches
-into `src/` for three hooks: `music.renderScore` for the cues, `bake.setBakeOutputScale` for
-the raster, and the Phaser module the game loaded (found by its URL) for the question shuffle.
+into `src/` for two hooks: `music.renderScore` for the cues, and the Phaser module the game
+loaded (found by its URL) for the question shuffle. Its raster above the canvas's size is the
+game's own display scale, pinned with `?scale=N` (`art/displayScale.ts`).
 Its cards and captions are `game/scripts/promo-cards.html`.
 
 `game/scripts/art-sweep.mjs` (`npm run art-sweep`, see DEVELOPMENT.md's "Art-builder input
@@ -1130,6 +1167,40 @@ everything else by absence, so only two things in it carry meaning.
   `OverworldScene`) gold `0xffe066` again for `showAnalyticQuestion`'s in-battle question panel
   (matching the move menu's own border) and magenta `0xff66ff` for `showUltimateQuestions`'s.
   A new panel should pick a stroke color that doesn't collide with these.
+- **What an open panel does to the screen is decided in one place per scene**
+  (`scenes/panels/scrim.ts`), not by the panel. `dialogueContainer` is a getter/setter pair on
+  both `OverworldScene` and `HubScene`, and every write to it goes to that scene's
+  `PanelChrome.sync`: a container assigned while none was open puts the scrim up (one
+  full-canvas rectangle named `SCRIM_NAME` at `SCRIM_DEPTH`, directly under the panels' own
+  depth `100`), hides the HUD labels the scene handed it and the qumatessence counter (`tokenText`), and
+  brings the counter back above the panel if qumatessence is spent in it; `undefined` undoes
+  all of it. A panel says it spends by being marked with `showBalanceOver(container)`, which
+  `guardianHeader.ts`'s `renderGuardianHeader` does for every guardian's panel (the lore-only
+  fallback passes `trades: false`); every purchase in the game is made in one of those ten, so
+  a new guardian panel gets the counter by opening with the shared header and a new panel of
+  any other kind is read without it. A panel that rebuilds itself
+  (a page flip, a row picked) clears the container and assigns a new one inside the same
+  frame, so the screen under it looks the same from one frame to the next. So a new panel gets the scrim by doing
+  what every panel already does (assign `scene.dialogueContainer`, close through
+  `closeDialogue`/`destroyPanel`), and a new HUD label that stands on screen all the time
+  joins the list its scene passes to `new PanelChrome(...)` in `create()`. `dialogueContainer`
+  rather than `dialogueActive` is the signal because `dialogueActive` is the overworld's wider
+  movement lock (the pass crossing holds it with no panel up) and the Lab's panels do not all
+  set it. While a marked panel is open the counter is placed every frame (the scene's `postupdate`
+  event) against what the panel holds at that moment, since a panel is filled in after its
+  container is assigned and rebuilds parts of itself on every row picked: its own top-right
+  corner if no piece of the panel other than the background comes within `COUNTER_CLEARANCE`
+  of it, else the two bottom corners at the counter's own margin from the canvas floor
+  (right, then left), else the same two flush against the floor, else hidden. Its plate is
+  `COUNTER_PLATE`, opaque, for as long as it rides above a panel. The background is
+  taken to be the largest measurable piece, the one that encloses the rest. `Graphics` have no
+  bounds and are not seen by this, which is why the top-left corner, where a guardian's drawn
+  portrait stands, is not a candidate. The one opening that takes no scrim is a panel over the
+  pass crossing's own full-canvas fade (`OverworldScene.passFade`, the between-worlds story
+  beat): the fade already covers the world, so `sync` is told `covered`, and the counter goes
+  with the rest of the HUD. `BattleScene` has no `dialogueContainer`; its three read-me panels
+  (`renderQuestionPanel`, `renderStagePanel`, `raiseLogToPanel`) call `setScrim` themselves,
+  outside the shrink-to-fit loops that build and discard trial containers.
 - **Guardian panels live in `scenes/panels/<guardian>.ts`, one file per guardian, not as
   methods on `OverworldScene`.** Each exports a `show<Guardian>Panel(scene: GuardianPanelHost)`
   (or, for Bloch, `showBlochHub`) that the `WORLD_GUARDIANS` table's
@@ -1292,8 +1363,53 @@ everything else by absence, so only two things in it carry meaning.
   the ADD/MULTIPLY blend modes have Canvas equivalents and are fine. `component-check`'s Canvas
   parity test compares sky, floor and a tinted glow across the two, and `npm run frame-cost`
   measures both.
-- **Text on whole pixels.** A Phaser `Text` is a canvas texture with one texel per game pixel,
-  so drawn off the pixel grid every glyph is resampled across two columns or rows. The usual
+- **Drawn at the display's resolution.** Layout, input and every coordinate are in game
+  pixels on the 854x480 canvas, and the scale manager stretches that canvas over the window;
+  `art/displayScale.ts` makes the stretched frame be drawn with the window's own pixels. The
+  display scale is the size the canvas is shown at, in device pixels, over the canvas's own
+  (about 2.25 on a 1080p window), held between 1 and `MAX_DISPLAY_SCALE`. Four things follow
+  it and nothing else changes: the canvas's drawing buffer; WebGL's viewport and scissor,
+  multiplied while the screen is the bound target (recorded as Phaser asks for them and
+  applied at each draw, since Phaser sets a viewport before binding its target as often as
+  after); every `Text`'s `resolution`, at the scale rounded up to a whole number; and
+  `art/bake.ts`'s texels per game pixel, the same whole number, except for a bake a camera
+  zooms out on (the battle arena, `bakeLayers`'s `deepestZoom`), which takes the scale rounded
+  down where rounding up would leave it more than two texels per drawn pixel at that zoom. It follows the display only under WebGL on a
+  real GPU. The Canvas renderer and a software WebGL stay at 1, where a frame's cost grows
+  with its pixel count; `?scale=N` pins a scale under WebGL whatever the hardware (how
+  `scripts/promo.mjs` renders at 2x and 4x in a headless browser) and `?scale=auto` follows
+  the display on a software WebGL too. A machine whose frames run slow is
+  first tried at scale 1 for a few seconds: if they are quick there, the scale was the cost,
+  and its ceiling drops to the whole scale below the slow one for the session (and can drop
+  again); if they are as slow at 1 (a 30 Hz display, a browser's energy saver), the scale
+  goes back to the display's and is left alone. Anything new that paints its own
+  raster (a canvas texture, a render texture) reads `displayScale()` for how many texels a
+  game pixel needs; `art/fxTextures.ts`'s soft particle textures are the one deliberate
+  exception, having no edge to sharpen. None of the check scripts reaches a scale above 1
+  (they run at the canvas's own size), so a change to this module is verified by hand: a
+  capture at `?scale=2` and at `?scale=auto` on a larger viewport, and a resize and a lost
+  context driven through a running battle.
+- **One typeface, carried by the game.** No text style in the game names a font family.
+  `ui/gameFont.ts`'s `installGameFont()` gives every `Text` created without one
+  `GAME_FONT_FAMILY`: the bundled face first, then `Courier` and `monospace` for the characters
+  it lacks (the sparkle glyphs and the star, `∝`, the superscript minus of an anion, the
+  subscript and superscript letters). `main.ts` awaits `loadGameFont()`
+  before creating the game, because a `Text` made before its font is ready is measured and
+  rasterized in the fallback and stays that way. The three files (regular, italic, bold) are
+  imported as assets, so the site build serves them beside the script and the single-file
+  build inlines them. The face is drawn at `SIZE_ADJUST` of the size a style asks for (it is
+  larger on the body than Courier), and a `Text` in it takes its ascent and descent from
+  `ASCENT`/`DESCENT` times its size rather than from Phaser's `MeasureText`: the browser's
+  measured bounding box differs by a pixel between systems, and in Chrome on one machine
+  depending on whether the canvas has been resized, and every panel stacks by those numbers.
+  A style that does name a family (`ui/mathtext.ts`'s math stack) is measured as Phaser
+  measures it. A browser without `size-adjust`, or one that cannot load the face, runs the
+  whole game in `Courier` with measured metrics. Keep it monospace: panels pad columns with
+  spaces. Swapping the face means replacing the three files and the three constants, then
+  re-checking panel fit at the three text sizes.
+- **Text on whole pixels.** A Phaser `Text` is a canvas texture with a whole number of texels
+  per game pixel, so drawn off the pixel grid every glyph is resampled across two columns or
+  rows. The usual
   way a label lands there is being centred -- `setOrigin(0.5, ...)` puts the left edge of an
   odd-width label at `x.5` -- or sitting under an element of fractional height in a panel
   that stacks at `y += height`. `ui/crispText.ts`'s `installCrispText()`, called from
@@ -2718,15 +2834,15 @@ for no reason a reader can see.
 A handful of rules keep it legible, and keep a formula-bearing question looking like an
 ordinary one, at the game's own sizes.
 
-*Two faces, split at the `$`.* Prose runs are set in `PROSE_FONT_FAMILY` -- the literal
-`Courier` Phaser falls back to when a text style names no family -- so the words around a
-formula are the same face, size and colour as the words of a question that carries no
-formula at all. Only what sits between a pair of `$` gets `MATH_FONT_FAMILY`
-(Menlo/Consolas/DejaVu Sans Mono/Liberation Mono, generic `monospace` tail): the default
-face has no Greek coverage on common platforms, so a Δ or ξ inside an expression would come
-from a per-glyph fallback and sit hairline-thin beside its own Latin, where every family in
-that stack covers Greek and the angle brackets and ships a real oblique for the leaning
-variables. Setting the math in a face of its own is the ordinary typographic convention
+*Two faces, split at the `$`.* Prose runs are set in `PROSE_FONT_FAMILY` -- the very
+`GAME_FONT_FAMILY` a text style gets when it names no family (`ui/gameFont.ts`) -- so the
+words around a formula are the same face, size and colour as the words of a question that
+carries no formula at all. Only what sits between a pair of `$` gets `MATH_FONT_FAMILY`
+(Menlo/Consolas/DejaVu Sans Mono/Liberation Mono, generic `monospace` tail): a formula's
+symbols reach past what one text face covers, so a ∝ or a subscript letter inside an
+expression would come from a per-glyph fallback and sit hairline-thin beside its own Latin,
+where every family in that stack covers Greek and the angle brackets and ships a real oblique
+for the leaning variables. Setting the math in a face of its own is the ordinary typographic convention
 anyway. The bra-ket angles `⟨` and `⟩` are drawn from a `Graphics` rather than set as
 characters, since they are the one thing the formulas use that lives outside the Unicode
 blocks a stock monospace face is reliably built to cover -- the stack resolves to Consolas

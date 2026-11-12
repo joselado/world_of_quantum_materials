@@ -1,4 +1,7 @@
 import Phaser from 'phaser';
+import { GAME_FONT_FAMILY } from './gameFont';
+import { PLATE_RADIUS } from './plates';
+import { fillRoundedRect } from '../art/shapes';
 
 // Formula rendering for the physics questions. Quiz prompts and answers
 // (data/quiz.ts) mark their formulas with `$...$`; inside those delimiters a
@@ -25,20 +28,20 @@ import Phaser from 'phaser';
 // Two faces, one per kind of run. Prose is set in the face a plain Phaser
 // Text uses, so the words around a formula are indistinguishable from the
 // words of a question that carries no formula at all; that has to be the
-// literal default Phaser falls back to when a style names no family, not a
+// very family a Text gets when its style names none (ui/gameFont.ts), not a
 // stack that merely resembles it. Math spans get their own monospace stack:
-// the default face has no Greek coverage on common platforms, so a Δ or ξ
-// inside an expression would come from a per-glyph fallback and sit
-// hairline-thin beside its own Latin, where every family in this stack
-// covers Greek and the angle brackets, ships a real oblique for the leaning
-// variables, and the generic tail keeps a machine with none of the named
-// faces on a consistent monospace. Setting the math in a face of its own is
-// the ordinary typographic convention anyway.
+// a formula's symbols reach past what any one text face covers, so a ∝ or a
+// subscript letter inside an expression would come from a per-glyph fallback
+// and sit hairline-thin beside its own Latin, where every family in this
+// stack covers Greek and the angle brackets, ships a real oblique for the
+// leaning variables, and the generic tail keeps a machine with none of the
+// named faces on a consistent monospace. Setting the math in a face of its
+// own is the ordinary typographic convention anyway.
 //
 // Two faces meet on one line because the layout below is baseline-relative:
 // every run is placed by its own ascent, so a formula and the words on
 // either side of it share a baseline instead of a top edge.
-const PROSE_FONT_FAMILY = 'Courier';
+const PROSE_FONT_FAMILY = GAME_FONT_FAMILY;
 const MATH_FONT_FAMILY = 'Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace';
 
 // A run's own text is drawn by a Phaser Text object; scripts are the same
@@ -724,8 +727,17 @@ export function makeFormulaButton(
   // label's absolute position off the grid by that same half pixel.
   content.setPosition(0, style.padY - h / 2);
 
-  const plate = scene.add.rectangle(0, 0, w, h, style.backgroundColor);
-  const button = scene.add.container(x, y + h / 2, [plate, content]);
+  // Drawn as a path (art/shapes.ts) rather than as a Rectangle with rounded
+  // corners: Phaser's WebGL renderer gives a Rectangle one straight segment
+  // per corner at this radius, a bevel beside the arcs every Text plate has.
+  const plate = scene.add.graphics();
+  plate.fillStyle(style.backgroundColor, 1);
+  fillRoundedRect(plate, -w / 2, -h / 2, w, h, PLATE_RADIUS);
+  // A path has no bounds of its own. This unfilled rectangle is the button's
+  // box for everything that measures one (a container's getBounds, the
+  // counter placement of scenes/panels/scrim.ts); it draws nothing.
+  const box = scene.add.rectangle(0, 0, w, h);
+  const button = scene.add.container(x, y + h / 2, [plate, box, content]);
   button.setSize(w, h);
   // The hit area is measured from the container's own top-left corner, not
   // from its centre where its children are placed: Phaser offsets the local

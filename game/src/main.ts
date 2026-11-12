@@ -7,6 +7,9 @@ import { checkDataIntegrity } from './data/integrity';
 import { CANVAS_W, CANVAS_H } from './config/screen';
 import { installCanvasRenderer } from './art/canvasRenderer';
 import { installCrispText } from './ui/crispText';
+import { installDisplayScale, followDisplayScale, displayScaleFromUrl } from './art/displayScale';
+import { installGameFont, loadGameFont } from './ui/gameFont';
+import { installTextPlates } from './ui/plates';
 
 // Dev-only: catches a renamed/removed move id or a built world missing its
 // biome before the game even boots, rather than a specific save/player
@@ -20,6 +23,13 @@ if (import.meta.env.DEV) {
 installCanvasRenderer();
 // Every Text drawn on a whole pixel, in either renderer (ui/crispText.ts).
 installCrispText();
+// Every Text rasterized at the display's own resolution (art/displayScale.ts).
+installDisplayScale();
+// Every Text set in the game's own face unless its style names another
+// (ui/gameFont.ts).
+installGameFont();
+// Every label's background plate drawn with rounded corners (ui/plates.ts).
+installTextPlates();
 
 // Which renderer draws the game. WebGL on a real GPU is the cheapest by far;
 // but WebGL offered by a software rasterizer (a machine with no usable GPU)
@@ -29,11 +39,13 @@ installCrispText();
 // anything else is left to Phaser.AUTO. `?renderer=webgl` or `?renderer=canvas`
 // in the URL picks one outright -- the check scripts under scripts/ pin WebGL
 // with it, since headless Chrome's WebGL is itself a software one.
+const software = softwareWebGL();
+
 function chooseRenderer(): number {
   const asked = new URLSearchParams(window.location.search).get('renderer');
   if (asked === 'webgl') return Phaser.WEBGL;
   if (asked === 'canvas') return Phaser.CANVAS;
-  return softwareWebGL() ? Phaser.CANVAS : Phaser.AUTO;
+  return software ? Phaser.CANVAS : Phaser.AUTO;
 }
 
 function softwareWebGL(): boolean {
@@ -63,11 +75,23 @@ const config: Phaser.Types.Core.GameConfig = {
   scene: [TitleScene, HubScene, OverworldScene, BattleScene],
 };
 
-const game = new Phaser.Game(config);
+// The game is created once its typeface can be drawn with: a Text made
+// before its font is ready is measured and rasterized in the fallback face
+// and stays that way (ui/gameFont.ts). A font that never arrives does not
+// hold the game back -- loadGameFont settles either way.
+void loadGameFont().then(() => {
+  const game = new Phaser.Game(config);
 
-// Dev-only: lets a headless script drive scenes directly (open a specific
-// panel, read back its layout) without hand-scripting clicks through the
-// UI to reach it -- see DEVELOPMENT.md's "Verifying UI changes".
-if (import.meta.env.DEV) {
-  (window as unknown as { __game: Phaser.Game }).__game = game;
-}
+  // The frame is drawn with the display's own pixels rather than stretched up
+  // from the canvas's: on a real GPU the drawing buffer follows the size the
+  // canvas is shown at, and on a software renderer it stays at the canvas's own
+  // size unless `?scale=` says otherwise (art/displayScale.ts).
+  followDisplayScale(game, displayScaleFromUrl(software));
+
+  // Dev-only: lets a headless script drive scenes directly (open a specific
+  // panel, read back its layout) without hand-scripting clicks through the
+  // UI to reach it -- see DEVELOPMENT.md's "Verifying UI changes".
+  if (import.meta.env.DEV) {
+    (window as unknown as { __game: Phaser.Game }).__game = game;
+  }
+});
