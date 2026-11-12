@@ -39,16 +39,19 @@ lsof -ti:5173 -sTCP:LISTEN | xargs -r kill
   dependency (`string-width`) using a regex `v` flag Node 18 doesn't
   support -- a confusing error that looks unrelated to Puppeteer itself.
 
-What works: install `puppeteer-core` (not full `puppeteer`, and not via the
-`npx puppeteer` CLI) as a plain dependency, and point it at the Chrome for
-Testing binary Puppeteer has already cached on this machine, rather than
-letting it try to download/manage a browser itself:
+What works: `puppeteer-core` (not full `puppeteer`, and not the
+`npx puppeteer` CLI), pointed at the Chrome for Testing binary Puppeteer has
+already cached on this machine. It is a devDependency of `game/`, so nothing
+needs installing; a script that lives outside `game/` (the scratchpad, a
+skill's folder) reaches it through `createRequire`:
+
+```js
+import { createRequire } from 'node:module';
+const require = createRequire('/abs/path/to/game/package.json');
+const puppeteer = require('puppeteer-core');
+```
 
 ```bash
-mkdir -p /tmp/pptr-driver && cd /tmp/pptr-driver
-npm init -y >/dev/null 2>&1
-npm install puppeteer-core@22
-
 export CHROME_BIN=$(find ~/.cache/puppeteer/chrome -maxdepth 2 -type d -iname 'linux-*' \
   -exec find {} -maxdepth 2 -type f -iname chrome \; | head -1)
 ```
@@ -72,6 +75,35 @@ directly instead of clicking through the UI -- see `verify-ui` skill and
 `dev_notes/DEVELOPMENT.md` §"Verifying UI changes" for the full API and its gotchas
 (scene-switching, font-scale presets, container scoping) when the task is
 verifying a specific UI change rather than just confirming the game boots.
+
+## 4. Which game the headless browser is running
+
+Headless Chrome's WebGL is a software one by default, and the game answers
+that by choosing its Canvas renderer and staying at display scale 1
+(`main.ts`'s `chooseRenderer`). That is not what a player with a GPU sees.
+Say which one you want:
+
+- `?renderer=webgl` forces the WebGL renderer on the software backend. The
+  check scripts under `game/scripts/` all load the page this way.
+- `?scale=N` pins the display scale (drawn pixels per game pixel). Use it with
+  `deviceScaleFactor: N` on the viewport for a sharp frame at N times 854x480;
+  a `deviceScaleFactor` alone is a blurred enlargement.
+- `?vectors=phaser` turns the vector layers off (`art/graphicsCache.ts`,
+  `art/fastGraphics.ts`), for a reference frame.
+- For this machine's real GPU, launch Chrome with `--use-angle=vulkan
+  --enable-features=Vulkan --enable-gpu --ignore-gpu-blocklist`. The default
+  GL backend gives "Cannot create WebGL context" here. Anything about frame
+  rate needs this; see the `measure-smoothness` skill.
+
+Do not edit files under `game/src` while a headless script is running: Vite
+reloads the page under it and the script fails in ways that look like game
+bugs.
+
+The built game (`npm run build && npm run bundle`,
+`game/dist/world_of_quantum_materials.html`, opened as a `file://` URL) has no
+`window.__game`. Drive it with real keys and clicks: Space on the title, a
+click on the Lab tip's Close and on "Enter The Mean Fields", clicks through
+the world's opening story, then the arrow keys.
 
 Check `page.on('console', ...)` for `type() === 'error'` before declaring
 success -- a blank canvas with a thrown error is not a working title screen.

@@ -27,11 +27,9 @@ Note the printed URL (typically `http://localhost:5173`).
 
 ## 2. Get a headless Chromium driver
 
-Playwright's Chromium is already cached on this machine (`~/.cache/ms-playwright`),
-so `npx playwright` works without a fresh download. Puppeteer works equally
-well if you prefer it -- neither is a permanent project dependency (see
-`game/package.json`), both run fine via `npx`. Don't add either as a
-devDependency just to run this check.
+Use `puppeteer-core`, which is a devDependency of `game/`, with the cached
+Chrome for Testing binary: the `run-game` skill has the exact recipe. On this
+machine's Node 18 both `npx playwright` and the `npx puppeteer` CLI fail.
 
 ## 3. Drive the scene via `window.__game`
 
@@ -115,6 +113,26 @@ labels, orbiting avatar glyphs) can share a real button's exact label text --
 filter to `obj.input` (only set once `setInteractive()` is called), which is
 necessary but not sufficient once a scene has multiple panels/containers
 layered at once.
+
+**Gotcha:** an open panel is more than its container. The overworld and the
+Lab put a dark layer under it and hide the HUD labels and, over a panel that
+does not spend, the qumatessence counter (`scenes/panels/scrim.ts`'s
+`PanelChrome`); a battle question dims the field and hides the move menu.
+Close a panel through the scene's own path (`closeDialogue()`, a click on its
+button). A script that destroys the container directly leaves the dark layer
+up and the menu hidden, and the next thing it captures is a dim, empty frame:
+that is how a doc screenshot of the move menu came out blank once. In a battle
+the reset is `b['setScrim'](false)` and `b['moveMenu'].setVisible(true)`.
+
+**Gotcha:** do not edit files under `game/src` while a check is running. Vite
+reloads the page, `window.__game` is gone for a moment, and the run reports
+failures that are not real.
+
+**Gotcha:** at an 854x480 viewport the game draws at display scale 1. A player
+on a large screen sees the same layout at two or three drawn pixels per game
+pixel, with text rasterized at that scale. Bounds are in game pixels at any
+scale, so overflow checks do not change, but to look at the frame a player
+sees load `?scale=2` with `deviceScaleFactor: 2` (see `run-game`).
 
 ## 6. What to actually check
 

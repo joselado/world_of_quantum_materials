@@ -33,7 +33,13 @@ any difference you measure is noise.
 
 - Seed or stub `Math.random` immediately before each `scene.start`, and re-seed
   per capture so both sides see identical input.
-- Freeze the animation clock, or capture at a fixed frame.
+- Freeze the animation clock. The way that works: pause each running scene's
+  tweens and clock (`scene.tweens.pauseAll()`, `scene.time.paused = true`),
+  put the loop to sleep (`game.loop.sleep()`), and step it by hand at one
+  fixed instant (`game.loop.step(T)`). Pausing only the loop is not enough:
+  a tween moved the player's crystal between two captures once and showed up
+  as a thousand differing pixels. Both sides of a comparison are then drawn
+  in the same page at the same `T`.
 - Replay a recorded map state into both builds rather than generating twice.
 
 A phantom "colour regression" was once escalated as the most serious finding in a
@@ -45,6 +51,17 @@ review because the harness regenerated the map on every render. Pin first.
 **sensitivity control**: deliberately perturb one small value and confirm the
 harness reports a difference. A zero-diff from a harness that cannot detect
 change proves nothing. State per-world numbers.
+
+For the vector layers (`art/graphicsCache.ts`, `art/fastGraphics.ts`) that
+comparison is already a script with its own control:
+`.claude/skills/measure-smoothness/scripts/frozen-ab.mjs`.
+
+**Something that looks wrong in a capture** → look at the same frame of the
+committed state before calling it a regression (`git show
+HEAD:screenshots/x.png`, the published trailer). A flat grey frame in a
+recaptured battle was the game's own critical-hit flash, and a caption over a
+name plate was in the published cut too; a tight panel title had the same
+padding before the typeface changed.
 
 **A change that should alter appearance** → numbers, not adjectives. Sample
 along a column and report row-to-row deltas, luminance, contrast against the

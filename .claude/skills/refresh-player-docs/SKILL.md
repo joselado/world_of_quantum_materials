@@ -9,7 +9,8 @@ Four artifacts describe this game to players: the generated tables in
 `docs/*.md`, the screenshots in `screenshots/`, the hand-written prose in
 `README.md` and `docs/`, and `guide.pdf`. Three of the four are derived and can
 be rebuilt; the fourth is prose and has to be read. This skill does all four in
-the order that makes each one correct before the next consumes it.
+the order that makes each one correct before the next consumes it. A fifth,
+the trailer, lives outside the repository and has its own section at the end.
 
 Run this after a batch of updates has landed, not during one. For a single
 change in flight, `docs-sync-check` is the right tool.
@@ -19,7 +20,7 @@ change in flight, `docs-sync-check` is the right tool.
 ```
 cd game
 npm run docs     # tables  <- game data
-npm run shots    # images  <- running game        (~90s)
+npm run shots    # images  <- running game        (~3.5 min, 65 files)
 # ...prose audit (below)...
 npm run guide    # PDF     <- README + docs/      (needs pandoc + xelatex)
 ```
@@ -49,7 +50,20 @@ framed at its entrance so the shot was mostly the back-exit sign. Both were
 fixed by changing *when* the capture happens, not by accepting the image.
 
 Check at minimum: one world, one guardian panel, and any screen the recent
-changes touched.
+changes touched. Look at the cropped shots too (the guardian avatars, the
+move menu, the map): the script only fails a crop under 1 kB, and a crop of a
+dimmed, empty backdrop is about 4 kB. Building contact sheets of four shots
+each makes the whole set readable in about a dozen images.
+
+`title.png` is 3416x1920 on purpose (the picture at the head of the README);
+the `title` group takes it at that size itself, from a page loaded with
+`?scale=4`. If it comes out 854x480, that path broke.
+
+A shot that is empty or dim is usually the script, not the game: a step of the
+script left a panel open or closed it by destroying its container, and the
+dark layer under panels stayed up (see `verify-ui`). Before deciding that a
+picture shows a regression, compare it with the committed one:
+`git show HEAD:screenshots/<name>.png > /tmp/old.png`.
 
 **A bad screenshot can be evidence of a real defect, not a bad capture.** A row
 of pale slabs on World 8's horizon turned out to be World 9's distant self
@@ -100,3 +114,36 @@ session.
 
 Commit the regenerated images and PDF together with the prose fixes, so the
 repo never holds a screenshot of a game that no longer exists.
+
+## 6. The trailer, when the look of the game changed
+
+The trailer and its thirty-second cut are not in the repository: they are the
+assets `trailer.mp4` and `trailer-30s.mp4` of the GitHub release tagged
+`trailer`, which the Pages deploy copies into the site.
+`dev_notes/DEVELOPMENT.md`'s "Capturing the promotional video" is the
+reference; this is the order that worked.
+
+```
+cd game
+npm run promo                        # every segment at 2x, about 30 minutes
+npm run promo -- --cards
+npm run promo -- --audio
+npm run promo -- --assemble          # promo/preview.mp4
+npm run promo -- --assemble --short  # promo/short.mp4
+```
+
+- Run the capture in the background and do not edit `game/src` while it runs.
+- Before assembling, check that every `promo/segments/*.mp4` is newer than the
+  start of the capture. A mix of old and new segments assembles silently.
+- Read every contact sheet in `promo/sheets/`, not a sample, and a dozen
+  frames across each assembled cut. Compare anything odd with the published
+  cut before calling it a regression.
+- Keep the published files before anything else: `promo/trailer.mp4` and
+  `promo/trailer-30s.mp4` are the local copies of the release assets (compare
+  their sizes with `gh release view trailer --json assets`); copy them to
+  `promo/backup-published/`.
+- Uploading replaces a public file the owner approved by eye. Ask once, with
+  the two local paths, before `gh release upload trailer ... --clobber`, and
+  never delete the release: every Pages deploy fetches from it. The upload is
+  followed by a re-run of the Pages deploy, which is part of the same
+  approval.
