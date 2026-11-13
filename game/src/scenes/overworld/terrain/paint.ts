@@ -80,7 +80,7 @@ export function drawTerrain(view: TerrainView) {
     // The row's squares are behind the plane, and its traced outlines are
     // what is left of its ground.
     const outlinesOnly = squaresPastCamera(camY, y);
-    drawMarginColumns(view, tiles[y], y);
+    drawMarginColumns(view, tiles[y], y, contours[y] ?? null, 0);
     const laneClip = laneClipAt(camY - y + 0.5);
     // A tile's right lane is the next tile's left lane exactly -- both are
     // `x - camX + 0.5` -- and both sit at this row's two depths, so the pair
@@ -292,17 +292,20 @@ function projectContour(points: ContourPoint[], camX: number, camY: number): Tri
 // that is walkable floor continues as its biome's off-path terrain, never
 // as more floor), so the world runs to the frame edge instead of stopping
 // on a stair-stepped strip of bare backdrop. Drawn before the row's real
-// tiles: the innermost margin column is widened by MAX_OFFSET under an
-// adjacent walkable tile so the boundary curve's vacated sliver is covered
-// in ground color, and the real fills then paint over the rest of the
-// overlap. No contour/contact-shadow work happens out here -- the real
-// grid-edge boundary is already part of the traced contour (the trace
-// treats out-of-grid as impassable), so the floor side keeps its usual
-// curve, shadow and rim.
+// tiles: the innermost margin column reaches MAX_OFFSET under the grid's
+// edge column (drawMarginTile says how), so whatever the boundary curve
+// vacates there is covered in ground color, and the real fills then paint
+// over the rest of the overlap. No contour/contact-shadow work happens out
+// here -- the real grid-edge boundary is already part of the traced contour
+// (the trace treats out-of-grid as impassable), so the floor side keeps its
+// usual curve, shadow and rim.
 // `row` supplies the terrain and `y` the depth, which the depth margin
 // (drawMarginRows) separates: its rows lie past the grid's far edge and
-// take their terrain from the far edge row.
-function drawMarginColumns(view: TerrainView, row: TerrainTile[], y: number) {
+// take their terrain from the far edge row. `traced` is the row's own
+// contours where it is a real row of the grid; the depth margin's rows are
+// plain squares and pass none. `reach` is how far the row's flat ground runs
+// on past its near edge (drawMarginRows says why its first row does).
+function drawMarginColumns(view: TerrainView, row: TerrainTile[], y: number, traced: (TileContour | null)[] | null, reach: number) {
   const depthFar = view.camY - y + 0.5;
   // A margin tile is a plain quad, so once the row's squares are behind the
   // camera's plane only what stands on it is left.
@@ -310,13 +313,13 @@ function drawMarginColumns(view: TerrainView, row: TerrainTile[], y: number) {
   const laneClip = laneClipAt(depthFar);
   for (let gx = Math.floor(view.camX - laneClip); gx < 0; gx++) {
     if (standingOnly) holdStandingPastCamera(view, row, gx, y);
-    else drawMarginTile(view, row[0], gx, y, gx === -1);
+    else drawMarginTile(view, row[0], gx, y, gx === -1, !!traced?.[0], reach);
   }
   const rightEnd = Math.ceil(view.camX + laneClip);
   const cols = gridW();
   for (let gx = cols; gx <= rightEnd; gx++) {
     if (standingOnly) holdStandingPastCamera(view, row, gx, y);
-    else drawMarginTile(view, row[cols - 1], gx, y, gx === cols);
+    else drawMarginTile(view, row[cols - 1], gx, y, gx === cols, !!traced?.[cols - 1], reach);
   }
 }
 
@@ -335,6 +338,15 @@ function drawMarginColumns(view: TerrainView, row: TerrainTile[], y: number) {
 // edge row's own contour already runs unbroken into these rows (see
 // plan.ts's depthContinuedWalkable), and every repeat is far enough out that
 // the detail passes are already faded off.
+//
+// The first of these rows meets the far edge row, whose tiles are traced
+// outlines while these are plain squares. The trace smooths the corners on
+// the line between the two like any others, and a corner it has drawn toward
+// the camera leaves a wedge that neither row's own shape covers. So the
+// ground of that first row reaches MAX_OFFSET, the most a corner travels,
+// under the far edge row, which then paints over all of it but the wedge.
+// Its margin columns reach as far, so that every square of the row still
+// shares its whole side with the next one.
 //
 // The repeated road runs on in both gate states. The far edge row *is* the
 // pass throat, so repeating it repeats the pass: the road runs on to the
@@ -363,7 +375,8 @@ function drawMarginRows(view: TerrainView, deepestRow: number) {
     const depthNear = camY - gy - 0.5;
     if (projectTile(0, depthNear).y - projectTile(0, depthFar).y < MIN_ROW_PX) break;
 
-    drawMarginColumns(view, edge, gy);
+    const reach = gy === view.plan.farEdgeRow - 1 ? MAX_OFFSET : 0;
+    drawMarginColumns(view, edge, gy, null, reach);
     const depthRatio = Phaser.Math.Clamp(depthFar / DRAW_DISTANCE_TILES, 0, 1);
     const laneClip = laneClipAt(depthFar);
     // Same shared-edge carry as the main sweep above.
@@ -384,25 +397,36 @@ function drawMarginRows(view: TerrainView, deepestRow: number) {
       carryF = pFR;
       carryN = pNR;
       const fill = [pFL, pFR, pNR, pNL];
+      // Only the flat ground reaches under the far edge row. What a material
+      // lays or stands on the tile keeps the tile's own square.
+      const ground = reach > 0 ? [pFL, pFR, projectTile(laneR, depthNear - reach), projectTile(laneL, depthNear - reach)] : fill;
       const tile = edge[x];
 
       if (tile.kind === 'path' && roadRunsOn) {
         let color = rowGround(view, tile.biome, gy, depthRatio).path;
         if (tile.regionTint != null) color = blend(color, tile.regionTint, regionTintAt(depthRatio, 0.55));
         g.fillStyle(color, 1);
-        fillPolygon(g, fill);
+        fillPolygon(g, ground);
       } else if (tile.kind === 'path') {
         g.fillStyle(offPathColor(view, tile.biome, tile.regionTint, gy, depthRatio), 1);
-        fillPolygon(g, fill);
+        fillPolygon(g, ground);
       } else {
-        drawOffPathTile(view, tile, fill, null, pFL, pFR, pNR, pNL, x, gy, depthRatio);
+        drawOffPathTile(view, tile, fill, null, pFL, pFR, pNR, pNL, x, gy, depthRatio, false, ground);
       }
     }
     drawRowStanding(g);
   }
 }
 
-function drawMarginTile(view: TerrainView, edge: TerrainTile, gx: number, y: number, innermost: boolean) {
+function drawMarginTile(
+  view: TerrainView,
+  edge: TerrainTile,
+  gx: number,
+  y: number,
+  innermost: boolean,
+  edgeTraced: boolean,
+  reach: number
+) {
   const g = view.gfx;
   const camX = view.camX;
   const camY = view.camY;
@@ -410,9 +434,19 @@ function drawMarginTile(view: TerrainView, edge: TerrainTile, gx: number, y: num
   let laneR = gx - camX + 0.5;
   const laneClip = laneClipAt(camY - y + 0.5);
   if (laneL > laneClip || laneR < -laneClip) return;
-  if (innermost && edge.kind === 'path') {
-    if (gx < 0) laneR += MAX_OFFSET;
-    else laneL -= MAX_OFFSET;
+  // The traced outline of the grid's edge tile can stand up to MAX_OFFSET in
+  // from the grid line, and the innermost margin column is what covers the
+  // ground it leaves. A walkable edge tile gives up a whole rounded corner,
+  // so there the margin tile is widened entire, accent included. An
+  // impassable one that is traced gives up a thin wedge, where a corner it
+  // shares with a walkable tile in the next row has been smoothed inward,
+  // and there only the flat ground is widened (`ground` below), so that the
+  // margin's own accent stays in its square. An edge tile with no contour is
+  // a plain square on the grid line and needs neither.
+  const tuck = innermost ? (gx < 0 ? MAX_OFFSET : -MAX_OFFSET) : 0;
+  if (tuck !== 0 && edge.kind === 'path') {
+    if (gx < 0) laneR += tuck;
+    else laneL += tuck;
   }
 
   const depthFar = camY - y + 0.5;
@@ -423,9 +457,21 @@ function drawMarginTile(view: TerrainView, edge: TerrainTile, gx: number, y: num
   const pNR = projectTile(laneR, depthNear);
   const pNL = projectTile(laneL, depthNear);
   const fill = [pFL, pFR, pNR, pNL];
+  let ground = fill;
+  const groundTuck = edge.kind !== 'path' && edgeTraced ? tuck : 0;
+  if (groundTuck !== 0 || reach > 0) {
+    const groundL = gx < 0 ? laneL : laneL + groundTuck;
+    const groundR = gx < 0 ? laneR + groundTuck : laneR;
+    ground = [
+      groundL === laneL ? pFL : projectTile(groundL, depthFar),
+      groundR === laneR ? pFR : projectTile(groundR, depthFar),
+      projectTile(groundR, depthNear - reach),
+      projectTile(groundL, depthNear - reach),
+    ];
+  }
 
   g.fillStyle(offPathColor(view, edge.biome, edge.regionTint, y, depthRatio), 1);
-  fillPolygon(g, fill);
+  fillPolygon(g, ground);
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
     const kind = edge.kind !== 'path' ? edge.kind : offPathKindOf(edge.biome);
@@ -535,11 +581,14 @@ function drawOffPathTile(
   gx: number,
   gy: number,
   depthRatio: number,
-  outlinesOnly = false
+  outlinesOnly = false,
+  // The shape the flat ground is filled as, where that is wider than the
+  // tile's own shape (drawMarginRows).
+  ground: ProjectedPoint[] = fill
 ) {
   const g = view.gfx;
   g.fillStyle(offPathColor(view, tile.biome, tile.regionTint, gy, depthRatio), 1);
-  fillPolygon(g, fill);
+  fillPolygon(g, ground);
 
   drawBandBoundary(g, tile.biome, gy, pFL, pFR, pNR, pNL, depthRatio);
 

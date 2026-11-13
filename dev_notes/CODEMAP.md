@@ -2360,9 +2360,13 @@ see "Off-path terrain materials" below);
 nothing in the scene rises above the ground plane, so the boundary read comes entirely from the
 color break plus the contact shadow and rim light. When the camera stands near the grid's
 left/right edge, `drawMarginColumns` first continues each row's edge tile past the grid as
-impassable ground (same biome/tint/accent, widened by `art/contours.ts`'s `MAX_OFFSET` under an
-adjacent walkable tile to tuck beneath the boundary curve), so the frame never shows the bare
-backdrop in a stair-stepped strip where tiles run out. There is no per-tile seam stroke, so a run of
+impassable ground (same biome/tint/accent), so the frame never shows the bare
+backdrop in a stair-stepped strip where tiles run out. The innermost of those columns reaches
+`art/contours.ts`'s `MAX_OFFSET` under the grid's edge column (`drawMarginTile`), because the
+traced outline of an edge tile can stand that far in from the grid line: a walkable edge tile
+gives up a rounded corner, and there the margin tile is widened entire; an impassable one gives
+up a thin wedge wherever it shares a smoothed corner with a walkable tile of the next row, and
+there only the margin's flat ground is widened, its accent staying in its own square. There is no per-tile seam stroke, so a run of
 same-kind tiles reads as one region. Every ground color goes through `terrain/color.ts`'s
 `groundColor` (which deepens
 the haze past what `fogColor`'s own cap allows) with walkable ground hazing toward the lighter
@@ -2385,7 +2389,12 @@ rows so every nearer row paints over it: it repeats `farEdgeRow` -- the northern
 corridor reaches, resolved with the terrain plan and carried on it -- outward past the
 grid's far edge, terrain kind included, so the walkable path repeats with it and a road runs on
 past the world's end. `drawMarginColumns` takes the row's terrain and its depth row index
-separately, which is what lets those repeated rows carry lateral margins of their own. The sweep
+separately, which is what lets those repeated rows carry lateral margins of their own. The
+repeated rows are plain squares and the far edge row's tiles are traced outlines, so the flat
+ground of the first repeated row, its margin columns included, reaches `MAX_OFFSET` under the far
+edge row: a corner the trace has smoothed toward the camera on the line between the two would
+otherwise leave a wedge that neither covers. Both tucks are what keep the ground closed at the grid's borders, and
+`ground-sweep.mjs` (`DEVELOPMENT.md`'s "Checking the ground for holes") is the check for it. The sweep
 runs to `Math.floor(camY - DRAW_DISTANCE_TILES)`, the depth-fog saturation row that also bounds
 the real rows, and breaks early on any row whose projected thickness has fallen under
 `MIN_ROW_PX`; at the current constants the fog bound always binds first (the thinnest row drawn is

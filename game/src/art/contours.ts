@@ -59,10 +59,11 @@ export interface TileContour {
 //     diagonal through its edge midpoints, so the smoothing can still pull a
 //     staircase all the way onto a clean diagonal rather than a scallop.
 // Being under half a tile, it also keeps a deformed tile polygon from folding
-// over itself. Exported because it bounds how far a boundary curve can vacate
-// a walkable tile's footprint -- OverworldScene widens its off-grid margin
-// columns by exactly this much to tuck under the curve where the grid edge
-// meets walkable floor.
+// over itself. Exported because it bounds how far a traced outline can stand
+// in from its tile's own square -- the overworld's terrain paint reaches its
+// plain squares past the grid's borders exactly this far under the traced
+// tiles beside them, and keeps a row behind the camera drawn for as long as
+// an outline can still reach in front of it.
 export const MAX_OFFSET = Math.SQRT2 / 4;
 const SMOOTH_ITERATIONS = 3;
 const SMOOTH_LAMBDA = 0.5;
