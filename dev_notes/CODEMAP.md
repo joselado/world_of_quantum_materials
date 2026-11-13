@@ -2756,10 +2756,22 @@ the row's standing parts, margin columns included: a crown, a boulder's lifted t
 reaches over the tiles beside its own, which lie at the same depth, so a neighbour's ground
 painted afterwards would cut the object along the tile's edge. On a boundary tile the contact
 shadow therefore lies under the object, on the ground at its foot, and the reeds stand over the
-mist of their whole row. And a row whose far edge has passed behind the camera's plane, which has
-no ground left in the frame, still gets `drawRowPastCamera`: the standing parts of its tiles only,
-since a tree or a column beside the player has its foot below the frame and its top inside it.
-The sweep runs `PAST_CAMERA_ROWS` (3) rows behind the player's own for this, which is how long the
+mist of their whole row.
+
+A row's ground leaves the frame in two steps, because a tile on the walkable boundary is drawn as
+its traced outline and not as its square: the boundary curve carries the outline up to
+`MAX_OFFSET` (0.35 tile) past the square's edge, into the square of the tile beyond, whose own
+outline gives that ground up. So the nearer row is the only one that paints it. Once the row's
+squares are behind the camera's plane (`squaresPastCamera`), a plain quad lies flat on the frame's
+bottom edge and only its standing part is held (`holdStandingPastCamera`, margin columns
+included), while a traced outline keeps its fill, its flat accent, its contact shadow and its rim
+for as long as any point of it is in front of the plane (`reachesFrame`, which each shadow strip
+and rim is asked too). Once the camera has passed the curve as well (`groundPastCamera`,
+`MAX_OFFSET` further) the row has no ground left in the frame and gets `drawRowPastCamera`: the
+standing parts of its tiles only, since a tree or a column beside the player has its foot below
+the frame and its top inside it. A row dropped whole with its squares would leave the ground its
+outlines reach unpainted, a hole on the frame's bottom edge for a third of every step forward.
+The sweep runs `PAST_CAMERA_ROWS` (3) rows behind the player's own, which is how long the
 tallest object, a column 2.2 tile-widths high, keeps its capital in view. Each standing draw
 drops its object once none of it is in the frame (`outOfFrame`: below the bottom edge or past
 either side). Something that stands but is drawn in a material's flat part is cut by the

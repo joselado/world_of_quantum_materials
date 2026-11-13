@@ -62,8 +62,9 @@ export function drawTerrain(view: TerrainView) {
   // Rows behind the player are still in frame -- the camera stands
   // CAMERA_BACK_TILES behind the player's tile, so the ground the player
   // has already walked over is what fills the bottom of the screen. A row's
-  // ground leaves the frame once its far edge is behind the camera's plane;
-  // the sweep runs on past that for what stands on those rows.
+  // ground leaves the frame once all of it is behind the camera's plane
+  // (groundPastCamera); the sweep runs on past that for what stands on those
+  // rows.
   const maxY = Math.min(gridH() - 1, Math.floor(camY) + PAST_CAMERA_ROWS);
   const cols = gridW();
 
@@ -71,12 +72,14 @@ export function drawTerrain(view: TerrainView) {
   drawMarginRows(view, deepestRow);
 
   for (let y = minY; y <= maxY; y++) {
-    // The whole row lies behind the camera's plane once its far edge does,
-    // and none of its ground is in the frame. What stands on it can be.
-    if (camY - y + 0.5 + CAMERA_BACK_TILES <= 0) {
+    // None of the row's ground is in the frame. What stands on it can be.
+    if (groundPastCamera(camY, y)) {
       drawRowPastCamera(view, tiles[y], y);
       continue;
     }
+    // The row's squares are behind the plane, and its traced outlines are
+    // what is left of its ground.
+    const outlinesOnly = squaresPastCamera(camY, y);
     drawMarginColumns(view, tiles[y], y);
     const laneClip = laneClipAt(camY - y + 0.5);
     // A tile's right lane is the next tile's left lane exactly -- both are
@@ -93,6 +96,13 @@ export function drawTerrain(view: TerrainView) {
       const laneR = x - camX + 0.5;
       if (laneL > laneClip || laneR < -laneClip) continue;
 
+      const tile = tiles[y][x];
+      const contour = contours[y]?.[x] ?? null;
+      if (outlinesOnly && !(contour && reachesFrame(contour.outline, camY))) {
+        holdStandingPastCamera(view, tiles[y], x, y);
+        continue;
+      }
+
       const depthFar = camY - y + 0.5;
       const depthNear = camY - y - 0.5;
 
@@ -106,8 +116,6 @@ export function drawTerrain(view: TerrainView) {
       carryN = pNR;
 
       const depthRatio = Phaser.Math.Clamp(depthFar / DRAW_DISTANCE_TILES, 0, 1);
-      const tile = tiles[y][x];
-      const contour = contours[y]?.[x] ?? null;
       const fill = contour ? projectContour(contour.outline, camX, camY) : [pFL, pFR, pNR, pNL];
 
       if (tile.kind === 'path') {
@@ -118,7 +126,7 @@ export function drawTerrain(view: TerrainView) {
         g.fillStyle(color, 1);
         fillPolygon(g, fill);
         drawBandBoundary(g, tile.biome, y, pFL, pFR, pNR, pNL, depthRatio);
-        if (contour) drawContactShadow(g, contour, tile.biome, camX, camY, depthRatio);
+        if (contour) drawContactShadow(g, contour, tile.biome, camX, camY, depthRatio, outlinesOnly);
         if (GROUND_MOTIFS_ENABLED && depthRatio < DETAIL_MAX_DEPTH && tile.decorate) {
           decorateTile(g, view.biome, accentTile(false, null, fill, contour?.outline ?? null, x, y, depthRatio, rg.haze, view, tile.regionTint));
         }
@@ -131,7 +139,7 @@ export function drawTerrain(view: TerrainView) {
           drawMidHighlight(g, view, fill, depthRatio, 1 - 0.45 * spread);
         }
       } else {
-        drawOffPathTile(view, tile, fill, contour, pFL, pFR, pNR, pNL, x, y, depthRatio);
+        drawOffPathTile(view, tile, fill, contour, pFL, pFR, pNR, pNL, x, y, depthRatio, outlinesOnly);
       }
     }
     drawRowStanding(g);
@@ -158,10 +166,49 @@ export function drawTerrain(view: TerrainView) {
 }
 
 // How many rows behind the player's own the sweep still visits. The ground of
-// a row leaves the frame a little over one row back; the tallest thing that
+// a row leaves the frame about a row and a half back; the tallest thing that
 // stands on it, a Stone Lattice column 2.2 tile-widths high, keeps its
 // capital in the frame until its foot is 2.7 rows back.
 const PAST_CAMERA_ROWS = 3;
+
+// A row's ground leaves the frame in two steps, because a tile on the
+// walkable boundary is not drawn as its square: it is drawn as its traced
+// outline (art/contours.ts), and the boundary curve carries that outline up
+// to MAX_OFFSET past the square's edge, into the square of the tile beyond.
+// That tile's own outline gives the same ground up, so the nearer row is the
+// only one that paints it.
+//
+// First the row's squares pass behind the camera's plane (squaresPastCamera).
+// A plain quad lies flat on the frame's bottom edge from there on, and only
+// what stands on it is drawn. A traced outline keeps being painted, shadow
+// and accent included, for as long as any of it is in front of the plane
+// (reachesFrame), which ends for the whole row once the camera has passed
+// the curve too (groundPastCamera). A row dropped whole with its squares
+// leaves the ground its outlines reach unpainted, a hole on the frame's
+// bottom edge for a third of a step.
+function squaresPastCamera(camY: number, y: number): boolean {
+  return camY - y + 0.5 + CAMERA_BACK_TILES <= 0;
+}
+
+function groundPastCamera(camY: number, y: number): boolean {
+  return camY - y + 0.5 + MAX_OFFSET + CAMERA_BACK_TILES <= 0;
+}
+
+// Whether any point of a traced outline, a shadow strip or a rim is in front
+// of the camera's plane. One that is not is held whole on the frame's bottom
+// edge, where a fill of it still covers half the last row of pixels. The
+// farthest point of each is kept for as long as the plan holds the points.
+const farthestY = new WeakMap<ContourPoint[], number>();
+
+function reachesFrame(points: ContourPoint[], camY: number): boolean {
+  let far = farthestY.get(points);
+  if (far === undefined) {
+    far = Infinity;
+    for (const p of points) far = Math.min(far, p.y);
+    farthestY.set(points, far);
+  }
+  return camY - far + CAMERA_BACK_TILES > 0;
+}
 
 // A row whose ground has passed under the camera: the standing parts of its
 // materials (materials/index.ts), over the row's own tiles and the margin
@@ -177,24 +224,29 @@ const PAST_CAMERA_ROWS = 3;
 // plane at, on the frame's bottom edge. `lane`/`ahead` and the grid-space
 // `outline` are what a standing draw reads.
 function drawRowPastCamera(view: TerrainView, row: TerrainTile[], y: number) {
-  const camX = view.camX;
   const laneClip = laneClipAt(view.camY - y + 0.5);
-  const cols = gridW();
-  const haze = (biome: Biome) => rowGround(view, biome, y, 0).haze;
-  for (let gx = Math.floor(camX - laneClip); gx <= Math.ceil(camX + laneClip); gx++) {
-    const tile = row[Phaser.Math.Clamp(gx, 0, cols - 1)];
-    // A margin column continues its row's edge tile as impassable ground
-    // (drawMarginColumns).
-    const inGrid = gx >= 0 && gx < cols;
-    const kind = inGrid || tile.kind !== 'path' ? tile.kind : offPathKindOf(tile.biome);
-    if (kind === 'path') continue;
-    const standing = TERRAIN_MATERIALS[kind].standing;
-    if (!standing) continue;
-    const p = projectTile(gx - camX, view.camY - y);
-    const outline = inGrid ? view.plan.contours[y]?.[gx]?.outline ?? null : null;
-    holdStanding(standing, accentTile(tile.featureCore, tile.feature, [p, p, p, p], outline, gx, y, 0, haze(tile.biome), view, tile.regionTint));
+  for (let gx = Math.floor(view.camX - laneClip); gx <= Math.ceil(view.camX + laneClip); gx++) {
+    holdStandingPastCamera(view, row, gx, y);
   }
   drawRowStanding(view.gfx);
+}
+
+// Holds the standing part of column `gx` of a row for the end of the row's
+// sweep, for a tile whose square is behind the camera's plane. `gx` may lie
+// past either side of the grid, in the margin columns.
+function holdStandingPastCamera(view: TerrainView, row: TerrainTile[], gx: number, y: number) {
+  const cols = gridW();
+  const tile = row[Phaser.Math.Clamp(gx, 0, cols - 1)];
+  // A margin column continues its row's edge tile as impassable ground
+  // (drawMarginColumns).
+  const inGrid = gx >= 0 && gx < cols;
+  const kind = inGrid || tile.kind !== 'path' ? tile.kind : offPathKindOf(tile.biome);
+  if (kind === 'path') return;
+  const standing = TERRAIN_MATERIALS[kind].standing;
+  if (!standing) return;
+  const p = projectTile(gx - view.camX, view.camY - y);
+  const outline = inGrid ? view.plan.contours[y]?.[gx]?.outline ?? null : null;
+  holdStanding(standing, accentTile(tile.featureCore, tile.feature, [p, p, p, p], outline, gx, y, 0, rowGround(view, tile.biome, y, 0).haze, view, tile.regionTint));
 }
 
 // Projects a cached tile-space outline (art/contours.ts) at the current
@@ -252,15 +304,19 @@ function projectContour(points: ContourPoint[], camX: number, camY: number): Tri
 // take their terrain from the far edge row.
 function drawMarginColumns(view: TerrainView, row: TerrainTile[], y: number) {
   const depthFar = view.camY - y + 0.5;
-  if (depthFar + CAMERA_BACK_TILES <= 0) return;
+  // A margin tile is a plain quad, so once the row's squares are behind the
+  // camera's plane only what stands on it is left.
+  const standingOnly = squaresPastCamera(view.camY, y);
   const laneClip = laneClipAt(depthFar);
   for (let gx = Math.floor(view.camX - laneClip); gx < 0; gx++) {
-    drawMarginTile(view, row[0], gx, y, gx === -1);
+    if (standingOnly) holdStandingPastCamera(view, row, gx, y);
+    else drawMarginTile(view, row[0], gx, y, gx === -1);
   }
   const rightEnd = Math.ceil(view.camX + laneClip);
   const cols = gridW();
   for (let gx = cols; gx <= rightEnd; gx++) {
-    drawMarginTile(view, row[cols - 1], gx, y, gx === cols);
+    if (standingOnly) holdStandingPastCamera(view, row, gx, y);
+    else drawMarginTile(view, row[cols - 1], gx, y, gx === cols);
   }
 }
 
@@ -389,17 +445,22 @@ function drawContactShadow(
   biome: Biome,
   camX: number,
   camY: number,
-  depthRatio: number
+  depthRatio: number,
+  outlinesOnly: boolean
 ) {
   if (depthRatio > CONTACT_SHADOW_MAX_DEPTH) return;
   const fade = 1 - depthRatio / CONTACT_SHADOW_MAX_DEPTH;
   for (const strip of contour.shadow) {
+    if (outlinesOnly && !reachesFrame(strip.points, camY)) continue;
     g.fillStyle(0x000000, (CONTACT_SHADOW_ALPHA[strip.band] ?? 0) * fade);
     fillPolygon(g, projectContour(strip.points, camX, camY));
   }
   if (contour.rim.length === 0) return;
   g.lineStyle(1.5, blend(biome.path, 0xffffff, 0.45), CONTOUR_RIM_ALPHA * fade);
-  for (const lip of contour.rim) g.strokePoints(projectContour(lip, camX, camY), false);
+  for (const lip of contour.rim) {
+    if (outlinesOnly && !reachesFrame(lip, camY)) continue;
+    g.strokePoints(projectContour(lip, camX, camY), false);
+  }
 }
 
 // How many rows of walkable ground the next world's own floor colour bleeds
@@ -473,7 +534,8 @@ function drawOffPathTile(
   pNL: ProjectedPoint,
   gx: number,
   gy: number,
-  depthRatio: number
+  depthRatio: number,
+  outlinesOnly = false
 ) {
   const g = view.gfx;
   g.fillStyle(offPathColor(view, tile.biome, tile.regionTint, gy, depthRatio), 1);
@@ -490,7 +552,7 @@ function drawOffPathTile(
   // which material this tile draws. What a material stands on the tile is
   // drawn at the end of the row (drawRowStanding) and so rises over the
   // shadow, which lies on the ground at its foot.
-  if (contour) drawContactShadow(g, contour, tile.biome, view.camX, view.camY, depthRatio);
+  if (contour) drawContactShadow(g, contour, tile.biome, view.camX, view.camY, depthRatio, outlinesOnly);
 }
 
 // Hands one tile to its off-path material's own module (materials/): the
@@ -691,6 +753,9 @@ function drawBandBoundary(
 ) {
   const ramp = biome.bands;
   if (!ramp || ((gy % ramp.period) + ramp.period) % ramp.period !== 0 || depthRatio > DETAIL_MAX_DEPTH) return;
+  // The tile's square is behind the camera's plane, both of its edges held on
+  // the frame's bottom edge: the boundary is not in the frame.
+  if (pNL.y <= pFL.y) return;
   const fade = 1 - depthRatio / DETAIL_MAX_DEPTH;
 
   g.fillStyle(0x000000, BAND_STRIP_ALPHA * fade);
