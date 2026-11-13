@@ -1164,6 +1164,52 @@ that the comparison can see a change at all. After a change to either module,
 or a Phaser upgrade, run it at `SCALE=2` and `SCALE=3`; a stale tessellation
 shows as a difference at once.
 
+## Checking the ground for holes
+
+The overworld's ground is many separate fills (traced outlines beside plain
+squares, margin columns and rows past the grid, rows that leave the frame
+behind the camera), and a place where two of them fail to meet shows the
+backdrop through the ground. Such a hole can be a pixel wide under the far
+haze or last a fifth of a step at the bottom edge, so it is looked for by
+measurement and not by eye.
+`.claude/skills/measure-smoothness/scripts/ground-sweep.mjs` is that check. It
+needs the dev server and the machine's GPU, like the other scripts of that
+folder.
+
+```
+cd .claude/skills/measure-smoothness/scripts
+node ground-sweep.mjs ow1 ow3 ow3mid ow3goal ow4goal     # a walk of three tiles from each spot
+CAMX=0 STEP=0.1 TILES=16 node ground-sweep.mjs ow3 ow4   # along the grid's left edge
+SAVE=/tmp/before STEP=0.05 TILES=2 node ground-sweep.mjs ow3 ow3goal   # before a change
+CMP=/tmp/before STEP=0.05 TILES=2 node ground-sweep.mjs ow3 ow3goal    # after it
+```
+
+It moves the camera forward in small steps with the loop asleep, one pinned
+clock and the same random rolls before every frame, and draws only the two
+ground layers, each frame over a magenta and over a green background. A pixel
+that differs between the two is ground that nothing covers, whatever its
+colour and however hazed. The rows above the end of the draw distance are left
+out, since the horizon's haze there is translucent on purpose. It also counts
+pops, frames that change far more than the sweep's median, and exits 1 when
+any frame has uncovered ground. In every scene it first scrolls the camera by
+eight pixels and requires the test to see the bare strip this leaves, and
+exits 2 when it does not.
+
+`SAVE` keeps every frame with its uncovered pixels and `CMP` compares against
+them: how many pixels differ, how many of those were covered in the saved
+frame, and by how many colour levels at most. A fix for a hole should change
+the uncovered pixels and no others. An antialiased edge that now lies over
+other ground changes single pixels by a few levels, which is the size to
+expect. The map of a scene depends on the scenes started before it in the
+same run, so both runs take the same scene list; naming a world twice gives a
+second map of it. Which maps show a defect is a matter of their shape: a road
+that touches the grid's side, or a pass throat with a straight side, is what
+the two border tucks of `terrain/paint.ts` exist for. Most of world 3's open
+maps have one or the other and some of world 4's, where the maps tried of the
+other worlds had neither in view. So run a start, a middle and a goal of worlds 3 and 4 at
+least, a few maps of each, and the two grid edges (`CAMX=0` and the last
+column, 26 at the base world size).
+
 ## Checking arena legibility
 
 **`npm run greyscale-check`** (`scripts/greyscale-check.mjs`, ~2.5 minutes)

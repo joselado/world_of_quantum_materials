@@ -47,6 +47,7 @@ THROTTLE=6 QUERY=vectors=phaser node walk-gaps.mjs ow1  # Phaser's own drawing, 
 OBJECTS=1 node walk-gaps.mjs ow10goal                   # which object costs the frame
 node frozen-ab.mjs title hub ow1 ow2mid ow10goal ow1panel bt1 bt6r
 node arc-proof.mjs /tmp/arcs.png                        # the arc rule against Phaser's count
+node ground-sweep.mjs ow1 ow3 ow3mid ow3goal ow4goal    # ground that nothing covers, and pops
 ```
 
 `walk-gaps.mjs` holds the up arrow in an overworld (`ow<N>`) and stands still
@@ -67,6 +68,15 @@ moves one object by one pixel and requires the comparison to see it.
 of thick strokes twice in one frozen frame, with the rule and with Phaser's
 hundred points, and counts the differing pixels of each pair. It keeps one
 case that fails on purpose, a small circle enlarged six times.
+
+`ground-sweep.mjs` is not about speed. It is here because it shares
+`common.mjs`, and it is the check for any change to how the terrain is
+painted, a faster paint included: it moves the camera forward in small steps
+on a frozen clock, draws only the ground layers over two background colours,
+and reports every pixel the ground does not cover and every frame that pops.
+`SAVE=dir` and `CMP=dir` compare two builds frame by frame. It exits 1 on
+uncovered ground and carries its own control. `dev_notes/DEVELOPMENT.md`'s
+"Checking the ground for holes" says how to read it and which scenes to run.
 
 Three other tools exist. `npm run perf-check` counts draw calls per world
 against a budget and looks for leaked tweens; it measures work, not time, so

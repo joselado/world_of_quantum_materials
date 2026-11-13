@@ -112,7 +112,14 @@ darks and brightest brights (`STYLE.md`).
   near and fails far is a fail.
 - **Both gate states** for anything touching gates or forward haze.
 - **A walking sequence**, not just static frames, for anything that changes with
-  distance — pop and crawl only appear in motion.
+  distance — pop and crawl only appear in motion. For the ground itself that
+  sequence is a script: `.claude/skills/measure-smoothness/scripts/ground-sweep.mjs`
+  steps the camera through a world on a frozen clock, counts the pixels the
+  ground leaves uncovered and the frames that pop, and with `SAVE`/`CMP`
+  compares two builds frame by frame (`dev_notes/DEVELOPMENT.md`, "Checking the
+  ground for holes"). Run it after any change to `terrain/paint.ts`, at a
+  start, a middle and a goal, and at both grid edges (`CAMX=0` and the last
+  column, 26 at the base world size).
 
 ## Then the standard gates
 
