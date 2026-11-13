@@ -62,7 +62,8 @@ accounts and nothing is sent anywhere.
 encounters are drawn from, starting out as Silicon. A "Decoherence" is
 spreading through these worlds, causing them to lose their protected
 properties, and you're the one walking through each phase of matter to
-stabilize it again.
+stabilize it again. The Decoherence has a source, and it waits at the end of
+the road.
 
 ## How it plays
 
@@ -81,10 +82,11 @@ end worth the detour, and a world you have picked clean quietly refills as you
 walk it, always out of sight.
 
 The ten worlds are one road. The ground on either side of the path is never
-somewhere you can walk, and it looks less survivable with every world: summer forest, then stone, a drop,
-ground the storm strikes, ice and vortex pits, broken rock and open sea, open void, water
-that takes you, molten crust, and at the end terrain that reshapes itself
-around you. From each world's far end you can see the next one on the horizon.
+somewhere you can walk, and it looks less survivable with every world: summer
+forest, then stone, a drop, ground the storm strikes, ice and vortex pits,
+broken rock and open sea, open void, water that takes you, molten crust, and at
+the end terrain that reshapes itself around you. From each world's far end you
+can see the next one on the horizon.
 
 <table>
 <tr>
@@ -142,13 +144,8 @@ which crystal types can use each one.
 </table>
 
 **Grow.** Spend the qumatessence you win and pick up at the guardians waiting
-partway through each world, ten in all, each teaching a
-different way of bending the game's usual rules: new moves and stats,
-teleportation, transmuting into a crystal you've defeated, quiz-gated power
-moves, fusing two crystals into a hybrid, doping an impurity into yourself,
-leveling up a move you already know, clouds that halve what a whole class of
-attack does to you, heal you, or tip your luck, always-on passive abilities,
-and a capstone quiz-gated ultimate move. Each one greets you the first time you reach their
+partway through each world, ten in all, each teaching a different way of
+bending the game's usual rules. Each one greets you the first time you reach their
 row, and once you have met them you can walk back up to them any time and
 press Space to talk again. Every guardian you've met also stands in the Lab,
 one click away. See [Guardians](docs/guardians.md) for what each one does.
@@ -179,15 +176,15 @@ one click away. See [Guardians](docs/guardians.md) for what each one does.
 will see what stands in it long before you get there: a gigantic golem, built
 from many crystal shards fused into one mass, standing on the road that runs
 on behind it and filling the gap so completely that nothing of the next world
-shows past it. The road is always there; the golem is what keeps you off it. Through World 9 its name is
-always a real compound in *polycrystalline* form (many grains fused into one,
-the same idea the golem's own body literalizes). Each one boasts about the very
-property its own grains took from it, and none of them knows that is what it is
-doing. World 10's rival, The Adapted,
-is the one that breaks the pattern, and it is three fights in one. Step to
-the mouth of the pass and press Space to challenge it. Beat it and the pass
-clears: the next world's colors show through the gap, a board names it, and
-pressing Space again crosses over.
+shows past it. The road is always there; the golem is what keeps you off it.
+Through World 9 its name is always a real compound in *polycrystalline* form
+(many grains fused into one, the same idea the golem's own body literalizes),
+and each one has something to say before you fight it. The last world breaks
+the pattern: what waits in its pass is the source of the Decoherence itself.
+Step to
+the mouth of the pass and press Space to challenge a rival. Beat it and the
+pass clears: the next world's colors show through the gap, a board names it,
+and pressing Space again crosses over.
 
 **Walk back anytime.** The near end of every world, right where you first
 walked in, is a pass too, with nobody guarding it, leading back to the world
@@ -233,65 +230,19 @@ and a rival standing between you and the next.
 | 9 | The Defect Scars | Excitations and defects |
 | 10 | The Devouring Mirror | Machine learning for quantum materials |
 
-World 10's wilds are every hybrid crystal fusable at Majorana's station (see
-[Hybrids](docs/hybrids.md)), real compounds in their own right, just ones
-reached by fusing two parents rather than found unmixed anywhere else, and
-every one carries the built-in Hybrid Aura, the same aura fusing gives you:
-harder hits, and less taken. Its
-rival, The Adapted, is a final boss built as "a model of you", fought in
-three stages on three bars, with your own HP refilled between them. First
-The Adapted: it starts the fight mirroring whichever type you're currently
-wearing, then reshapes itself every time you land a hit, transmuting live
-into a real compound that hosts whatever quasiparticle class you just
-attacked with. Then The Model of You: the finished record, wearing your
-type and throwing only your own basic moves, none of your levels, passives,
-clouds or doping. Last, The Quantum Adapted: a smoke that answers as a
-different real compound every round, before you pick, and throws whichever
-basic move your own crystal cannot host. Lose at any stage and the next
-attempt starts again from the first. Beat it and the road ends at a cliff
-with the whole map lying below; from that edge you can pick any world and
-reset its rival, to fight it again. See [Crystals](docs/crystals.md) for
-every world's full wild-material list.
-
-**After the ending: epochs.** The same map has one more row, the epoch. Once
-all ten rivals have fallen you can begin Epoch 2, and after clearing that,
-Epoch 3. A new epoch starts over from The Mean Fields with every rival
-standing and every pass shut, so you walk the ten worlds in order again, and
-it makes the whole game harder. Nothing is lost by beginning one: each epoch
-keeps its own progress, and Bloch's travel panel has a tab for every epoch
-you have unlocked, so he can fold you to any world you have reached in any of
-them. Your stats, moves and qumatessence come with you. Once you have more
-than one epoch, the one you are in is shown under the world's name. Each
-epoch hits harder than the last:
-
-| | Epoch 1 | Epoch 2 | Epoch 3 |
-|---|---|---|---|
-| Every opponent's Energy, Momentum and Lifetime | x1 | x4 | x8 |
-| Every opponent's HP | x1 | x2 | x3 (The Quantum Adapted x24) |
-| Qumatessence won or lost per battle | x1 | x3 | x6 |
-| Rivals throw Analytic moves | no | full power half the time | always full power |
-| The Quantum Adapted casts Ultimates | no | no | every turn |
-
-Your own HP does not grow, so a later epoch is won by leveling: expect to
-roughly triple your stats for Epoch 2 and triple them again for Epoch 3, and
-to lean on Analytic moves, Ultimates and Feynman's levels to get through the
-longer HP bars. In Epoch 3 The Quantum Adapted casts an Ultimate every
-turn, and each one takes your whole bar whatever your Lifetime; its own bar
-is eight times The Adapted's, too long to empty before it casts the first
-one. Answer it
-with one of Franklin's passives and one of Kondo's clouds together: Last
-Scattering with a Restoring Cloud, whose heal lifts you off the one point
-Last Scattering leaves so it can hold again, or Full Reflection with an
-Anomalous Cloud, which tips the reflection toward every hit (all of them
-once the cloud is leveled to Infinite). Clearing all ten rivals in Epoch 2,
-and again in Epoch 3, changes what you read at the cliff.
+The wild crystals of the last world are the hybrids: real compounds in their
+own right, reached by fusing two parents at Majorana's station and found
+unmixed nowhere else (see [Hybrids](docs/hybrids.md)). At its far end you face
+the source of the Decoherence. It is not like the nine rivals before it, and
+what it is, and what it wants from you, is for you to find out. See
+[Crystals](docs/crystals.md) for every world's full wild-material list.
 
 Each world has its own history, its own way the Decoherence comes for it,
 and its own rival standing in the way, and the ten of them tell one story.
 [The story](docs/storyline.md) is that story, world by world, from the
-premise to the ending. **It spoils everything**, including who the final
-enemy turns out to be, so it's for a second playthrough or for a player who
-wants their bearings more than the surprise.
+premise to the ending. **It spoils everything**, the final rival and the
+ending included, so it's for a second playthrough or for a player who wants
+their bearings more than the surprise.
 
 ## Battle basics
 
@@ -334,8 +285,7 @@ a finger does both.
 
 **With the mouse.** Everything on screen that offers something is clickable:
 the Lab's stations and the guardians standing in the room, every panel button,
-the prompt that appears at a pass, the map lying below the last world's cliff
-once you stand at its edge, the answers to a wild crystal's question,
+the prompt that appears at a pass, the answers to a wild crystal's question,
 your moves in battle, the arrows that page a long list or a question too long
 for one screen, and the line in the bottom right corner of a world that takes
 you back to the Lab.
