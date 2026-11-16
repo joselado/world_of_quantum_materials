@@ -1107,6 +1107,31 @@ a Brief page 2 still names the one mechanism, a Brief boast still reads both way
 still observes the release and looks forward. What a Brief entry gives up is texture, never a
 beat.
 
+**Every Detailed text is cut to one Story station chapter.** The Lab's Story station shows the
+arc as chapters of one length, each a single screenful under its picture (`STYLE.md`'s "Story
+station"), so the texts it is assembled from are written to that length:
+
+- a lore page is 85 to 96 words in two paragraphs; World 10's second page is two chapters, so
+  it is twice that, in four paragraphs with the chapter seam after the second;
+- a rival's goal line and its two-part taunt are 85 to 96 words together, with neither part of
+  the taunt under 30 (the length a Brief sibling starts at);
+- a beat is 70 to 80 words in one paragraph; a finale stage, the ending and each after-story
+  are 85 to 96 in at most two paragraphs.
+
+The measure behind the counts is the pane: a chapter has eleven lines of about fifty characters
+under its picture, a paragraph break costs one of them, and the station sets every chapter in
+the size the longest one needs. So one chapter a line too long shrinks the type of all of them.
+
+The Brief text follows through the ratio `content-lint` holds, a quarter to under half of its
+Detailed sibling. A text that outgrows its chapter is cut rather than left to shrink the type.
+
+**The story is told in plain English.** Sentences of ten to twenty words with one idea each,
+common words, no idioms, and no rare word where an ordinary one says the same ("hedge", not
+"hedgerow"; "locked", not "welded"). The physics terms stay exactly as the course uses them
+(broken symmetry, quasiparticle, quantum of flux, singlet), and the legend voice of the early
+worlds stays too: plain is not flat. The players are physics students, and many of them read
+English as a second language.
+
 **The Decoherence is never generic.** In every world it attacks one *named
 mechanism*, and always the one that world exists to teach — it doesn't erase the
 Mean Fields' order, it makes the broken symmetry doubt itself; it doesn't break

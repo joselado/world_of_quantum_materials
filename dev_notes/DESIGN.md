@@ -50,7 +50,7 @@ rival", which clears that world's `rivalDefeated` entry and nothing else. The wo
 exactly as it was before the fight: its rival stands in the pass again, the pass is shut, and
 the fight is there to be taken once more, paying the rival stake again on a win (§4). The
 state is one flag, so everything that reads it follows: the Story station masks that world's
-pass chapter until the rival falls again, and the Lab door's first-trip destination
+pass and release chapters until the rival falls again, and the Lab door's first-trip destination
 (`HubScene.highestUnlockedWorld`) falls back to the earliest world whose rival stands. What the
 player has already reached stays reached: worlds beyond a reset pass remain visited, so Bloch
 still folds the player to them, and they can be walked back into through their own backward

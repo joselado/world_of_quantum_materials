@@ -14,7 +14,8 @@ import {
   TUTORIAL_CYAN_HEX,
 } from '../../ui/theme';
 import { visibleTutorialPages } from '../../data/tutorial';
-import { storyLogIndex } from '../../data/storyLog';
+import { STORY_LOG, storyLogIndex } from '../../data/storyLog';
+import { makeStoryPlate, STORY_PLATE_W, STORY_PLATE_H } from '../../art/storyPlates';
 import {
   LIST_DETAIL_PANEL_W,
   listDetailColumns,
@@ -777,6 +778,34 @@ export function showTutorialTopics(scene: HubScene) {
   renderDetail();
 }
 
+const STORY_BODY_LINE_SPACING = 5;
+
+// The one size every Story station chapter is set in: the player's own text
+// size, brought down until every chapter of the arc fits in `budget`, the
+// height the pane has under a chapter's title and picture. Measured over the
+// whole of STORY_LOG, reached or not, so the size is the same from the first
+// chapter a save can read to the last, and cached for the pane it was measured
+// for: the texts never change while the game runs.
+const storyBodyPxCache = new Map<string, number>();
+function storyBodyPx(scene: Phaser.Scene, width: number, budget: number): number {
+  const nominal = Math.round(12 * fontScale(scene));
+  const key = `${nominal}:${width}:${budget}`;
+  const cached = storyBodyPxCache.get(key);
+  if (cached !== undefined) return cached;
+  const probe = scene.add
+    .text(0, 0, '', { fontSize: `${nominal}px`, align: 'center', wordWrap: { width }, lineSpacing: STORY_BODY_LINE_SPACING })
+    .setVisible(false);
+  let px = nominal;
+  for (const entry of STORY_LOG) {
+    probe.setFontSize(`${px}px`);
+    fitProseToBudget(probe, [entry.body], budget);
+    px = Math.min(px, parseInt(String(probe.style.fontSize), 10));
+  }
+  probe.destroy();
+  storyBodyPxCache.set(key, px);
+  return px;
+}
+
 // The Decoherence arc, re-readable in the order a playthrough delivers it
 // (data/storyLog.ts's `storyLogIndex`) -- the same list+detail layout the
 // Tutorial station above uses, with Qumatex's checklist masking over it: the
@@ -808,15 +837,22 @@ export function showStoryLog(scene: HubScene) {
   const chromeBlock = scene.add.container(0, 0);
   container.add(chromeBlock);
 
+  // The panel's own title, its hint and the chapter title are capped at the
+  // 1.5x preset, the cap the story screens in play use for their prose. The
+  // right column holds a fixed picture and a whole chapter, so what these
+  // lines take at the 2x "Large" preset would come straight out of the
+  // chapter's text and leave it smaller there than at "Normal". The list rows
+  // keep the player's full size.
+  const chromeScale = Math.min(fontScale(scene), 1.5);
   let y = top;
   const title = scene.add
-    .text(CANVAS_W / 2, y, 'Story', { fontSize: fontPx(scene, 15), color: STORY_LAVENDER_HEX, fontStyle: 'bold' })
+    .text(CANVAS_W / 2, y, 'Story', { fontSize: `${Math.round(15 * chromeScale)}px`, color: STORY_LAVENDER_HEX, fontStyle: 'bold' })
     .setOrigin(0.5, 0);
   container.add(title);
   y += title.height + 6;
 
   const hint = scene.add
-    .text(CANVAS_W / 2, y, 'Pick a chapter to read it.', { fontSize: fontPx(scene, 11), color: REFERENCE_BLUE_GREY_HEX })
+    .text(CANVAS_W / 2, y, 'Pick a chapter to read it.', { fontSize: `${Math.round(11 * chromeScale)}px`, color: REFERENCE_BLUE_GREY_HEX })
     .setOrigin(0.5, 0);
   container.add(hint);
   y += hint.height + 10;
@@ -865,39 +901,59 @@ export function showStoryLog(scene: HubScene) {
     const { entry, reached } = rows[Number(selected)];
     let rightY = columnsTop;
 
+    // The title is always one line: one too long for the column at the
+    // player's text size is set smaller until it fits, and the line keeps the
+    // height it has at full size either way. So every chapter leaves its
+    // picture and its text exactly the same room, whatever its name.
     const titleText = scene.add
       .text(columns.rightColCenterX, rightY, reached ? entry.title : '???', {
-        fontSize: fontPx(scene, 15),
+        fontSize: `${Math.round(15 * chromeScale)}px`,
         color: '#ffffff',
         fontStyle: 'bold',
         align: 'center',
-        wordWrap: { width: columns.rightColW },
       })
       .setOrigin(0.5, 0);
     detailBlock.add(titleText);
-    rightY += titleText.height + 10;
+    const titleLineH = titleText.height;
+    let titlePx = parseInt(String(titleText.style.fontSize), 10);
+    while (titleText.width > columns.rightColW && titlePx > 10) {
+      titlePx -= 1;
+      titleText.setFontSize(`${titlePx}px`);
+    }
+    titleText.setY(rightY + Math.round((titleLineH - titleText.height) / 2));
+    rightY += titleLineH + 10;
 
-    // Shrink-only fitting, same as the Tutorial station's own pane: this
-    // panel's only button is the list column's shared "Close," so a long
-    // chapter has to be made to fit where it stands. An unreached chapter
+    // The chapter's picture (art/storyPlates/), a fixed block whatever the
+    // text size, between the title and the text. A masked chapter shows none:
+    // the picture would say what is on the road ahead.
+    const plate = reached ? makeStoryPlate(scene, entry.plate) : undefined;
+    if (plate) {
+      plate.setPosition(Math.round(columns.rightColCenterX - STORY_PLATE_W / 2), Math.round(rightY));
+      detailBlock.add(plate);
+      rightY += STORY_PLATE_H + 10;
+    }
+
+    // Every chapter is set in one size: the largest at which the longest
+    // chapter of the whole arc fits under a picture (`storyBodyPx`), so
+    // paging through the list never changes the size of the type. The body
+    // is still run through the shrink-only fit, same as the Tutorial
+    // station's own pane, as the guard for a chapter that outgrows its
+    // room: this panel's only button is the list column's shared "Close,"
+    // so a chapter has to fit where it stands. An unreached chapter
     // shows one short line in place of its body -- a masked row's pane owes
     // the player the fact that there is more road, not a pane of question
     // marks (the same treatment Bloch's own table gives an unvisited world).
-    const bodyText = scene.add
-      .text(columns.rightColCenterX, rightY, '', {
-        fontSize: `${Math.round(12 * fontScale(scene))}px`,
-        color: '#cfd8ff',
-        align: 'center',
-        wordWrap: { width: columns.rightColW },
-        lineSpacing: 5,
-      })
-      .setOrigin(0.5, 0);
+    const bodyBudget = CANVAS_H - 16 - 14 - 14 - rightY;
+    const bodyStyle = {
+      fontSize: `${storyBodyPx(scene, columns.rightColW, plate ? bodyBudget : bodyBudget - STORY_PLATE_H - 10)}px`,
+      color: '#cfd8ff',
+      align: 'center',
+      wordWrap: { width: columns.rightColW },
+      lineSpacing: STORY_BODY_LINE_SPACING,
+    };
+    const bodyText = scene.add.text(columns.rightColCenterX, rightY, '', bodyStyle).setOrigin(0.5, 0);
     detailBlock.add(bodyText);
-    fitProseToBudget(
-      bodyText,
-      [reached ? entry.body : 'You have not walked this far down the road yet.'],
-      CANVAS_H - 16 - 14 - 14 - rightY
-    );
+    fitProseToBudget(bodyText, [reached ? entry.body : 'You have not walked this far down the road yet.'], bodyBudget);
     rightY += bodyText.height + 14;
 
     const leftBottom = renderListColumnFooter(scene, chromeBlock, columns, listResult.bottom + 10, 'Close', () => scene.closeDialogue());

@@ -452,6 +452,12 @@ game/src/
                                   franklin.ts's rows and slot row and the Lab's Abilities
                                   station (STYLE.md's "Slot icons")
     tokens.ts                   makeToken() -- qumatessence pickup sprite
+    storyPlates/                 The Story station's chapter pictures, paintings on a slab of rock
+                                  wall: index.ts (makeStoryPlate(scene, plateId), STORY_PLATE_W/H),
+                                  slab.ts (makeSlabPlate -- the rock, the wear, SLAB_LIGHT by world),
+                                  brush.ts (pigments and hand-made strokes), world1.ts..world10.ts and
+                                  arc.ts (one PlatePainter per chapter) -- see "Story plates" under
+                                  "Lab stations and settings" below
     labMotifs.ts                 One small icon builder per Lab station (Qumatex/Door/
                                   Moves/Stats/Abilities/Tutorial/Settings/Title Screen -- see
                                   "Lab stations and settings" below), planted beside that station's
@@ -959,10 +965,11 @@ game/src/
                                     playthrough delivers it, for the Lab's Story station. Authors no copy
                                     of its own: assembles every chapter from tutorial.ts's `lab` page,
                                     worldLore.ts, story.ts, so a chapter re-read here and met in play can
-                                    never drift. Always the Detailed tables, whatever Text Length says. Each chapter's `unlock` maps onto save state the
-                                    playthrough already persists (tutorialTipsSeen/worldLoreSeen/
-                                    rivalDefeated, and the epochs' state for the two after-story
-                                    chapters) -- no progress field of its own
+                                    never drift. Always the Detailed tables, whatever Text Length says. Each
+                                    chapter's `plate` names its picture (art/storyPlates/), and its `unlock`
+                                    maps onto save state the playthrough already persists
+                                    (tutorialTipsSeen/worldLoreSeen/rivalDefeated, and the epochs' state
+                                    for the two after-story chapters) -- no progress field of its own
     worldLore.ts                   WORLD_LORE (per-world 2-page history, shown once per save on first entry)/
                                     RIVAL_TAUNTS (per-world 2-part rival gate taunt) -- worldLoreSeen gating via
                                     hasSeenWorldLore/markWorldLoreSeen. WORLD_LORE_BRIEF/RIVAL_TAUNTS_BRIEF
@@ -2551,7 +2558,7 @@ is clickable exactly where the prompt is offered. Its `pointerdown` and the fina
 the map" button both end in `showOverlookPanel` (`scenes/panels/overlook.ts`): a list+detail panel
 over `buildQumatuomiMap`, with two commits. `resetRival` deletes that world's `rivalDefeated`
 entry and persists. No other state is touched, so everything that reads `rivalDefeated` -- the
-rival standing in the pass, the shut goal row, the Story station's pass chapter, the Lab door's
+rival standing in the pass, the shut goal row, the Story station's pass and release chapters, the Lab door's
 frontier (`HubScene.highestUnlockedWorld`) -- sees that world as not yet beaten. Resetting the
 rival of the world the panel is open in (only ever World 10's) leaves through
 `advanceToWorld(world, 'goal')`, which rebuilds the scene with the rival standing and the player
@@ -3834,12 +3841,14 @@ generically.
 `scenes/panels/hubStations.ts`'s `showStoryLog`): the Decoherence arc, re-readable in the order
 a playthrough delivers it, as the same list+detail panel the tutorial recap uses, stroked story
 lavender `0xd9a5ff`. `STORY_LOG`'s declaration order is the chronology -- the premise, each
-world's chapters (entry history, the Decoherence's attack on it, and its pass: goal line,
-two-part rival taunt, the beat that follows the win; World 10 carries six: its reveal split
-in two because its lore page 2 outgrows the pane's shrink-only fit, and the two screens between
-its finale's three stages after its pass), then the ending -- and
-and the two after-story chapters after it -- and
-the panel lists all thirty-seven at every point in a playthrough. A chapter the save hasn't reached keeps its row and
+world's four chapters (`worldChapters`: entry history, the Decoherence's attack on it, its pass:
+goal line and two-part rival taunt, and its release: the beat that follows the win; World 10
+carries six, `world10Chapters`: its history, its reveal split in two at the middle seam of its
+four-paragraph lore page 2, its pass, and the two screens between its finale's three stages, and
+no release since it has no beat), then the ending and the two after-story chapters -- and
+the panel lists all forty-six at every point in a playthrough. The pass and the release are two
+chapters so that every chapter is one screenful of about the same length (STYLE.md's "Story
+station"). A chapter the save hasn't reached keeps its row and
 is masked to `'???'` in the dimmer `#6a7396` via `renderListColumn`'s own `labelFor`/`colorFor`
 hooks, the same treatment Qumatex gives an undiscovered crystal and Bloch's table an unvisited
 world, with its detail pane cut to one short line rather than a pane of question marks. Reach is
@@ -3858,6 +3867,30 @@ list page, both reset in `closeDialogue()` beside the tutorial pair. Browsing ne
 `tutorialTipsSeen`/`worldLoreSeen`, so reading a chapter can't unlock a neighbour or suppress a
 popup. To add or edit a beat, only the data it is assembled from needs touching -- `storyLog.ts`
 authors no story copy of its own.
+
+**Story plates** (`art/storyPlates/`): the picture that heads each reached chapter in the Story
+station's detail pane, between the title and the text (`showStoryLog` calls
+`makeStoryPlate(scene, entry.plate)` and adds `STORY_PLATE_H` plus a gap to its running `y`, so
+the text's fit budget is whatever the plate leaves; `storyBodyPx` in the same file then picks the
+one body size at which every chapter of `STORY_LOG` fits that budget, cached per text size, and
+every chapter is set in it). One `PlatePainter` per chapter, keyed by the
+chapter's `plate` id: `<world>-history`, `<world>-decoherence`, `<world>-pass`,
+`<world>-release`, World 10's `10-record`/`10-stage2`/`10-stage3`, and `premise`/`ending`/
+`after2`/`after3`. The painters live one file per world (`world1.ts` .. `world10.ts`, each
+exporting `PLATES`, with that world's own earth pigments and the helpers only it needs), plus
+`arc.ts` for the four chapters that belong to no one world; `index.ts` merges them and is the
+only module the panel imports. `brush.ts` is what they share: the four common pigments and the
+hand-made strokes (`handLine`, `handPath`, `handRing`, `dab`, `wash`, and `lozenge`, the sign for
+the player's crystal). `slab.ts`'s `makeSlabPlate` draws the rock under a painter and the wear
+over it, dimmed by `SLAB_LIGHT[world]` (the light rule), into one `Graphics` inside a
+container that also holds an unfilled `Rectangle` the plate's size, so the container has real
+bounds, and then flattens that `Graphics` into one texture with `art/bake.ts`'s `bakeLayers`
+(key `story-plate-<id>`), so an open chapter costs one textured quad a frame rather than a few
+thousand fills tessellated again each time. A painter takes `(g, r, rnd)`: the Graphics, the rectangle it keeps inside, and a
+generator seeded by the plate's id; nothing in a plate uses `Math.random`, so a chapter shows
+the same picture every time. To add a chapter, give its `StoryEntry` a `plate` id and add a
+painter under that id in the world's file; a chapter whose id has no painter shows its text
+alone. STYLE.md's "Story plates" holds the look and the rules a new plate is judged against.
 
 **Qumatex indexes every crystal, not just discovered ones, as a two-column list+detail
 panel.** `HubScene.materialdexIndex()` maps `data/materials.ts`'s `allCrystals()` against

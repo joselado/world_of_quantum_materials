@@ -21,11 +21,11 @@ import type { TutorialTipId } from './tutorial';
 // a player on Brief loses nothing by it.
 //
 // `STORY_LOG`'s own declaration order is the chronology: the premise, then
-// each world's chapters in the order that world plays them (three per world;
-// World 10 carries six: its reveal split in two, and the two screens between
-// its finale's three stages after its pass), then the ending. A new
-// beat is added by declaring it at the point of the playthrough that
-// reveals it.
+// each world's chapters in the order that world plays them (four per world;
+// World 10 carries six: its reveal split in two, its pass, and the two
+// screens between its finale's three stages, and no release), then the
+// ending and the two after-story chapters. A new beat is added by declaring
+// it at the point of the playthrough that reveals it.
 //
 // Bloch's destination blurbs (data/worldFlavor.ts) and each guardian's own
 // intro quote are deliberately absent: neither is arc content -- the first is
@@ -44,6 +44,10 @@ export interface StoryEntry {
   // when omitted.
   listLabel?: string;
   body: string;
+  // Which picture heads the chapter at the Story station (art/storyPlates.ts
+  // keys its painters by this id). A chapter whose id has no painter shows
+  // its text alone.
+  plate: string;
   unlock: StoryUnlock;
 }
 
@@ -67,42 +71,66 @@ export type StoryUnlock =
   | { kind: 'rival'; world: number }
   | { kind: 'epoch'; epoch: 2 | 3 };
 
-// A world's three chapters: the history it opens with, the Decoherence's
-// attack on that history, and the pass at its far end -- goal line, the
-// rival's two-part boast, and the beat that carries the player onward, in the
-// order the world plays them. `decoherence`/`pass` name the second and third
-// chapters; worlds 1-9 keep the defaults, and World 10's own two are its
-// reveal and the mirror standing at the end of it rather than one more
-// world's physics under attack.
+// A world's four chapters, in the order the world plays them: the history it
+// opens with, the Decoherence's attack on that history, the pass at its far
+// end (the goal line and the rival's two-part boast), and the release (the
+// beat that follows the win and carries the player onward). The pass and the
+// release are two chapters so that every chapter is about the same length:
+// each is one screenful of the Story station's pane under its picture.
+// `decoherence`/`pass` name the second and third chapters; worlds 1-9 keep
+// the defaults, and World 10's own two are its reveal and the mirror standing
+// at the end of it rather than one more world's physics under attack. A world
+// with no beat (World 10, whose rival is not freed) has no release chapter.
 function worldChapters(world: number, titles?: { decoherence?: string; pass?: string }): StoryEntry[] {
   const lore = WORLD_LORE[world]!;
   const taunt = RIVAL_TAUNTS[world]!;
+  const beat = STORY_BEATS[world];
   const decoherence = titles?.decoherence ?? 'The Decoherence';
   const pass = titles?.pass ?? 'The Pass';
   const name = worldName(world);
-  const passBody = [WORLD_GOAL_TEXT[world], taunt.part1, taunt.part2, STORY_BEATS[world]].filter(
-    (part): part is string => !!part
-  );
+  // The goal line runs on into the taunt's first part: both are the narrator
+  // arriving at the pass, and a chapter is two paragraphs like every other.
+  const goal = WORLD_GOAL_TEXT[world];
+  const passBody = [goal ? `${goal} ${taunt.part1}` : taunt.part1, taunt.part2];
   const row = (chapter: string) => `${world}. ${chapter.replace(/^The /, '')}`;
-  return [
-    { title: name, listLabel: row(name), body: lore.page1, unlock: { kind: 'lore', world } },
-    { title: `${name}: ${decoherence}`, listLabel: row(decoherence), body: lore.page2, unlock: { kind: 'lore', world } },
-    { title: `${name}: ${pass}`, listLabel: row(pass), body: passBody.join('\n\n'), unlock: { kind: 'rival', world } },
+  const chapters: StoryEntry[] = [
+    { title: name, listLabel: row(name), body: lore.page1, plate: `${world}-history`, unlock: { kind: 'lore', world } },
+    {
+      title: `${name}: ${decoherence}`,
+      listLabel: row(decoherence),
+      body: lore.page2,
+      plate: `${world}-decoherence`,
+      unlock: { kind: 'lore', world },
+    },
+    {
+      title: `${name}: ${pass}`,
+      listLabel: row(pass),
+      body: passBody.join('\n\n'),
+      plate: `${world}-pass`,
+      unlock: { kind: 'rival', world },
+    },
   ];
+  if (beat) {
+    chapters.push({
+      title: `${name}: The Release`,
+      listLabel: row('Release'),
+      body: beat,
+      plate: `${world}-release`,
+      unlock: { kind: 'rival', world },
+    });
+  }
+  return chapters;
 }
 
-// World 10's page-2 reveal is the longest lore page in the game -- long
-// enough that the Story station's shrink-only detail pane
-// (scenes/panels/hubStations.ts's showStoryLog, which has no continue button
-// to paginate onto) cannot hold it at any font-scale preset. Its re-read
-// therefore splits into two chapters at the page's own paragraph seam: the
-// reveal itself (what has hunted you, and how it trained), then the
-// measurement lesson the page closes on (what the teaching cost, and why
-// nothing here can be freed). In play the world-entry lore panel still shows
-// the page whole -- that surface paginates
-// (OverworldScene.renderWorldLorePage) -- and both chapter bodies stay
-// assembled from the same WORLD_LORE string, so re-reading and meeting the
-// text in play cannot drift apart.
+// World 10's page-2 reveal is four paragraphs, twice the length of every
+// other lore page, and its re-read splits into two chapters at the page's own
+// middle seam: the reveal itself (what has hunted you, and how it trained),
+// then the measurement lesson the page closes on (what the teaching cost, and
+// why nothing here can be freed). Each half is one chapter's length. In play
+// the world-entry lore panel still shows the page whole -- that surface
+// paginates (OverworldScene.renderWorldLorePage) -- and both chapter bodies
+// stay assembled from the same WORLD_LORE string, so re-reading and meeting
+// the text in play cannot drift apart.
 //
 // The finale's own two later stages (data/story.ts's FINALE_STAGES, the
 // screens BattleScene shows between the three fights) follow the pass
@@ -116,6 +144,7 @@ function world10Chapters(): StoryEntry[] {
     title: `${worldName(10)}: ${FINALE_STAGES[n].title}`,
     listLabel: `10. ${FINALE_STAGES[n].title.replace(/^The /, '')}`,
     body: FINALE_STAGES[n].body,
+    plate: `10-stage${n}`,
     unlock: { kind: 'rival', world: 10 },
   });
   return [
@@ -126,6 +155,7 @@ function world10Chapters(): StoryEntry[] {
       title: `${worldName(10)}: The Record`,
       listLabel: '10. Record',
       body: paragraphs.slice(2).join('\n\n'),
+      plate: '10-record',
     },
     pass,
     stage(2),
@@ -138,6 +168,7 @@ export const STORY_LOG: StoryEntry[] = [
     title: 'A Decoherence Is Spreading',
     listLabel: 'The Premise',
     body: TUTORIAL_TIPS.lab.body,
+    plate: 'premise',
     unlock: { kind: 'tip', id: 'lab' },
   },
   ...worldChapters(1),
@@ -154,6 +185,7 @@ export const STORY_LOG: StoryEntry[] = [
     title: FINALE_TITLE,
     listLabel: 'The Ending',
     body: FINALE_BODY,
+    plate: 'ending',
     // The finale panel opens at the pass once the last built world's rival
     // has fallen, so the ending and World 10's own pass and stage chapters
     // open together.
@@ -161,8 +193,20 @@ export const STORY_LOG: StoryEntry[] = [
   },
   // The after-story (data/story.ts's AFTER_STORY), one chapter per later
   // epoch, each readable once that epoch's ten rivals have all fallen.
-  { title: AFTER_STORY[2].title, listLabel: 'After Epoch 2', body: AFTER_STORY[2].body, unlock: { kind: 'epoch', epoch: 2 } },
-  { title: AFTER_STORY[3].title, listLabel: 'After Epoch 3', body: AFTER_STORY[3].body, unlock: { kind: 'epoch', epoch: 3 } },
+  {
+    title: AFTER_STORY[2].title,
+    listLabel: 'After Epoch 2',
+    body: AFTER_STORY[2].body,
+    plate: 'after2',
+    unlock: { kind: 'epoch', epoch: 2 },
+  },
+  {
+    title: AFTER_STORY[3].title,
+    listLabel: 'After Epoch 3',
+    body: AFTER_STORY[3].body,
+    plate: 'after3',
+    unlock: { kind: 'epoch', epoch: 3 },
+  },
 ];
 
 // Minimal structural type (mirrors data/tutorial.ts's RegistryLike) so this

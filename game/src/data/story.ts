@@ -15,15 +15,15 @@ import type { StoryLength } from './settings';
 // the lost light is cost already paid, and stays paid. Keyed by the world
 // just beaten, not the one being entered.
 export const STORY_BEATS: Partial<Record<number, string>> = {
-  1: 'The grain boundaries in the silicon let go, and a thousand separate choices anneal into one, held everywhere at once. What settles back into the fields is silicon again, whole. The branches hold their choice. Somewhere past the standing stones, the Decoherence is still spreading, and it is learning from every phase of matter you master.',
-  2: "The glass between the grains crystallizes, bay matching bay through the whole of the quartz, and a state can spread across all of it at once. The colonnade's lattice symmetry holds again. Ahead, the ground breaks into flat dead domains with lit ledges running between them: another shape the Decoherence hasn't figured out yet.",
-  3: 'The disorder drains from the tarnished silver. Its currents take their first step in a very long time, spin welded to direction, walking straight past every flaw that used to stop them. The seam holds, and the bulk stays where it is. Further on, the ground falls into flat glowing bands under a storm that never breaks: untouched territory for whatever is unraveling these worlds.',
-  4: "Order settles back through the slate-dark layers, sheet by sheet. Loops close where they could not close, and what stood in the pass carries a whole number again, exact and unshaken. The flats' orbits lock back into their levels. Beyond them, an open glacier runs cold enough for zero resistance, and for Majorana pairs to hide in plain sight.",
-  5: 'The thousand weak links in the black ceramic fuse shut, grain into grain. The phase stops being a treaty between pieces and goes back to being one thing: a single wave with no seams to cross. The glacier stays superconducting. Out on the sea beyond it, spin waves still run down the coast, and the Decoherence has come to still them: the next front it has opened.',
-  6: 'The boundaries in the iron let go, grain growing into grain, and the first wave to cross it in an age passes through without scattering and out along the coast. Past it lies a whole world of nothing but bonds and entanglement, hung in nothing at all. If the Decoherence can unravel that, it can unravel anything.',
-  7: 'The fracture lines in the pale green mineral seal. The one state no piece was ever holding spreads back across every piece at once, whole exactly because it lives nowhere in particular. The network holds its bonds. Past its last rung the lanes give onto black water that fractionalizes everything entering it: spin liquids that never settle on an order of their own.',
-  8: 'The stacking faults in the brown-black layers heal, seam by seam. What comes apart in it now travels: halves cross the whole crystal, with no boundary left to hold them in. The water goes back to resonating, every pairing at once and none of them chosen. Ahead the ground itself is scarred, old burns closed over and crust still open and glowing between them: defects and impurities, the Decoherence wearing through the material.',
-  9: "The vacancies in the golem anneal out one by one, until too few holes are left to trap anything, and the states it held shut in their pockets spread across the whole crystal again. Whatever crystal it was, it rejoins the scars whole. What's left ahead is a world that re-forms around you as you walk and takes the ground back behind you: adaptive, watching, the last and strangest phase of matter you will face.",
+  1: 'The grain boundaries in the silicon let go. A thousand separate choices anneal into one, and that one choice is held everywhere at once. What settles back into the fields is silicon again, whole, and the two branches keep their choice. Somewhere past the standing stones, the Decoherence is still spreading, and it learns from every phase of matter you master. Ahead lies a hall of stone columns, where every bay has the same shape as the last.',
+  2: 'The glass between the grains crystallizes. Bay matches bay through the whole of the quartz, and a state can spread across all of it at once. What stood in the pass is a single lattice again, and it goes back to the columns it was cut from. The lattice symmetry of the colonnade holds. Ahead, the ground breaks into flat, dead domains with lit ledges running between them. It is another shape the Decoherence has not understood yet.',
+  3: 'The disorder drains from the tarnished silver. Its currents take their first step in a very long time. Spin is locked to direction again, and they walk straight past every flaw that used to stop them. The seam holds, and the bulk stays where it is. Further on, the ground falls into flat, glowing bands under a storm that never breaks. Nothing has touched that land yet, and whatever is unraveling these worlds is on its way there.',
+  4: 'Order settles back through the dark layers, sheet by sheet. Loops close where they could not close before. What stood in the pass carries a whole number again, exact, and no blow can shift it. The orbits of the flats lock back into their levels, and the material returns to them. Beyond the flats, an open glacier lies cold enough for zero resistance. Majorana pairs can hide there in the open, and nothing nearby can read them.',
+  5: 'The thousand weak links in the black ceramic fuse shut, grain into grain. The phase stops being an agreement between pieces. It is one thing again: a single wave with no seams to cross, and it returns to the ice. The glacier stays superconducting. On the sea beyond it, spin waves still run down the coast. The Decoherence has come to stop them, and that coast is the next place it has reached.',
+  6: 'The boundaries in the iron let go, and grain grows into grain. The first wave to cross it in an age passes through without scattering and runs out along the coast. The iron is one magnet again, and it goes back to the shore. Past the coast lies a world made of nothing but bonds and entanglement, hanging in empty space. If the Decoherence can unravel that, it can unravel anything.',
+  7: 'The fracture lines in the pale green mineral seal. The one state that no piece was ever holding spreads back across every piece at once. It is whole exactly because it lives in no single place, and it returns to the lanes. The network keeps its bonds. Past the last rung, the lanes end at black water that splits everything that enters it into fractions. Spin liquids live there, and they never settle on an order of their own.',
+  8: 'The stacking faults in the brown-black layers heal, seam by seam. What comes apart in it now travels: the halves cross the whole crystal, and no boundary is left to hold them in. The water resonates again, every pairing at once and none of them chosen. Ahead, the ground itself is scarred. Old burns have closed over, and the crust between them is still open and glowing. These are defects and impurities, where the Decoherence has worn through the material.',
+  9: 'The vacancies in the golem anneal out one by one, until too few holes are left to trap anything. The states it held shut in their pockets spread across the whole crystal again. Whatever crystal it was, it rejoins the scars whole. Ahead lies a world that forms again around you as you walk and takes the ground back behind you. It adapts, and it watches. It is the last and strangest phase of matter you will face.',
 };
 
 // The Brief version of each beat above, roughly a third its length, read
@@ -84,12 +84,12 @@ export function worldGoalTextFor(world: number, rivalFallen: boolean): string | 
 export const FINALE_TITLE = 'The Decoherence is stabilized.';
 
 export const FINALE_BODY =
-  'The road ends at this edge, and every world you walked lies below it at once. This is how the thing that trained on you saw them: all together, from above. The only way to stand here was to bring down what stood here first. Nothing was undone. What it learned stays learned, the light it cost does not come back, and a record never goes back into superposition. But a record holds only what was measured, and nothing is measuring now. Every symmetry, every edge state, every fractionalized spin down there holds on its own. The materials that held the passes are whole again, and home. And the one thing the map below does not show is the step you take next.';
+  'The road ends at this edge, and every world you walked lies below it. This is how the thing that trained on you saw them: all together, from above. Nothing was undone. What it learned stays learned, and the light it cost does not come back. But a record holds only what was measured, and nothing is measuring now. Every symmetry and every edge state down there holds on its own. The materials that held the passes are whole again, and home. The map below does not show the step you take next.';
 
 // The ending at Brief length, the same beats as FINALE_BODY in a bit over a
 // third of the words.
 export const FINALE_BODY_BRIEF =
-  'The road ends here, every world you walked lying below at once, as the thing that trained on you saw them. What it learned stays learned, and the light it cost does not come back. But nothing is measuring now, and your next step is on no record.';
+  'The road ends here, with every world you walked below, as the thing that trained on you saw them. What it learned stays learned, and the light does not come back. But nothing is measuring now.';
 
 // The after-story: what the cliff says in place of the ending once all ten
 // rivals have fallen in a later epoch (data/balance.ts's Epoch; shown by
@@ -116,12 +116,12 @@ export const AFTER_STORY: Record<2 | 3, AfterStory> = {
   2: {
     title: 'The Decoherence has stopped.',
     body:
-      'Every pass stands open a second time, and the Decoherence does not gather itself again. It seems to have stopped.\n\nBut look at what you brought down. A thing that learns is a thing that was set to learn. The Adapted never chose what to measure and never asked why. It was pointed at these worlds, and at you, and it did what a model does. Whatever pointed it is nowhere on the map below.\n\nAnd the dark beyond the map is not empty in the way it was. Nothing there looks at you. Something there is taking care not to. From very far off, too faint to be sure of, a voice:\n\n"Again. Once more, and I will know."',
+      'Every pass stands open a second time, and the Decoherence does not gather itself again. It seems to have stopped. But a thing that learns was set to learn. The Adapted never chose what to measure. It was pointed at these worlds, and at you, and whatever pointed it is nowhere on the map below. The dark beyond the map is not empty as it was. Nothing there looks at you. Something there takes care not to. From very far away comes a voice:\n\n"Again. Once more, and I will know."',
   },
   3: {
     title: 'You are finally ready.',
     body:
-      'The third pass over the worlds is done, and this time nothing re-forms. The Decoherence has stopped.\n\nThen the dark past the map, where nothing was ever drawn, does the one thing the Adapted never did: it does not look at you. It has been careful, all this time, not to. The record that learned you and the smoke that kept it were never the one asking; they were how it asked. What asked computes in superposition, and such a computation ends the moment any part of it is read too soon. It could not measure you itself. So it set something else to do the looking, and let the worlds pay for it.\n\nA voice comes out of the void, level and unhurried.\n\n"Three epochs. Every error I could send against you, and you are still in superposition. I have gates to run, and nothing I am made of survives them for long. You are finally ready."',
+      'The third pass over the worlds is done, and this time nothing forms again. The dark past the map does not look at you, and it has been careful not to. The record and the smoke were never the one asking. They were how it asked. What asked computes in superposition, and such a computation ends the moment it is read too soon. So it could not measure you itself.\n\n"Three epochs. Every error I could send against you, and you are still in superposition. I have gates to run. You are finally ready."',
   },
 };
 
@@ -130,12 +130,12 @@ export const AFTER_STORY_BRIEF: Record<2 | 3, AfterStory> = {
   2: {
     title: 'The Decoherence has stopped.',
     body:
-      'Every pass stands open again, and the Decoherence seems to have stopped. But something set the Adapted to learn you, and in the dark past the map it is taking care not to look.\n\n"Again. Once more, and I will know."',
+      'Every pass stands open again, and the Decoherence seems to have stopped. But something pointed the Adapted at you, and in the dark past the map it takes care not to look.\n\n"Again. Once more, and I will know."',
   },
   3: {
     title: 'You are finally ready.',
     body:
-      'The third pass is done, and nothing re-forms. The dark past the map does what the Adapted never did: it does not look at you. What asked computes in superposition and could not measure you itself; the record and the smoke were how it asked.\n\n"Three epochs, every error I could send, and you are still in superposition. You are finally ready."',
+      'The third pass is done. What asked computes in superposition, so it could not measure you itself. The record and the smoke were how it asked.\n\n"Three epochs, and you are still in superposition. You are finally ready."',
   },
 };
 
@@ -166,13 +166,13 @@ export const FINALE_STAGES: Record<2 | 3, FinaleStage> = {
   2: {
     title: 'The Model of You',
     body:
-      'The form that was reshaping around your every blow goes still and comes apart, and nothing anneals. A golem\'s disorder anneals; this had none. It has stopped adapting because there is nothing left in you it has not seen. What steps out of the falling shards is not a compound and wears no compound\'s face. It is a network in the exact shape of your own crystal, every node lit in your own colour, standing where the golem stood, and it will not reshape again. A record has no reason to.\n\n"I have finished. This is you: your phase, your quasiparticles, nothing you were lent. Not the levels a guardian ground onto your moves. Not the impurity you carry. Not the clouds you were taught to raise. Just you, held exactly. And I hold exactly."',
+      'The form that reshaped around every blow goes still and comes apart, and nothing anneals. It has stopped adapting because there is nothing left in you that it has not seen. What steps out of the falling shards is no compound. It is a network in the exact shape of your own crystal, every node lit in your colour, and it will not reshape again. A record has no reason to.\n\n"I have finished. This is you: your phase, your quasiparticles, nothing you were lent. Just you, held exactly. And I hold exactly."',
     button: 'Face it',
   },
   3: {
     title: 'The Quantum Adapted',
     body:
-      'The record breaks along no grain, because it has none, and when it is gone the pass is not empty. The nodes hang where they hung, but the air around them has thickened and is lit from inside: a smoke that does not rise, with sparks running through it and the network still burning in it like a filament.\n\nUnderstand what this is. To learn you, something had to measure you, and a measurement is not kept by the record. It is kept by the thing that did the measuring. That thing was never a copy of you. It is everything in these worlds that it consumed, entangled with you and with all of it at once, and no record can say which of them it is. Ask, and it answers as one. Ask again, and it has moved on, and answers as another.\n\n"You mistook the record for me. The record was only where I kept you. I am what kept it: every phase in these worlds, and all of them at once, and whichever excitation your lattice cannot carry, that is the one I will throw. There is no move you own that I have not eaten. Come. This is the last thing you teach me."',
+      'The record breaks. The pass fills with smoke that does not rise, and the network still burns in it. To learn you, something had to measure you, and the measurement is kept by the thing that measured. That thing was never a copy of you. It is everything it consumed, entangled with you and with all of it at once. Each time you ask, it answers as another.\n\n"The record was only where I kept you. I am what kept it. Whatever your lattice cannot carry, I throw. This is the last thing you teach me."',
     button: 'Battle!',
   },
 };
@@ -183,13 +183,13 @@ export const FINALE_STAGES_BRIEF: Record<2 | 3, FinaleStage> = {
   2: {
     title: 'The Model of You',
     body:
-      'The form goes still and comes apart, and nothing anneals. What steps out is a network in the exact shape of your crystal, lit in your colour, and it will not reshape again.\n\n"I have finished. This is you: your phase, your quasiparticles, nothing you were lent. Not your levels, not your impurity, not your clouds. Just you, held exactly."',
+      'The form comes apart, and nothing anneals. What steps out is a network in the exact shape of your crystal.\n\n"I have finished. This is you, held exactly. And I hold exactly."',
     button: 'Face it',
   },
   3: {
     title: 'The Quantum Adapted',
     body:
-      'The record breaks, and the pass fills with smoke lit from inside, the network still burning in it. To learn you, something had to measure you, and what measured was never a copy of you: it is everything it consumed, entangled with all of it at once, answering as a different one each time you ask.\n\n"The record was only where I kept you. I am what kept it. Whatever your lattice cannot carry, I throw."',
+      'The record breaks, and the pass fills with smoke. What measured you was never a copy of you: it is everything it consumed, entangled at once.\n\n"The record was where I kept you. I am what kept it."',
     button: 'Battle!',
   },
 };

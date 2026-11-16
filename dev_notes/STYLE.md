@@ -52,6 +52,11 @@ to it: you are a quantum material, fighting real compounds with the quasiparticl
 lattice can host. A visitor deciding in three seconds should meet that, not a description of
 the course it teaches.
 
+**Story text is plain English, cut to one length.** World lore, rival taunts, story beats, the
+finale and the after-story are written in short sentences of common words, with the physics
+terms kept as the course uses them, and each is cut to the length of one Story station chapter.
+`WORLDS.md` section 6 holds both rules and the word counts.
+
 ## The cost rule
 
 **Speed beats spectacle. Every visual must stay affordable to simulate, and an
@@ -2492,9 +2497,9 @@ world are shaped, since world N's start is world N-1's exit.
   "Next ->"; the last screen of page 1 also reads "Next ->", and the last screen of page 2
   reads "Onward," which marks the world seen, persists, and closes the dialogue. A single
   paragraph taller than the canvas on its own has no break left to take, and falls back to
-  that helper's floor-`9`px shrink. With the current `WORLD_LORE` copy every world plays two screens except World
-  10, whose page 2 is three paragraphs and plays as two screens at the "Normal"/"Large"
-  presets and one at "Compact."
+  that helper's floor-`9`px shrink. With the current `WORLD_LORE` copy every authored page plays as a single screen at
+  every preset, at either Text Length, World 10's four-paragraph second page included (its
+  panel reaches `y = 437` of `480` at "Normal" and "Large").
 
 ## The rival gate (`OverworldScene.showRivalEncounter`/`renderRivalTauntPage`)
 
@@ -3299,33 +3304,97 @@ world are shaped, since world N's start is world N-1's exit.
 
 - The Decoherence arc, re-readable in the order a playthrough delivers it. Same list+detail
   panel shape as the full tutorial recap above (`LIST_DETAIL_PANEL_W` wide, a "Pick a chapter to
-  read it" hint over two columns, the selected chapter's full title and body in the right
-  column, a single `Close` in the left column's footer), stroked the story lavender `0xd9a5ff`
-  the between-worlds story beat already uses.
+  read it" hint over two columns, the selected chapter in the right column, a single `Close` in
+  the left column's footer), stroked the story lavender `0xd9a5ff` the between-worlds story beat
+  already uses. The right column is laid out top-down: the chapter's full title, its picture
+  ("Story plates" below), then its text.
+- **The right column gives every chapter exactly the same room.** The chapter title is always
+  one line: a title too long for the column ("The Devouring Mirror: The Quantum Adapted") is set
+  smaller until it fits, floor `10`px, and the line keeps its full-size height either way. The
+  panel's own title, its hint and the chapter title are capped at the `1.5`x preset
+  (`Math.min(fontScale, 1.5)`), the cap the story screens in play use for their prose: what
+  those lines would take at the `2`x "Large" preset comes straight out of the chapter's text,
+  which would leave it smaller at "Large" than at "Normal". The list rows keep the player's full
+  size.
 - **The list is the whole arc at every point in a playthrough, with Qumatex's checklist masking
   over it.** `data/storyLog.ts`'s `storyLogIndex` returns all of `STORY_LOG` in declaration
-  order -- the premise, then each world's chapters (its entry history, the Decoherence's
-  attack on it, and its pass: goal line, the rival's two-part boast, the beat that follows the
-  win; World 10's reveal is split across two chapters, its lore page 2 being too long for this
-  pane's shrink-only fit), then the ending -- each paired with whether the save has reached it. A chapter not yet
+  order -- the premise, then each world's four chapters (its entry history, the Decoherence's
+  attack on it, its pass: the goal line and the rival's two-part boast, and its release: the beat
+  that follows the win; World 10 has six: its history, its reveal in two chapters, its pass and
+  the two later stages of its finale, and no release), then the ending and the two after-story
+  chapters -- each paired with whether the save has reached it. A chapter not yet
   reached keeps its row and reads `'???'` in the dimmer `#6a7396`, exactly as an undiscovered
   crystal does in Qumatex and an unvisited world does in Bloch's table (`renderListColumn`'s own
   `labelFor`/`colorFor` hooks; there is no separate masking renderer). Its detail pane shows
-  `'???'` over one short line rather than a pane of question marks, the same way Bloch's pane
-  gives an unwalked world a single "mist covers this land" line in place of its blurb. So the
-  station reads as a checklist of the arc: how much road is left is visible, what is on it is
-  not. Superposition Mode reads everything unmasked, like everything else that mode unlocks up
-  front.
+  `'???'` over one short line and no picture, the same way Bloch's pane gives an unwalked world a
+  single "mist covers this land" line in place of its blurb: a picture would say what is on the
+  road ahead. So the station reads as a checklist of the arc: how much road is left is visible,
+  what is on it is not. Superposition Mode reads everything unmasked, like everything else that
+  mode unlocks up front.
 - **A row is `<world>. <chapter>` with the leading article dropped** ("1. Mean Fields", "1.
-  Decoherence", "1. Pass"), since the left column is only `200`px wide and `fitListLabel`
-  ellipsis-trims rather than wrapping; the detail pane's own title carries the full name ("The
-  Mean Fields: The Pass") so a chapter still names its world where there is room for it. Thirty-
-  two chapters page at every text-size preset, the same pager every other list+detail panel uses.
-- The body is shrink-only `fitProseToBudget` (floor `9`px) like the tutorial recap's -- the
-  panel's only button is the shared `Close`, so a long chapter is made to fit where it stands.
-  The longest, World 10's own reveal at ~1450 characters, reaches that floor and still fits.
+  Decoherence", "1. Pass", "1. Release"), since the left column is only `200`px wide and
+  `fitListLabel` ellipsis-trims rather than wrapping; the detail pane's own title carries the full
+  name ("The Mean Fields: The Pass") so a chapter still names its world where there is room for
+  it. Forty-six chapters page at every text-size preset, the same pager every other list+detail
+  panel uses.
+- **Every chapter is set in one size.** The body size is the player's own text size brought
+  down until every chapter of the arc fits under a picture (`storyBodyPx`, measured once over
+  all of `STORY_LOG`, reached or not, and cached), so paging through the list never changes the
+  size of the type: `15`px at "Normal" and "Large", `12`px at "Compact", line spacing `5`. That
+  works because the chapters are written to one length: 85 to 96 words in at most two paragraphs
+  (a release 71 to 80 in one, the premise shorter), which is eleven lines at `15`px, the room the
+  pane has under the picture. A chapter written a line longer would bring the whole station down
+  a size, so `WORLDS.md` section 6 holds the length rule for the texts the chapters are assembled
+  from. The body still runs through the shrink-only `fitProseToBudget` (floor `9`px) as the guard
+  for a chapter that outgrows its room: the panel's only button is the shared `Close`, so a
+  chapter has to fit where it stands. A pass chapter runs its goal line on into the taunt's first
+  part, so that it too is two paragraphs.
 - Reading a chapter never marks it reached: nothing on this path writes `tutorialTipsSeen` or
   `worldLoreSeen`, so opening the premise can't suppress the Lab's own welcome popup.
+
+### Story plates (`art/storyPlates/`)
+
+- **Every chapter is headed by a picture: a painting on a slab of rock wall, the way the oldest
+  stories were kept.** A plate is `440x104`, a fixed block whatever the text size ("art, not
+  text"), centered in the right column between the chapter's title and its text. The slab is a
+  rough-edged piece of stone, mottled, gritty and cracked (`slab.ts`), and the painting on it is
+  a few earth pigments put on by hand (`brush.ts`): red ochre `0xa63f1d`, yellow ochre
+  `0xd6a03c`, charcoal `0x241b16`, chalk `0xf1e7cc`, and one or two earths in the hue the
+  chapter's own world owns (`WORLDS.md` section 3). Strokes wobble, washes are thin enough for
+  the rock to show through (alpha about `0.3` to `0.45`), and the paint is worn where the wall
+  has flaked: flakes of bare rock and four cracks are drawn over the painting. Nothing is ruled,
+  shaded or drawn in perspective, and no plate carries text, letters or numerals; a count is
+  tally strokes or rows of dots.
+- **A plate reads left to right as time**: what was, the event, what came of it, at most three
+  ideas with bare rock between them. It is the shape of the pane it sits in and of the text under
+  it. A release plate's right third looks forward to the next world with one small sign of it.
+- **A plate shows a place and a mechanism.** Only two bodies are ever painted: a golem standing
+  in its pass, before it falls, with the mechanism it lost painted inside its body, and the
+  crystal that walks these worlds, as a chalk lozenge with its two upper facets marked. A release
+  plate shows the mechanism restored and no body, since the freed material never lingers as a
+  figure in the pass (`WORLDS.md` section 6). The swamp's water never shows a likeness. The
+  voice past the map is never painted: where it speaks, the rock stays bare, and a few faint
+  chalk arcs arrive from beyond the slab's edge. The Adapted's copy of the player is the same
+  lozenge in World 10's silver-violet.
+- **The rock follows the light rule.** A plate's slab keeps a fraction of the first world's
+  light (`slab.ts`'s `SLAB_LIGHT`, applied channel by channel to the rock's three colours): `1`
+  for the Lab and Worlds 1 and 2, then `0.87`, `0.62`, `0.5`, `0.4`, down to `0.32` in World 7
+  where the sky goes out, and `0.35`, `0.35`, `0.4` for the last three, which are lit only by
+  their own fog-glow, magma and network; the ending and the after-story take World 10's rock. So
+  the wall is seen by the light of the world it tells, and paging down the list is the day dying.
+  The floor is `0.32` and not lower because a slab darker than that stops reading as rock against
+  the panel's own dark background. On the dark slabs chalk and the world's own earth carry the
+  line work, since charcoal no longer shows. No sun is painted from World 4 on, and no plate
+  shows light coming back.
+- **Physics first, here as everywhere.** Every arrow, count and symmetry in a plate is the
+  physics its chapter teaches: a stalk of wheat is a spin, a golem's grains disagree in the one
+  way its world's order was broken. A plate that reads well and is wrong is redrawn.
+- A plate is deterministic: its rock and every wobble come from generators seeded by the
+  plate's id, so a chapter shows the same picture every time it is opened.
+- A plate is painted once and baked into a single texture (`art/bake.ts`), like the Lab's room
+  and its station icons. With a picture open the Story panel runs at the frame time it has with
+  none (39 against 38 ms on software WebGL, 16.7 ms on the Canvas renderer either way); left as
+  live vectors a plate added about 13 ms a frame there.
 
 ## Attack effects (`art/attackEffects.ts` + `art/attackAnchors.ts`/`attackStyles.ts`/`attackShapes.ts`/`attackAnalytics.ts`/`attackUltimates.ts`/`attackFx.ts`/`fxTextures.ts`, `audio/sfx.ts`, `scenes/BattleScene.ts`)
 

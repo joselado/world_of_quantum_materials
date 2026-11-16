@@ -149,7 +149,7 @@ stone, every grain of it a small perfect lattice and every boundary between
 them a seam of glass. "I kept the pattern. Every grain of me still repeats.
 Ask them to agree on where. Your lattice makes you a promise: be periodic,
 and you may be everywhere at once. Mine keeps that promise a grain at a
-time, and between the grains there is glass." Beat it and the glass
+time, and glass repeats nothing." Beat it and the glass
 crystallizes, bay matching bay through the whole of the quartz, and a state
 can spread across all of it at once again.
 
@@ -225,7 +225,7 @@ Bismuth Telluride Golem**, which never needed the field switched on at all:
 its own spins quantize it from the inside, and every stacked sheet of them
 is interrupted. "The number I carry does not wobble when you hit it. It
 cannot. It is an integer, and there is no such thing as most of one. Go on.
-Count me. Take as long as you need, and tell me what you find." Beat it and
+Count me." Beat it and
 order settles back sheet by sheet: the loops close, and the number it
 carries is a whole one again.
 
@@ -548,8 +548,8 @@ in these worlds that it consumed, entangled with you and with all of it at
 once, and no record can say which of them it is. Ask, and it answers as one.
 Ask again, and it answers as another -- a different real compound every round,
 shown to you before you choose, and what it throws is always the one
-excitation your own lattice cannot carry. "There is no move you own that I
-have not eaten. This is the last thing you teach me."
+excitation your own lattice cannot carry. "Whatever your lattice cannot carry,
+I throw. This is the last thing you teach me."
 
 *You reached the far edge of the shape it copied from you. It already knows you're here.*
 
@@ -619,8 +619,7 @@ measure you itself, so it set something else to do the looking, and let the
 worlds pay for it.
 
 "Three epochs. Every error I could send against you, and you are still in
-superposition. I have gates to run, and nothing I am made of survives them for
-long. You are finally ready."
+superposition. I have gates to run. You are finally ready."
 
 **You are finally ready.**
 
