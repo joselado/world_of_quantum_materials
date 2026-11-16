@@ -92,6 +92,7 @@ import { everVisitedWorlds } from '../data/epochs';
 import type { KondoCloud, ScreeningChannel } from '../data/materials';
 import { DEFAULT_DIFFICULTY_TIER, DEFAULT_TOUCH_CONTROLS, touchControlsActive, storyLength, storyScreensEnabled } from '../data/settings';
 import { FINALE_STAGES, finaleStageFor, finaleVictoryLineFor, finaleDefeatLineFor } from '../data/story';
+import { hasStoryPlate, makeStoryPlate, STORY_PLATE_W, STORY_PLATE_H } from '../art/storyPlates';
 import type { DifficultyTier, TouchControlsMode } from '../data/settings';
 import { victoryLine, defeatLine } from '../data/greetings';
 import { PASSIVES, allActivePassiveIds, builtInPassiveIds, passiveName } from '../data/passives';
@@ -2930,7 +2931,7 @@ export class BattleScene extends Phaser.Scene {
         stand();
         return;
       }
-      this.renderStagePanel({ title: stage.title, body: stage.body, buttonLabel: stage.button, onContinue: stand });
+      this.renderStagePanel({ title: stage.title, body: stage.body, buttonLabel: stage.button, onContinue: stand, plate: `10-stage${next}` });
     });
   }
 
@@ -3069,10 +3070,16 @@ export class BattleScene extends Phaser.Scene {
   // SPACE and a tap leave it too, armed after the grace the summary uses: on
   // a touchscreen the button is small, and a held key or the click that
   // ended the stage must not skip the one screen that says what happened.
-  private renderStagePanel(params: { title: string; body: string; buttonLabel: string; onContinue: () => void }) {
+  //
+  // `plate` names the picture that heads the screen (art/storyPlates), the
+  // one the stage's chapter carries at the Story station. A screen with a
+  // picture takes nearly the field's width and starts higher, so the prose
+  // under it runs in long lines and keeps its size.
+  private renderStagePanel(params: { title: string; body: string; buttonLabel: string; onContinue: () => void; plate?: string }) {
     const { title, body, buttonLabel, onContinue } = params;
-    const panelWidth = 560;
-    const top = 50;
+    const pictured = hasStoryPlate(params.plate);
+    const panelWidth = pictured ? FIELD_W - 60 : 560;
+    const top = pictured ? 20 : 50;
     const contentWidth = panelWidth - 60;
     let done = false;
     let container: Phaser.GameObjects.Container | undefined;
@@ -3101,6 +3108,12 @@ export class BattleScene extends Phaser.Scene {
         .setOrigin(0.5, 0);
       c.add(titleText);
       y += titleText.height + 10;
+      const plate = makeStoryPlate(this, params.plate);
+      if (plate) {
+        plate.setPosition(Math.round(FIELD_W / 2 - STORY_PLATE_W / 2), Math.round(y));
+        c.add(plate);
+        y += STORY_PLATE_H + 10;
+      }
       const bodyText = this.add
         .text(FIELD_W / 2, y, body, {
           fontSize: `${Math.round(12 * scale)}px`,

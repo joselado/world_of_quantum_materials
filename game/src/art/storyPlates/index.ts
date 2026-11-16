@@ -13,9 +13,12 @@ import { PLATES as WORLD_8 } from './world8';
 import { PLATES as WORLD_9 } from './world9';
 import { PLATES as WORLD_10 } from './world10';
 
-// The picture that heads a chapter at the Lab's Story station
-// (scenes/panels/hubStations.ts's showStoryLog): a painting on a slab of rock
-// wall, the way the oldest stories were kept. A rough-edged piece of stone,
+// The picture that heads a chapter of the story, wherever the chapter is
+// read: at the Lab's Story station (scenes/panels/hubStations.ts's
+// showStoryLog) and on the story screens in play, the world-entry lore, the
+// beat after a rival falls, the finale's stage screens, the ending and the
+// after-story. It is a painting on a slab of rock wall, the way the oldest
+// stories were kept. A rough-edged piece of stone,
 // mottled and cracked, and on it a few earth pigments put on by hand: red
 // ochre, yellow ochre, charcoal, chalk, and one earth in the hue the chapter's
 // own world owns (WORLDS.md section 3). Strokes wobble, washes are thin enough
@@ -68,6 +71,10 @@ export function storyPlateWorld(id: string): number {
   const world = parseInt(id, 10);
   if (!Number.isNaN(world)) return world;
   return id === 'premise' ? 0 : 10;
+}
+
+export function hasStoryPlate(id: string | undefined): boolean {
+  return !!id && !!PLATE_PAINTERS[id];
 }
 
 export function storyPlateIds(): string[] {

@@ -975,6 +975,9 @@ game/src/
                                     hasSeenWorldLore/markWorldLoreSeen. WORLD_LORE_BRIEF/RIVAL_TAUNTS_BRIEF
                                     are the Brief versions, same keys and shape; screens read either through
                                     worldLoreFor()/rivalTauntFor(), which fall back to Detailed
+                                    -- worldLoreScreens(world, lore) turns a world's two pages into the
+                                    screens that play, each with its story plate's id (World 10's page 2
+                                    is two: the reveal and the record)
     worldFlavor.ts                  WORLD_FLAVOR -- one short epic-plus-physics paragraph per world, Bloch's
                                     own panel's detail-pane blurb for whichever destination is currently
                                     previewed -- distinct from story.ts's transition
@@ -3890,7 +3893,12 @@ thousand fills tessellated again each time. A painter takes `(g, r, rnd)`: the G
 generator seeded by the plate's id; nothing in a plate uses `Math.random`, so a chapter shows
 the same picture every time. To add a chapter, give its `StoryEntry` a `plate` id and add a
 painter under that id in the world's file; a chapter whose id has no painter shows its text
-alone. STYLE.md's "Story plates" holds the look and the rules a new plate is judged against.
+alone. The story screens in play carry the same plates through the same call:
+`OverworldScene.renderWorldLorePage` (one screen per `worldLoreScreens` entry),
+`showStoryBeat` (`<world>-release`), `showFinalePanel` (`ending`, or `after<epoch>`), and
+`BattleScene.renderStagePanel` (`10-stage2`/`10-stage3`, with `hasStoryPlate` choosing the wide
+layout). `renderRivalTauntPage` carries none: its picture is the golem itself. STYLE.md's "Story
+plates" holds the look and the rules a new plate is judged against.
 
 **Qumatex indexes every crystal, not just discovered ones, as a two-column list+detail
 panel.** `HubScene.materialdexIndex()` maps `data/materials.ts`'s `allCrystals()` against

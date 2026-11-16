@@ -63,7 +63,8 @@ import { addFastGraphics } from '../art/fastGraphics';
 import { TUTORIAL_TIPS, hasSeenTip, markTipSeen, tipBodyFor } from '../data/tutorial';
 import type { TutorialTipId } from '../data/tutorial';
 import { worldGoalTextFor, FINALE_TITLE, storyBeatFor, finaleBodyFor, afterStoryFor } from '../data/story';
-import { worldLoreFor, rivalTauntFor, hasSeenWorldLore, markWorldLoreSeen } from '../data/worldLore';
+import { makeStoryPlate, STORY_PLATE_W, STORY_PLATE_H } from '../art/storyPlates';
+import { worldLoreFor, worldLoreScreens, rivalTauntFor, hasSeenWorldLore, markWorldLoreSeen } from '../data/worldLore';
 import type { WorldLore } from '../data/worldLore';
 import {
   DEFAULT_ENCOUNTER_DENSITY,
@@ -3095,20 +3096,26 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       onDone();
       return;
     }
-    this.renderWorldLorePage(lore.page1.split('\n\n'), 'Next ->', () =>
-      this.renderWorldLorePage(lore.page2.split('\n\n'), 'Onward', () => {
-        markWorldLoreSeen(this.game.registry, this.world);
-        persistFromRegistry(this.game.registry);
-        this.closeDialogue();
-        onDone();
-      })
-    );
+    // One screen per chapter (data/worldLore.ts's worldLoreScreens), each
+    // under the picture the Story station shows for it.
+    const screens = worldLoreScreens(this.world, lore);
+    const finish = () => {
+      markWorldLoreSeen(this.game.registry, this.world);
+      persistFromRegistry(this.game.registry);
+      this.closeDialogue();
+      onDone();
+    };
+    const show = (index: number) => {
+      const last = index === screens.length - 1;
+      this.renderWorldLorePage(screens[index].paragraphs, last ? 'Onward' : 'Next ->', last ? finish : () => show(index + 1), screens[index].plate);
+    };
+    show(0);
   }
 
   // Renders as many of `paragraphs` as fit the canvas, then continues with
   // whatever is left over on a further screen; `lastLabel` is the button on
   // the screen that exhausts the list, intermediate screens read "Next ->".
-  private renderWorldLorePage(paragraphs: string[], lastLabel: string, onDone: () => void) {
+  private renderWorldLorePage(paragraphs: string[], lastLabel: string, onDone: () => void, plateId?: string) {
     this.dialogueContainer?.destroy(true);
     this.dialogueActive = true;
 
@@ -3138,6 +3145,15 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       .setOrigin(0.5, 0);
     container.add(title);
     y += title.height + 8;
+
+    // The chapter's picture (art/storyPlates), a fixed block between the
+    // title and the text. A screen that continues the same chapter keeps it.
+    const plate = makeStoryPlate(this, plateId);
+    if (plate) {
+      plate.setPosition(Math.round(CANVAS_W / 2 - STORY_PLATE_W / 2), Math.round(y));
+      container.add(plate);
+      y += STORY_PLATE_H + 10;
+    }
 
     // Built before the body so the fit budget below can use the button's
     // real measured height. Its label and handler both depend on how much
@@ -3175,7 +3191,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     btn.setY(y);
     if (rest.length) {
       btn.setText('Next ->');
-      onContinue = () => this.renderWorldLorePage(rest, lastLabel, onDone);
+      onContinue = () => this.renderWorldLorePage(rest, lastLabel, onDone, plateId);
     } else {
       onContinue = onDone;
     }
@@ -3211,8 +3227,14 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // preset than at the default, so the panel is sized to the text rather
     // than the text being trusted to fit a fixed box.
     const scale = Math.min(fontScale(this), 1.5);
-    const padding = 30;
-    const centerY = 260;
+    // The release's picture (art/storyPlates) heads the beat, the same one
+    // its chapter carries at the Story station. With it the panel is tall
+    // enough to be centred on the canvas itself.
+    const plate = makeStoryPlate(this, `${completedWorld}-release`);
+    const centerY = plate ? CANVAS_H / 2 : 260;
+    const padding = plate ? 20 : 30;
+    const plateBlock = plate ? STORY_PLATE_H + 12 : 0;
+    if (plate) container.add(plate);
 
     const text = this.add
       .text(CANVAS_W / 2, 0, line, {
@@ -3237,10 +3259,14 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       `${Math.round(13 * scale)}px`
     );
 
-    const panelHeight = padding + text.height + 18 + btn.height + padding;
+    // The beat keeps its size unless the panel would leave the canvas with
+    // the picture on it; only then does it give up font size (ui/text.ts).
+    fitProseToBudget(text, [line], CANVAS_H - 32 - (padding + plateBlock + 18 + btn.height + padding));
+    const panelHeight = padding + plateBlock + text.height + 18 + btn.height + padding;
     const top = Math.max(16, Math.round(centerY - panelHeight / 2));
-    text.setY(top + padding);
-    btn.setY(top + padding + text.height + 18);
+    plate?.setPosition(Math.round(CANVAS_W / 2 - STORY_PLATE_W / 2), top + padding);
+    text.setY(top + padding + plateBlock);
+    btn.setY(top + padding + plateBlock + text.height + 18);
 
     const panel = this.add
       .rectangle(CANVAS_W / 2, top + panelHeight / 2, 560, panelHeight, PANEL_BG, 0.96)
@@ -3266,13 +3292,16 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const epoch = getEpoch(this.game.registry);
     const after = epoch >= 2 && allRivalsFallen(this.game.registry) ? afterStoryFor(epoch as 2 | 3, storyLength(this.game.registry)) : null;
 
-    const panelWidth = 600;
-    const top = 40;
+    // The world-entry lore screen's geometry: near the canvas's full width,
+    // so the text under the picture runs in long lines and the whole of it
+    // fits at the lore screen's own size.
+    const panelWidth = CANVAS_W - 40;
+    const top = 16;
     // The panel's own padding above the title and below the buttons, and the
     // strip of canvas kept clear under it, so a body fitted to the full
     // budget still leaves the panel's frame inside the canvas.
-    const topPad = 14;
-    const bottomPad = 24;
+    const topPad = 12;
+    const bottomPad = 16;
     const bottomMargin = 16;
     // No scrim under this one: it is read at the cliff's edge, and what it
     // says is about the worlds lying below, which stay lit behind it.
@@ -3298,7 +3327,17 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       })
       .setOrigin(0.5, 0);
     container.add(title);
-    y += title.height + 16;
+    y += title.height + 10;
+
+    // What is read here has a chapter at the Story station, and carries that
+    // chapter's picture (art/storyPlates): the ending's, or the after-story's
+    // for the epoch just cleared.
+    const plate = makeStoryPlate(this, after ? `after${epoch}` : 'ending');
+    if (plate) {
+      plate.setPosition(Math.round(CANVAS_W / 2 - STORY_PLATE_W / 2), Math.round(y));
+      container.add(plate);
+      y += STORY_PLATE_H + 10;
+    }
 
     // The buttons are built before the body so the fit budget below can use
     // their real measured height (same pattern as renderWorldLorePage), and
@@ -3336,7 +3375,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
         CANVAS_W / 2,
         y,
         '',
-        { fontSize: `${Math.round(13 * scale)}px`, color: '#cfd8ff', align: 'center', wordWrap: { width: 480 } }
+        { fontSize: `${Math.round(11 * scale)}px`, color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 60 }, lineSpacing: 3 }
       )
       .setOrigin(0.5, 0);
     container.add(body);
@@ -3347,9 +3386,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     fitProseToBudget(
       body,
       [after?.body ?? finaleBodyFor(storyLength(this.game.registry))],
-      CANVAS_H - bottomMargin - y - (20 + farewell.height + bottomPad)
+      CANVAS_H - bottomMargin - y - (16 + farewell.height + bottomPad)
     );
-    y += body.height + 20;
+    y += body.height + 16;
 
     study.setY(y);
     farewell.setY(y);

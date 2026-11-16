@@ -2455,17 +2455,20 @@ world are shaped, since world N's start is world N-1's exit.
 
 ## The between-worlds story beat (`OverworldScene.showStoryBeat`)
 
-- One line of `data/story.ts`'s `STORY_BEATS` on a single small panel, shown after a
-  world's rival falls and before `advanceToWorld` moves the player on. A world with no beat
-  of its own, and every world with the Settings station's Story Screens row off ("Settings
-  station" below), falls straight through to `advanceToWorld` instead. `560` wide,
-  height sized to the content (30px padding, the beat wrapped to 500px, 18px gap, the
-  "Onward" button, 30px padding) and then centered on `y = 260` with the top clamped to
-  a 16px margin, rather than a fixed box the text is trusted to fit. Stroked lavender
-  (`0xd9a5ff`), the color shared with the world-entry lore screen and with the boards and
-  door out in the worlds for "connective tissue between worlds." Body and button font are
-  capped at `Math.min(fontScale(this), 1.5)`, the same cap the lore screen's prose uses -- at the
-  uncapped 2x "Large" preset these beats wrap to several more lines than at the default.
+- One paragraph of `data/story.ts`'s `STORY_BEATS` on a single panel, under the picture of that
+  world's release ("Story plates" below), shown after a world's rival falls and before
+  `advanceToWorld` moves the player on. A world with no beat of its own, and every world with
+  the Settings station's Story Screens row off ("Settings station" below), falls straight
+  through to `advanceToWorld` instead. `560` wide, height sized to the content (20px padding,
+  the `440x104` plate, a 12px gap, the beat wrapped to 500px, an 18px gap, the "Onward" button,
+  20px padding) and centered on the canvas with the top clamped to a 16px margin, rather than a
+  fixed box the text is trusted to fit. Stroked lavender (`0xd9a5ff`), the color shared with
+  the world-entry lore screen and with the boards and door out in the worlds for "connective
+  tissue between worlds." Body and button font are capped at `Math.min(fontScale(this), 1.5)`,
+  the same cap the lore screen's prose uses, which gives a `20`px body at "Normal" and "Large";
+  the longest beat then fills the canvas from `y = 28` to `452`. The body also runs through the
+  shrink-only `fitProseToBudget`, so a beat written longer gives up font size before the panel
+  leaves the canvas.
 
 ## The world-entry lore screen (`OverworldScene.showWorldLore`/`renderWorldLorePage`)
 
@@ -2480,26 +2483,30 @@ world are shaped, since world N's start is world N-1's exit.
   same schedule and keeps the text. Same dark rounded-rectangle-with-stroke
   treatment as every other overworld dialogue, near-full-canvas width (`CANVAS_W - 40`),
   stroked lavender (`0xd9a5ff`) to match `showStoryBeat`'s own "connective tissue between
-  worlds" convention. Heading is the world's name (`WORLD_NAMES`); each screen is laid out top-down (title, then body, then a button) with
+  worlds" convention. Heading is the world's name (`WORLD_NAMES`); each screen is laid out
+  top-down (title, then the chapter's picture, then body, then a button) with
   the panel's background sized to the real content height afterward, the same idiom
   `renderTutorialTipPopup` uses. The title and body font sizes are capped at
   `Math.min(fontScale(this), 1.5)` rather than scaling all the way to the Settings
   panel's 2x "Large" preset -- the same fixed-budget problem `BattleScene.drawMoveMenu`'s
   own `chromeScale`/`headerScale` caps solve.
-- The two authored pages are each rendered across **as many screens as the fixed
-  `CANVAS_H` needs**, so a page longer than the canvas is never trusted to fit one
-  screen. `renderWorldLorePage` takes a paragraph list (the authored page `split('\n\n')`),
-  measures its own continue button first so the fit budget uses the button's real height,
-  and hands both to `ui/text.ts`'s `fitProseToBudget` against `CANVAS_H` minus the title, the
-  button and a 16px bottom margin; whatever is left over continues on a further screen.
-  Breaks therefore only ever fall on a paragraph boundary and never bridge the
-  page-1/page-2 boundary. Any screen that isn't the last one for its authored page reads
-  "Next ->"; the last screen of page 1 also reads "Next ->", and the last screen of page 2
-  reads "Onward," which marks the world seen, persists, and closes the dialogue. A single
-  paragraph taller than the canvas on its own has no break left to take, and falls back to
-  that helper's floor-`9`px shrink. With the current `WORLD_LORE` copy every authored page plays as a single screen at
-  every preset, at either Text Length, World 10's four-paragraph second page included (its
-  panel reaches `y = 437` of `480` at "Normal" and "Large").
+- **One screen per chapter, each under its picture.** `data/worldLore.ts`'s
+  `worldLoreScreens` turns the two authored pages into the screens that play: the history under
+  the `<world>-history` plate, then the Decoherence's attack under `<world>-decoherence`. World
+  10's second page is two chapters and plays as two screens, split at the middle of its
+  paragraphs, the reveal under `10-decoherence` and the record under `10-record`. They are the
+  same chapters, texts and pictures the Lab's Story station lists ("Story plates" below). Every
+  screen but the last reads "Next ->"; the last reads "Onward," which marks the world seen,
+  persists, and closes the dialogue.
+- A screen is still never trusted to fit. `renderWorldLorePage` takes a paragraph list and the
+  plate's id, measures its own continue button first so the fit budget uses the button's real
+  height, and hands the paragraphs to `ui/text.ts`'s `fitProseToBudget` against `CANVAS_H`
+  minus the title, the plate, the button and a 16px bottom margin; whatever is left over
+  continues on a further screen under the same picture, so a break only ever falls on a
+  paragraph boundary. A single paragraph taller than its room has no break left to take, and
+  falls back to that helper's floor-`9`px shrink. With the current `WORLD_LORE` copy every
+  chapter plays as a single screen at every preset and either Text Length, with a `17`px body
+  at "Normal" and "Large" and the longest panel ending at `y = 391` of `480`.
 
 ## The rival gate (`OverworldScene.showRivalEncounter`/`renderRivalTauntPage`)
 
@@ -2532,6 +2539,9 @@ world are shaped, since world N's start is world N-1's exit.
   otherwise overflow the canvas at the Settings panel's 2x preset). Losing doesn't set anything
   back except the token stake (see Stakes in DESIGN.md §4): the pass is still shut, its guard
   still standing in it, and the prompt still offers the challenge to retry.
+- The gate carries no story plate, alone among the story screens. Its picture is the golem
+  itself, standing on the page as it stands in the pass and in the fight, and the pass plate
+  paints that same golem: both on one screen would be the same body twice.
 
 ## Battle backdrop (`BattleScene.drawRealisticBackdrop`)
 
@@ -3354,6 +3364,16 @@ world are shaped, since world N's start is world N-1's exit.
 
 ### Story plates (`art/storyPlates/`)
 
+- **A chapter carries its picture wherever it is read**: at the Story station, and on the story
+  screens in play. The world-entry lore plays each chapter under its plate, the beat after a
+  rival falls carries the release's, the two screens between the finale's stages
+  (`BattleScene.renderStagePanel`) carry `10-stage2` and `10-stage3`, and the cliff's panel
+  (`OverworldScene.showFinalePanel`) carries the ending's, or the after-story's for the epoch
+  just cleared. On all of them the plate sits centered between the title and the text, and the
+  panel is wide enough that the text under it keeps its size: the lore screen and the cliff's
+  panel are `CANVAS_W - 40` wide with a `17`px body at "Normal", the stage screen is
+  `FIELD_W - 60` wide and starts at `y = 20` with an `18`px body. The rival gate is the one
+  story screen with no plate ("The rival gate" above).
 - **Every chapter is headed by a picture: a painting on a slab of rock wall, the way the oldest
   stories were kept.** A plate is `440x104`, a fixed block whatever the text size ("art, not
   text"), centered in the right column between the chapter's title and its text. The slab is a

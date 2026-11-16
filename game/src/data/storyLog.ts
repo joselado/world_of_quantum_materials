@@ -1,7 +1,7 @@
 import { worldName } from './materials';
 import { getEpochUnlocked, allRivalsFallen } from './epochs';
 import { STORY_BEATS, WORLD_GOAL_TEXT, FINALE_TITLE, FINALE_BODY, FINALE_STAGES, AFTER_STORY } from './story';
-import { WORLD_LORE, RIVAL_TAUNTS } from './worldLore';
+import { WORLD_LORE, RIVAL_TAUNTS, worldLoreScreens } from './worldLore';
 import { TUTORIAL_TIPS } from './tutorial';
 import type { TutorialTipId } from './tutorial';
 
@@ -126,11 +126,10 @@ function worldChapters(world: number, titles?: { decoherence?: string; pass?: st
 // other lore page, and its re-read splits into two chapters at the page's own
 // middle seam: the reveal itself (what has hunted you, and how it trained),
 // then the measurement lesson the page closes on (what the teaching cost, and
-// why nothing here can be freed). Each half is one chapter's length. In play
-// the world-entry lore panel still shows the page whole -- that surface
-// paginates (OverworldScene.renderWorldLorePage) -- and both chapter bodies
-// stay assembled from the same WORLD_LORE string, so re-reading and meeting
-// the text in play cannot drift apart.
+// why nothing here can be freed). Each half is one chapter's length. The
+// world-entry lore panel plays the same two halves as two screens
+// (data/worldLore.ts's worldLoreScreens, which owns the seam), so re-reading
+// and meeting the text in play cannot drift apart.
 //
 // The finale's own two later stages (data/story.ts's FINALE_STAGES, the
 // screens BattleScene shows between the three fights) follow the pass
@@ -139,7 +138,7 @@ function worldChapters(world: number, titles?: { decoherence?: string; pass?: st
 // either way.
 function world10Chapters(): StoryEntry[] {
   const [history, reveal, pass] = worldChapters(10, { decoherence: 'The Reveal', pass: 'The Adapted' });
-  const paragraphs = reveal.body.split('\n\n');
+  const [, revealScreen, recordScreen] = worldLoreScreens(10, WORLD_LORE[10]!);
   const stage = (n: 2 | 3): StoryEntry => ({
     title: `${worldName(10)}: ${FINALE_STAGES[n].title}`,
     listLabel: `10. ${FINALE_STAGES[n].title.replace(/^The /, '')}`,
@@ -149,13 +148,13 @@ function world10Chapters(): StoryEntry[] {
   });
   return [
     history,
-    { ...reveal, body: paragraphs.slice(0, 2).join('\n\n') },
+    { ...reveal, body: revealScreen.paragraphs.join('\n\n'), plate: revealScreen.plate },
     {
       ...reveal,
       title: `${worldName(10)}: The Record`,
       listLabel: '10. Record',
-      body: paragraphs.slice(2).join('\n\n'),
-      plate: '10-record',
+      body: recordScreen.paragraphs.join('\n\n'),
+      plate: recordScreen.plate,
     },
     pass,
     stage(2),

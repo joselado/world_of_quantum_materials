@@ -288,6 +288,31 @@ export const RIVAL_TAUNTS_BRIEF: Partial<Record<number, RivalTaunt>> = {
   },
 };
 
+// One screen of a world's entry lore: the paragraphs it reads and the picture
+// that heads them (art/storyPlates keys its painters by `plate`). A screen is
+// one chapter of the Lab's Story station, so the lore met in play and the
+// chapter re-read there are the same text under the same picture.
+export interface WorldLoreScreen {
+  plate: string;
+  paragraphs: string[];
+}
+
+// A world's entry lore as the screens it plays: its history, then the
+// Decoherence's attack on it. World 10's second page is two chapters, the
+// reveal and the record, and splits at the middle of its paragraphs (four at
+// Detailed, two at Brief), each half under its own picture.
+export function worldLoreScreens(world: number, lore: WorldLore): WorldLoreScreen[] {
+  const page2 = lore.page2.split('\n\n');
+  const screens: WorldLoreScreen[] = [{ plate: `${world}-history`, paragraphs: lore.page1.split('\n\n') }];
+  if (world === 10 && page2.length >= 2) {
+    const seam = Math.ceil(page2.length / 2);
+    screens.push({ plate: '10-decoherence', paragraphs: page2.slice(0, seam) }, { plate: '10-record', paragraphs: page2.slice(seam) });
+  } else {
+    screens.push({ plate: `${world}-decoherence`, paragraphs: page2 });
+  }
+  return screens;
+}
+
 // The table a story screen reads, picked by the Text Length setting. Falls
 // back to the Detailed entry when a world has no Brief one, so a world
 // written only once still shows its story at either setting.
